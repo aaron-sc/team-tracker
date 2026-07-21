@@ -1,0 +1,487 @@
+// Formation — Prisma schema
+// Dev DB is SQLite (file:./dev.db); schema deliberately avoids SQLite-only
+// quirks (native arrays, etc.) so a future move to Postgres is a config change.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum MatchFormat {
+  BO1
+  BO3
+  BO5
+  BO7
+  OTHER
+}
+
+enum LocationType {
+  ONLINE
+  LAN
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LIVE
+  COMPLETED
+  CANCELLED
+  FORFEIT
+}
+
+enum ResultStatus {
+  WIN
+  LOSS
+  DRAW
+}
+
+enum SessionType {
+  PRACTICE
+  SCRIM
+}
+
+enum AttendanceStatus {
+  INVITED
+  CONFIRMED
+  DECLINED
+  ATTENDED
+  ABSENT
+  LATE
+}
+
+enum ProspectLevel {
+  HIGH_SCHOOL
+  COLLEGE
+  PRO
+}
+
+enum ProspectStage {
+  SCOUTING
+  CONTACTED
+  TRYOUT
+  OFFER
+  SIGNED
+  PASSED
+}
+
+enum Permission {
+  org_settings_manage
+  org_roles_manage
+  org_members_manage
+  org_members_invite
+  org_members_remove
+  audit_log_view
+
+  team_create
+  team_edit
+  team_delete
+  roster_manage
+
+  match_create
+  match_edit
+  match_delete
+  match_result_record
+  practice_create
+  practice_edit
+  practice_delete
+  attendance_manage
+
+  availability_manage_self
+  availability_manage_others
+
+  venue_create
+  venue_edit
+  venue_delete
+
+  recruitment_view
+  recruitment_manage
+  recruitment_delete
+
+  announcement_create
+  announcement_pin
+  announcement_delete
+
+  notification_send_broadcast
+}
+
+// ---------- Core tenancy ----------
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug        String   @unique
+  logoUrl     String?
+  timezone    String   @default("America/Chicago")
+  themeColor  String   @default("#6366f1")
+  apiKey      String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  teams         Team[]
+  memberships   Membership[]
+  roles         Role[]
+  invites       Invite[]
+  venues        Venue[]
+  opponents     Opponent[]
+  announcements Announcement[]
+  auditLogs     AuditLog[]
+  prospects     RecruitmentProspect[]
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name      String
+  game      String
+  slug      String
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teamMemberships  TeamMembership[]
+  matches          Match[]
+  practiceSessions PracticeSession[]
+  prospects        RecruitmentProspect[]
+  announcements    Announcement[]
+
+  @@unique([orgId, slug])
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  avatarUrl     String?
+  phone         String?
+  discordHandle String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastLoginAt   DateTime?
+
+  memberships         Membership[]
+  invitesSent         Invite[]             @relation("InvitedBy")
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  orgId       String
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  color       String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions RolePermission[]
+  memberships Membership[]
+  invites     Invite[]
+
+  @@unique([orgId, name])
+}
+
+model RolePermission {
+  id         String     @id @default(cuid())
+  roleId     String
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission
+
+  @@unique([roleId, permission])
+}
+
+model Membership {
+  id           String            @id @default(cuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orgId        String
+  org          Organization      @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  roleId       String
+  role         Role              @relation(fields: [roleId], references: [id])
+  status       MembershipStatus  @default(ACTIVE)
+  joinedAt     DateTime          @default(now())
+  invitedById  String?
+
+  teamMemberships        TeamMembership[]
+  availabilityRules      AvailabilityRule[]
+  availabilityExceptions AvailabilityException[]
+  sessionAttendances     SessionAttendance[]
+  announcements          Announcement[]
+  auditLogsAsActor       AuditLog[]
+  notifications          Notification[]
+  assignedProspects      RecruitmentProspect[]
+  prospectStatusChanges  ProspectStatusHistory[]
+
+  @@unique([userId, orgId])
+}
+
+model TeamMembership {
+  id           String     @id @default(cuid())
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  teamId       String
+  team         Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  jerseyNumber String?
+  position     String?
+  inGameName   String?
+  isStarter    Boolean    @default(false)
+  joinedTeamAt DateTime   @default(now())
+  leftTeamAt   DateTime?
+
+  @@unique([membershipId, teamId])
+}
+
+model Invite {
+  id          String       @id @default(cuid())
+  orgId       String
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  email       String
+  roleId      String
+  role        Role         @relation(fields: [roleId], references: [id])
+  token       String       @unique
+  status      InviteStatus @default(PENDING)
+  invitedById String
+  invitedBy   User         @relation("InvitedBy", fields: [invitedById], references: [id])
+  expiresAt   DateTime
+  createdAt   DateTime     @default(now())
+  acceptedAt  DateTime?
+}
+
+// ---------- Scheduling ----------
+
+model Opponent {
+  id        String   @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name      String
+  logoUrl   String?
+  contact   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  matches          Match[]
+  practiceSessions PracticeSession[]
+}
+
+model Match {
+  id             String        @id @default(cuid())
+  teamId         String
+  team           Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  opponentId     String
+  opponent       Opponent      @relation(fields: [opponentId], references: [id])
+  scheduledAt    DateTime
+  timezone       String
+  format         MatchFormat   @default(BO1)
+  locationType   LocationType  @default(ONLINE)
+  venueId        String?
+  venue          Venue?        @relation(fields: [venueId], references: [id])
+  isStreamed     Boolean       @default(false)
+  streamPlatform String?
+  streamUrl      String?
+  casterName     String?
+  status         MatchStatus   @default(SCHEDULED)
+  resultStatus   ResultStatus?
+  scoreFor       Int?
+  scoreAgainst   Int?
+  notes          String?
+  createdById    String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model AvailabilityRule {
+  id             String     @id @default(cuid())
+  membershipId   String
+  membership     Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  teamId         String?
+  dayOfWeek      Int
+  startTime      String
+  endTime        String
+  timezone       String
+  effectiveFrom  DateTime?
+  effectiveUntil DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model AvailabilityException {
+  id           String     @id @default(cuid())
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  date         DateTime
+  startTime    String?
+  endTime      String?
+  isAvailable  Boolean
+  reason       String?
+  createdAt    DateTime   @default(now())
+}
+
+model PracticeSession {
+  id              String       @id @default(cuid())
+  teamId          String
+  team            Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  type            SessionType  @default(PRACTICE)
+  opponentId      String?
+  opponent        Opponent?    @relation(fields: [opponentId], references: [id])
+  scheduledAt     DateTime
+  durationMinutes Int          @default(60)
+  timezone        String
+  locationType    LocationType @default(ONLINE)
+  venueId         String?
+  venue           Venue?       @relation(fields: [venueId], references: [id])
+  notes           String?
+  createdById     String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  attendances SessionAttendance[]
+}
+
+model SessionAttendance {
+  id           String           @id @default(cuid())
+  sessionId    String
+  session      PracticeSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  membershipId String
+  membership   Membership       @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  status       AttendanceStatus @default(INVITED)
+  respondedAt  DateTime?
+  note         String?
+
+  @@unique([sessionId, membershipId])
+}
+
+model Venue {
+  id           String   @id @default(cuid())
+  orgId        String
+  org          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name         String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String?
+  postalCode   String?
+  country      String   @default("USA")
+  capacity     Int?
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+  notes        String?
+  timezone     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  matches          Match[]
+  practiceSessions PracticeSession[]
+}
+
+// ---------- Recruitment ----------
+
+model RecruitmentProspect {
+  id                     String        @id @default(cuid())
+  orgId                  String
+  org                    Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  teamId                 String?
+  team                   Team?         @relation(fields: [teamId], references: [id])
+  name                   String
+  level                  ProspectLevel
+  game                   String
+  stage                  ProspectStage @default(SCOUTING)
+  email                  String?
+  phone                  String?
+  discordHandle          String?
+  schoolOrOrg            String?
+  statsLinks             Json?
+  socialLinks            Json?
+  notes                  String?
+  assignedToMembershipId String?
+  assignedTo             Membership?   @relation(fields: [assignedToMembershipId], references: [id])
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  statusHistory ProspectStatusHistory[]
+}
+
+model ProspectStatusHistory {
+  id          String               @id @default(cuid())
+  prospectId  String
+  prospect    RecruitmentProspect  @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  fromStage   ProspectStage?
+  toStage     ProspectStage
+  changedById String
+  changedBy   Membership           @relation(fields: [changedById], references: [id])
+  note        String?
+  changedAt   DateTime             @default(now())
+}
+
+// ---------- Comms / governance ----------
+
+model Announcement {
+  id        String       @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  teamId    String?
+  team      Team?        @relation(fields: [teamId], references: [id])
+  authorId  String
+  author    Membership   @relation(fields: [authorId], references: [id])
+  title     String
+  body      String
+  pinned    Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model AuditLog {
+  id                String       @id @default(cuid())
+  orgId             String
+  org               Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  actorMembershipId String?
+  actorMembership   Membership?  @relation(fields: [actorMembershipId], references: [id])
+  action            String
+  targetType        String
+  targetId          String
+  metadata          Json?
+  createdAt         DateTime     @default(now())
+}
+
+model Notification {
+  id           String     @id @default(cuid())
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  type         String
+  title        String
+  body         String?
+  linkUrl      String?
+  isRead       Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+}
