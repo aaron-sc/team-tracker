@@ -353,23 +353,30 @@ async function main() {
     },
   });
 
+  console.log("Creating recruitment levels…");
+  const [hsLevel, collegeLevel, proLevel] = await Promise.all([
+    prisma.prospectLevel.create({ data: { orgId: org.id, name: "High School", order: 0 } }),
+    prisma.prospectLevel.create({ data: { orgId: org.id, name: "College", order: 1 } }),
+    prisma.prospectLevel.create({ data: { orgId: org.id, name: "Pro", order: 2 } }),
+  ]);
+
   console.log("Building recruitment pipeline…");
   const prospectSeed: {
     name: string;
-    level: "HIGH_SCHOOL" | "COLLEGE" | "PRO";
+    levelId: string;
     game: string;
     stage: "SCOUTING" | "CONTACTED" | "TRYOUT" | "OFFER" | "SIGNED" | "PASSED";
     schoolOrOrg: string;
     email?: string;
   }[] = [
-    { name: "Tyler Brooks", level: "HIGH_SCHOOL", game: "Valorant", stage: "SCOUTING", schoolOrOrg: "Lincoln HS Esports" },
-    { name: "Jenna Cole", level: "HIGH_SCHOOL", game: "Valorant", stage: "CONTACTED", schoolOrOrg: "Riverside HS" },
-    { name: "Marco Diaz", level: "COLLEGE", game: "Valorant", stage: "TRYOUT", schoolOrOrg: "Midwest State University", email: "marco.d@example.edu" },
-    { name: "Sophie Turner", level: "COLLEGE", game: "Rocket League", stage: "OFFER", schoolOrOrg: "Lakeshore College", email: "sophie.t@example.edu" },
-    { name: "Kenji Watanabe", level: "PRO", game: "Valorant", stage: "SIGNED", schoolOrOrg: "Free agent" },
-    { name: "Bianca Reyes", level: "COLLEGE", game: "Rocket League", stage: "PASSED", schoolOrOrg: "Union College" },
-    { name: "Owen Fisher", level: "PRO", game: "Rocket League", stage: "SCOUTING", schoolOrOrg: "Free agent" },
-    { name: "Grace Lin", level: "HIGH_SCHOOL", game: "Valorant", stage: "TRYOUT", schoolOrOrg: "Central HS Esports" },
+    { name: "Tyler Brooks", levelId: hsLevel.id, game: "Valorant", stage: "SCOUTING", schoolOrOrg: "Lincoln HS Esports" },
+    { name: "Jenna Cole", levelId: hsLevel.id, game: "Valorant", stage: "CONTACTED", schoolOrOrg: "Riverside HS" },
+    { name: "Marco Diaz", levelId: collegeLevel.id, game: "Valorant", stage: "TRYOUT", schoolOrOrg: "Midwest State University", email: "marco.d@example.edu" },
+    { name: "Sophie Turner", levelId: collegeLevel.id, game: "Rocket League", stage: "OFFER", schoolOrOrg: "Lakeshore College", email: "sophie.t@example.edu" },
+    { name: "Kenji Watanabe", levelId: proLevel.id, game: "Valorant", stage: "SIGNED", schoolOrOrg: "Free agent" },
+    { name: "Bianca Reyes", levelId: collegeLevel.id, game: "Rocket League", stage: "PASSED", schoolOrOrg: "Union College" },
+    { name: "Owen Fisher", levelId: proLevel.id, game: "Rocket League", stage: "SCOUTING", schoolOrOrg: "Free agent" },
+    { name: "Grace Lin", levelId: hsLevel.id, game: "Valorant", stage: "TRYOUT", schoolOrOrg: "Central HS Esports" },
   ];
 
   const stageOrder = ["SCOUTING", "CONTACTED", "TRYOUT", "OFFER", "SIGNED", "PASSED"];
@@ -381,7 +388,7 @@ async function main() {
         orgId: org.id,
         teamId: targetTeam,
         name: p.name,
-        level: p.level,
+        levelId: p.levelId,
         game: p.game,
         stage: p.stage,
         schoolOrOrg: p.schoolOrOrg,

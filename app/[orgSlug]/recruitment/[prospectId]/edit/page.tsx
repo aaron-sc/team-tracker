@@ -16,7 +16,10 @@ export default async function EditProspectPage({
   const { org, membership, teams } = await getOrgContext(orgSlug);
   requirePagePermission(orgSlug, membership, Permission.recruitment_manage);
 
-  const prospect = await prisma.recruitmentProspect.findUnique({ where: { id: prospectId } });
+  const [prospect, levels] = await Promise.all([
+    prisma.recruitmentProspect.findUnique({ where: { id: prospectId } }),
+    prisma.prospectLevel.findMany({ where: { orgId: org.id }, orderBy: { order: "asc" } }),
+  ]);
   if (!prospect || prospect.orgId !== org.id) notFound();
 
   const action = updateProspectAction.bind(null, orgSlug, org.id, prospect.id);
@@ -27,9 +30,10 @@ export default async function EditProspectPage({
       <ProspectForm
         action={action}
         teams={teams}
+        levels={levels}
         defaultValues={{
           name: prospect.name,
-          level: prospect.level,
+          levelId: prospect.levelId ?? "",
           game: prospect.game,
           teamId: prospect.teamId ?? "",
           email: prospect.email ?? "",

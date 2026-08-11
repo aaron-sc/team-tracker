@@ -12,8 +12,6 @@ import { DeleteProspectButton } from "@/components/recruitment/delete-prospect-b
 import { InviteProspectDialog } from "@/components/recruitment/invite-prospect-dialog";
 import { Mail, Phone, MessageSquare, Pencil, ExternalLink, UserCheck, Clock } from "lucide-react";
 
-const LEVEL_LABELS: Record<string, string> = { HIGH_SCHOOL: "High School", COLLEGE: "College", PRO: "Pro" };
-
 export default async function ProspectDetailPage({
   params,
 }: {
@@ -27,6 +25,7 @@ export default async function ProspectDetailPage({
     where: { id: prospectId },
     include: {
       team: true,
+      level: true,
       assignedTo: { include: { user: true } },
       statusHistory: { orderBy: { changedAt: "desc" }, include: { changedBy: { include: { user: true } } } },
     },
@@ -56,7 +55,7 @@ export default async function ProspectDetailPage({
         <div>
           <h1 className="text-xl font-semibold">{prospect.name}</h1>
           <div className="mt-1 flex items-center gap-2">
-            <Badge variant="secondary">{LEVEL_LABELS[prospect.level]}</Badge>
+            {prospect.level ? <Badge variant="secondary">{prospect.level.name}</Badge> : null}
             <span className="text-sm text-muted-foreground">{prospect.game}</span>
             {prospect.team ? <Badge variant="outline">{prospect.team.name}</Badge> : null}
           </div>

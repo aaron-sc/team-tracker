@@ -11,9 +11,10 @@ import type { ActionState } from "@/lib/actions/types";
 import { createNotification } from "@/lib/notifications/create";
 
 function parseProspectForm(formData: FormData) {
+  const levelId = formData.get("levelId");
   return prospectSchema.safeParse({
     name: formData.get("name"),
-    level: formData.get("level"),
+    levelId: levelId && levelId !== "none" ? levelId : "",
     game: formData.get("game"),
     teamId: formData.get("teamId") ?? "",
     email: formData.get("email") ?? "",
@@ -35,11 +36,16 @@ export async function createProspectAction(orgSlug: string, orgId: string, _prev
   }
   const d = parsed.data;
 
+  if (d.levelId) {
+    const level = await prisma.prospectLevel.findUnique({ where: { id: d.levelId } });
+    if (!level || level.orgId !== orgId) return { error: "Invalid level selected." };
+  }
+
   const prospect = await prisma.recruitmentProspect.create({
     data: {
       orgId,
       name: d.name,
-      level: d.level,
+      levelId: d.levelId || null,
       game: d.game,
       teamId: d.teamId || null,
       email: d.email || null,
@@ -87,11 +93,16 @@ export async function updateProspectAction(
   }
   const d = parsed.data;
 
+  if (d.levelId) {
+    const level = await prisma.prospectLevel.findUnique({ where: { id: d.levelId } });
+    if (!level || level.orgId !== orgId) return { error: "Invalid level selected." };
+  }
+
   await prisma.recruitmentProspect.update({
     where: { id: prospectId },
     data: {
       name: d.name,
-      level: d.level,
+      levelId: d.levelId || null,
       game: d.game,
       teamId: d.teamId || null,
       email: d.email || null,

@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { ProspectLevel, ProspectStage } from "@/lib/generated/prisma/enums";
+import { ProspectStage } from "@/lib/generated/prisma/enums";
 
 export const prospectSchema = z.object({
   name: z.string().trim().min(2, "Name is required.").max(80),
-  level: z.enum(ProspectLevel),
+  levelId: z.string().optional().or(z.literal("")),
   game: z.string().trim().min(1, "Game is required.").max(60),
   teamId: z.string().optional().or(z.literal("")),
   email: z.string().trim().email().optional().or(z.literal("")),
@@ -13,6 +13,10 @@ export const prospectSchema = z.object({
   statsLinks: z.string().trim().max(2000).optional().or(z.literal("")),
   socialLinks: z.string().trim().max(2000).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export const prospectLevelSchema = z.object({
+  name: z.string().trim().min(1, "Level name is required.").max(40),
 });
 
 export const prospectStageSchema = z.object({

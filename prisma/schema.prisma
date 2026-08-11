@@ -67,12 +67,6 @@ enum AttendanceStatus {
   LATE
 }
 
-enum ProspectLevel {
-  HIGH_SCHOOL
-  COLLEGE
-  PRO
-}
-
 enum ProspectStage {
   SCOUTING
   CONTACTED
@@ -145,6 +139,7 @@ model Organization {
   announcements Announcement[]
   auditLogs     AuditLog[]
   prospects     RecruitmentProspect[]
+  prospectLevels ProspectLevel[]
   conversations Conversation[]
 }
 
@@ -414,6 +409,19 @@ model Venue {
 
 // ---------- Recruitment ----------
 
+model ProspectLevel {
+  id        String   @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  prospects RecruitmentProspect[]
+
+  @@unique([orgId, name])
+}
+
 model RecruitmentProspect {
   id                     String        @id @default(cuid())
   orgId                  String
@@ -421,7 +429,8 @@ model RecruitmentProspect {
   teamId                 String?
   team                   Team?         @relation(fields: [teamId], references: [id])
   name                   String
-  level                  ProspectLevel
+  levelId                String?
+  level                  ProspectLevel? @relation(fields: [levelId], references: [id], onDelete: SetNull)
   game                   String
   stage                  ProspectStage @default(SCOUTING)
   email                  String?

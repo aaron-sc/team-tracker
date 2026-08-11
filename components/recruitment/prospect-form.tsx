@@ -11,13 +11,15 @@ import { SubmitButton } from "@/components/auth/submit-button";
 export function ProspectForm({
   action,
   teams,
+  levels,
   defaultValues,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   teams: { id: string; name: string }[];
+  levels: { id: string; name: string }[];
   defaultValues?: {
     name?: string;
-    level?: string;
+    levelId?: string;
     game?: string;
     teamId?: string;
     email?: string;
@@ -39,15 +41,18 @@ export function ProspectForm({
           <Input id="name" name="name" defaultValue={defaultValues?.name} required />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="level">Level</Label>
-          <Select name="level" defaultValue={defaultValues?.level ?? "HIGH_SCHOOL"}>
-            <SelectTrigger id="level" className="w-full">
+          <Label htmlFor="levelId">Level</Label>
+          <Select name="levelId" defaultValue={defaultValues?.levelId || "none"}>
+            <SelectTrigger id="levelId" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="HIGH_SCHOOL">High School</SelectItem>
-              <SelectItem value="COLLEGE">College</SelectItem>
-              <SelectItem value="PRO">Pro</SelectItem>
+              <SelectItem value="none">No level</SelectItem>
+              {levels.map((lvl) => (
+                <SelectItem key={lvl.id} value={lvl.id}>
+                  {lvl.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

@@ -1,6 +1,7 @@
 import { getOrgContext } from "@/lib/org/context";
 import { requirePagePermission } from "@/lib/org/require-permission-page";
 import { Permission } from "@/lib/generated/prisma/enums";
+import { prisma } from "@/lib/db/prisma";
 import { ProspectForm } from "@/components/recruitment/prospect-form";
 import { createProspectAction } from "@/lib/actions/prospects";
 
@@ -9,12 +10,13 @@ export default async function NewProspectPage({ params }: { params: Promise<{ or
   const { org, membership, teams } = await getOrgContext(orgSlug);
   requirePagePermission(orgSlug, membership, Permission.recruitment_manage);
 
+  const levels = await prisma.prospectLevel.findMany({ where: { orgId: org.id }, orderBy: { order: "asc" } });
   const action = createProspectAction.bind(null, orgSlug, org.id);
 
   return (
     <div>
       <h1 className="mb-4 text-xl font-semibold">New prospect</h1>
-      <ProspectForm action={action} teams={teams} />
+      <ProspectForm action={action} teams={teams} levels={levels} />
     </div>
   );
 }
