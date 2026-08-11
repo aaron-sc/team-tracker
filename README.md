@@ -151,7 +151,59 @@ for these changes:
    `EMAIL_FROM="Formation <invites@yourdomain.com>"`. Until then the shared `onboarding@resend.dev`
    sender keeps working — this step is optional, not blocking.
 6. **Hosting.** Vercel is the path of least resistance for a Next.js app (pair with Neon Postgres
-   + Vercel Blob). For self-hosting, `next build && next start` behind a reverse proxy works;
-   keep the SQLite file and `public/uploads/` on a persistent volume if you skip step 1–2, but
-   note that only works for a single instance (SQLite doesn't support concurrent writers across
-   multiple app instances).
+   + Vercel Blob). For self-hosting a single VM, use the Docker setup below — it keeps SQLite and
+   local-disk uploads (steps 1–2 don't apply), since a single instance doesn't hit SQLite's
+   concurrent-writer limitation.
+
+### Self-hosting with Docker
+
+The repo includes a `Dockerfile`, `docker-compose.yml`, and `Caddyfile` — this runs the app plus
+a Caddy reverse proxy that gets you HTTPS automatically (via Let's Encrypt) for free, no manual
+certificate handling.
+
+On a fresh Ubuntu/Debian VM:
+
+```bash
+# 1. Install Docker
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+newgrp docker
+
+# 2. Get the code onto the VM
+git clone <your-repo-url> formation
+cd formation
+
+# 3. Configure
+cp .env.example .env
+nano .env   # set AUTH_SECRET, RESEND_API_KEY, EMAIL_FROM, AUTH_URL, APP_URL
+echo "DOMAIN=yourdomain.com" >> .env
+
+# 4. Point DNS
+# Add an A record: yourdomain.com -> this VM's public IP (at your registrar/Cloudflare DNS)
+
+# 5. Build and run
+docker compose up -d --build
+
+# 6. Watch it come up (first run applies migrations, then starts the app)
+docker compose logs -f
+```
+
+The app is now live at `https://yourdomain.com` — Caddy requests and renews the TLS certificate
+automatically once DNS resolves to the VM.
+
+**Seeding demo data** (optional, skip for a real deployment):
+`docker compose exec app npx prisma db seed`
+
+**Redeploying after a code change:**
+```bash
+git pull
+docker compose up -d --build
+```
+This rebuilds the image and re-runs migrations (via `docker-entrypoint.sh`) before restarting —
+safe to run repeatedly, migrations that already applied are skipped.
+
+**Data persistence:** the SQLite database and `public/uploads/` live on named Docker volumes
+(`app-data`, `uploads`), so they survive `docker compose down` / rebuilds. Only
+`docker compose down -v` (which deletes volumes) would wipe them — back up
+`docker run --rm -v formation_app-data:/data -v $(pwd):/backup alpine tar czf /backup/backup.tar.gz -C /data .`
+before doing anything destructive.

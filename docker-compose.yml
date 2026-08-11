@@ -1,0 +1,36 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Overrides the .env value so the SQLite file lives on the persistent
+      # "app-data" volume below, not inside the container's writable layer.
+      - DATABASE_URL=file:/data/formation.db
+    volumes:
+      - app-data:/data
+      - uploads:/app/public/uploads
+    expose:
+      - "3300"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  app-data:
+  uploads:
+  caddy-data:
+  caddy-config:
