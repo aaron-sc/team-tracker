@@ -1,5 +1,14 @@
 FROM node:22-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
+# .env is intentionally not copied into the image (see .dockerignore) — real
+# values are injected at container runtime via docker-compose, which
+# overrides these at `docker compose up` regardless of what's baked in here.
+# Both `prisma generate` (prisma.config.ts reads DATABASE_URL eagerly, even
+# just to generate) and `next build` (evaluates every route module, including
+# the Prisma client singleton, to determine static vs. dynamic rendering)
+# need *some* well-formed value at build time, just not a correct one.
+ENV DATABASE_URL="file:./build-placeholder.db"
+ENV AUTH_SECRET="build-time-placeholder-not-used-at-runtime"
 
 FROM base AS deps
 WORKDIR /app
@@ -15,13 +24,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/lib/generated ./lib/generated
 COPY . .
-# .env is intentionally not copied into the image (see .dockerignore) — the
-# real values are injected at container runtime via docker-compose. `next
-# build` still evaluates every route module (including the Prisma client
-# singleton) to determine static vs. dynamic rendering, so these build-only
-# placeholders just need to be well-formed, not correct.
-ENV DATABASE_URL="file:./build-placeholder.db"
-ENV AUTH_SECRET="build-time-placeholder-not-used-at-runtime"
 RUN npm run build
 
 FROM base AS runner
