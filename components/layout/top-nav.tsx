@@ -15,23 +15,42 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronsUpDown, ShieldCheck, LogOut, Check, UserCog } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { NotificationBell } from "@/components/layout/notification-bell";
+import { CommandPalette } from "@/components/layout/command-palette";
 
-type OrgOption = { orgId: string; orgSlug: string; orgName: string; roleName: string };
+type OrgOption = { orgId: string; orgSlug: string; orgName: string; orgLogoUrl: string | null; roleName: string };
+type NotificationItem = {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  linkUrl: string | null;
+  isRead: boolean;
+  createdAt: string;
+};
 
 export function TopNav({
   orgName,
   orgSlug,
+  orgId,
+  orgLogoUrl,
   roleName,
   userName,
   userEmail,
   orgOptions,
+  initialNotifications,
+  initialUnreadCount,
 }: {
   orgName: string;
   orgSlug: string;
+  orgId: string;
+  orgLogoUrl: string | null;
   roleName: string;
   userName: string;
   userEmail: string;
   orgOptions: OrgOption[];
+  initialNotifications: NotificationItem[];
+  initialUnreadCount: number;
 }) {
   const initials = userName
     .split(" ")
@@ -47,6 +66,10 @@ export function TopNav({
           <ShieldCheck className="size-5 text-primary" />
           <span className="hidden sm:inline">Formation</span>
         </Link>
+        {orgLogoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={orgLogoUrl} alt={orgName} className="size-6 rounded object-cover" />
+        ) : null}
         {orgOptions.length > 1 ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -61,7 +84,13 @@ export function TopNav({
               {orgOptions.map((o) => (
                 <DropdownMenuItem key={o.orgId} asChild>
                   <Link href={`/${o.orgSlug}/dashboard`} className="flex items-center justify-between">
-                    <span>{o.orgName}</span>
+                    <span className="flex items-center gap-2">
+                      {o.orgLogoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={o.orgLogoUrl} alt="" className="size-4 rounded object-cover" />
+                      ) : null}
+                      {o.orgName}
+                    </span>
                     {o.orgSlug === orgSlug ? <Check className="size-4" /> : null}
                   </Link>
                 </DropdownMenuItem>
@@ -74,9 +103,11 @@ export function TopNav({
       </div>
 
       <div className="flex items-center gap-3">
+        <CommandPalette orgId={orgId} />
         <Badge variant="secondary" className="hidden sm:inline-flex">
           {roleName}
         </Badge>
+        <NotificationBell orgId={orgId} initialNotifications={initialNotifications} initialUnreadCount={initialUnreadCount} />
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

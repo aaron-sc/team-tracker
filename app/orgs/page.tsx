@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { logoutAction } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck } from "lucide-react";
@@ -44,7 +45,24 @@ export default async function OrgsPage() {
             <Link key={m.orgId} href={`/${m.orgSlug}/dashboard`}>
               <Card className="transition-colors hover:bg-accent">
                 <CardHeader className="flex-row items-center justify-between space-y-0">
-                  <CardTitle className="text-base">{m.orgName}</CardTitle>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="size-9 rounded-lg">
+                      {m.orgLogoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={m.orgLogoUrl} alt={m.orgName} className="size-full rounded-lg object-cover" />
+                      ) : (
+                        <AvatarFallback className="rounded-lg">
+                          {m.orgName
+                            .split(" ")
+                            .map((p) => p[0])
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <CardTitle className="text-base">{m.orgName}</CardTitle>
+                  </div>
                   <Badge variant="secondary">{m.roleName}</Badge>
                 </CardHeader>
               </Card>

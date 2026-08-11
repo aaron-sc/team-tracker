@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit/log";
 import { prospectSchema, prospectStageSchema, parseLinks } from "@/lib/validations/prospect";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
+import { createNotification } from "@/lib/notifications/create";
 
 function parseProspectForm(formData: FormData) {
   return prospectSchema.safeParse({
@@ -139,6 +140,15 @@ export async function changeProspectStageAction(
       },
     }),
   ]);
+
+  if (prospect.assignedToMembershipId && prospect.assignedToMembershipId !== membership.membershipId) {
+    await createNotification({
+      membershipId: prospect.assignedToMembershipId,
+      type: "prospect_stage",
+      title: `${prospect.name} moved to ${parsed.data.stage}`,
+      linkUrl: `/${orgSlug}/recruitment/${prospectId}`,
+    });
+  }
 
   revalidatePath(`/${orgSlug}/recruitment`);
   revalidatePath(`/${orgSlug}/recruitment/${prospectId}`);

@@ -132,6 +132,7 @@ model Organization {
   timezone    String   @default("America/Chicago")
   themeColor  String   @default("#6366f1")
   apiKey      String?  @unique
+  discordWebhookUrl String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -144,6 +145,7 @@ model Organization {
   announcements Announcement[]
   auditLogs     AuditLog[]
   prospects     RecruitmentProspect[]
+  conversations Conversation[]
 }
 
 model Team {
@@ -241,6 +243,9 @@ model Membership {
   notifications          Notification[]
   assignedProspects      RecruitmentProspect[]
   prospectStatusChanges  ProspectStatusHistory[]
+  conversationsAsA       Conversation[]          @relation("ConversationMemberA")
+  conversationsAsB       Conversation[]          @relation("ConversationMemberB")
+  sentMessages           Message[]               @relation("MessageSender")
 
   @@unique([userId, orgId])
 }
@@ -386,9 +391,11 @@ model Venue {
   orgId        String
   org          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   name         String
-  addressLine1 String
+  isOnline     Boolean  @default(false)
+  onlineUrl    String?
+  addressLine1 String?
   addressLine2 String?
-  city         String
+  city         String?
   state        String?
   postalCode   String?
   country      String   @default("USA")
@@ -484,4 +491,35 @@ model Notification {
   linkUrl      String?
   isRead       Boolean    @default(false)
   createdAt    DateTime   @default(now())
+}
+
+// ---------- Messaging ----------
+
+model Conversation {
+  id            String       @id @default(cuid())
+  orgId         String
+  org           Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  memberAId     String
+  memberA       Membership   @relation("ConversationMemberA", fields: [memberAId], references: [id], onDelete: Cascade)
+  memberBId     String
+  memberB       Membership   @relation("ConversationMemberB", fields: [memberBId], references: [id], onDelete: Cascade)
+  lastMessageAt DateTime     @default(now())
+  createdAt     DateTime     @default(now())
+
+  messages Message[]
+
+  @@unique([orgId, memberAId, memberBId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         Membership   @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  body           String
+  createdAt      DateTime     @default(now())
+  readAt         DateTime?
+
+  @@index([conversationId, createdAt])
 }

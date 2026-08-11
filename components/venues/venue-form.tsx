@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { ActionState } from "@/lib/actions/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SubmitButton } from "@/components/auth/submit-button";
 
 export function VenueForm({
@@ -15,6 +16,8 @@ export function VenueForm({
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   defaultValues?: {
     name?: string;
+    isOnline?: boolean;
+    onlineUrl?: string;
     addressLine1?: string;
     addressLine2?: string;
     city?: string;
@@ -31,6 +34,7 @@ export function VenueForm({
   defaultTimezone: string;
 }) {
   const [state, formAction] = useActionState<ActionState, FormData>(action, undefined);
+  const [isOnline, setIsOnline] = useState(defaultValues?.isOnline ?? false);
 
   return (
     <form action={formAction} className="max-w-xl space-y-4">
@@ -38,31 +42,49 @@ export function VenueForm({
         <Label htmlFor="name">Venue name</Label>
         <Input id="name" name="name" defaultValue={defaultValues?.name} required />
       </div>
+
+      <div className="flex items-center gap-2">
+        <Checkbox id="isOnline" name="isOnline" checked={isOnline} onCheckedChange={(v) => setIsOnline(!!v)} />
+        <Label htmlFor="isOnline" className="cursor-pointer font-normal">
+          This venue is online (no physical address)
+        </Label>
+      </div>
+
+      {isOnline ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="onlineUrl">Online URL</Label>
+          <Input id="onlineUrl" name="onlineUrl" type="url" placeholder="https://…" defaultValue={defaultValues?.onlineUrl} />
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="addressLine1">Address</Label>
+            <Input id="addressLine1" name="addressLine1" defaultValue={defaultValues?.addressLine1} required={!isOnline} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="addressLine2">Address line 2</Label>
+            <Input id="addressLine2" name="addressLine2" defaultValue={defaultValues?.addressLine2} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="city">City</Label>
+            <Input id="city" name="city" defaultValue={defaultValues?.city} required={!isOnline} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="state">State/Region</Label>
+            <Input id="state" name="state" defaultValue={defaultValues?.state} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="postalCode">Postal code</Label>
+            <Input id="postalCode" name="postalCode" defaultValue={defaultValues?.postalCode} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="country">Country</Label>
+            <Input id="country" name="country" defaultValue={defaultValues?.country ?? "USA"} />
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="addressLine1">Address</Label>
-          <Input id="addressLine1" name="addressLine1" defaultValue={defaultValues?.addressLine1} required />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="addressLine2">Address line 2</Label>
-          <Input id="addressLine2" name="addressLine2" defaultValue={defaultValues?.addressLine2} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="city">City</Label>
-          <Input id="city" name="city" defaultValue={defaultValues?.city} required />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="state">State/Region</Label>
-          <Input id="state" name="state" defaultValue={defaultValues?.state} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="postalCode">Postal code</Label>
-          <Input id="postalCode" name="postalCode" defaultValue={defaultValues?.postalCode} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="country">Country</Label>
-          <Input id="country" name="country" defaultValue={defaultValues?.country ?? "USA"} />
-        </div>
         <div className="space-y-1.5">
           <Label htmlFor="capacity">Capacity</Label>
           <Input id="capacity" name="capacity" type="number" min={1} defaultValue={defaultValues?.capacity ?? undefined} />

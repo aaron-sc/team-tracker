@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StageSelect } from "@/components/recruitment/stage-select";
 import { DeleteProspectButton } from "@/components/recruitment/delete-prospect-button";
-import { Mail, Phone, MessageSquare, Pencil, ExternalLink } from "lucide-react";
+import { InviteProspectDialog } from "@/components/recruitment/invite-prospect-dialog";
+import { Mail, Phone, MessageSquare, Pencil, ExternalLink, UserCheck, Clock } from "lucide-react";
 
 const LEVEL_LABELS: Record<string, string> = { HIGH_SCHOOL: "High School", COLLEGE: "College", PRO: "Pro" };
 
@@ -34,6 +35,17 @@ export default async function ProspectDetailPage({
 
   const canManage = membership.permissions.includes(Permission.recruitment_manage);
   const canDelete = membership.permissions.includes(Permission.recruitment_delete);
+  const canInvite = membership.permissions.includes(Permission.org_members_invite);
+
+  const [roles, existingMembership, pendingInvite] = await Promise.all([
+    canInvite ? prisma.role.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } }) : Promise.resolve([]),
+    canInvite && prospect.email
+      ? prisma.membership.findFirst({ where: { orgId: org.id, user: { email: prospect.email } } })
+      : Promise.resolve(null),
+    canInvite && prospect.email
+      ? prisma.invite.findFirst({ where: { orgId: org.id, email: prospect.email, status: "PENDING" } })
+      : Promise.resolve(null),
+  ]);
 
   const statsLinks = parseLinksForDisplay(prospect.statsLinks);
   const socialLinks = parseLinksForDisplay(prospect.socialLinks);
@@ -49,7 +61,30 @@ export default async function ProspectDetailPage({
             {prospect.team ? <Badge variant="outline">{prospect.team.name}</Badge> : null}
           </div>
         </div>
-        {canManage ? <StageSelect orgSlug={orgSlug} orgId={org.id} prospectId={prospect.id} stage={prospect.stage} /> : null}
+        <div className="flex items-center gap-2">
+          {canInvite && prospect.email ? (
+            existingMembership ? (
+              <Badge variant="secondary" className="gap-1">
+                <UserCheck className="size-3" />
+                Already a member
+              </Badge>
+            ) : pendingInvite ? (
+              <Badge variant="outline" className="gap-1">
+                <Clock className="size-3" />
+                Invite pending
+              </Badge>
+            ) : (
+              <InviteProspectDialog
+                orgSlug={orgSlug}
+                orgId={org.id}
+                prospectName={prospect.name}
+                prospectEmail={prospect.email}
+                roles={roles}
+              />
+            )
+          ) : null}
+          {canManage ? <StageSelect orgSlug={orgSlug} orgId={org.id} prospectId={prospect.id} stage={prospect.stage} /> : null}
+        </div>
       </div>
 
       <Card>
@@ -78,6 +113,11 @@ export default async function ProspectDetailPage({
           {prospect.schoolOrOrg ? <p className="text-muted-foreground">{prospect.schoolOrOrg}</p> : null}
           {!prospect.email && !prospect.phone && !prospect.discordHandle ? (
             <p className="text-muted-foreground">No contact info yet.</p>
+          ) : null}
+          {canInvite && !prospect.email ? (
+            <p className="text-xs text-muted-foreground">
+              Add an email (<Link href={`/${orgSlug}/recruitment/${prospect.id}/edit`} className="underline underline-offset-4">edit prospect</Link>) to invite them.
+            </p>
           ) : null}
         </CardContent>
       </Card>

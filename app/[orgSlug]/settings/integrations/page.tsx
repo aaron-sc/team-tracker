@@ -1,7 +1,9 @@
 import { getOrgContext } from "@/lib/org/context";
 import { requirePagePermission } from "@/lib/org/require-permission-page";
+import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { ApiKeyPanel } from "@/components/settings/api-key-panel";
+import { DiscordPanel } from "@/components/settings/discord-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function IntegrationsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
@@ -9,8 +11,21 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ o
   const { org, membership } = await getOrgContext(orgSlug);
   requirePagePermission(orgSlug, membership, Permission.org_settings_manage);
 
+  const fullOrg = await prisma.organization.findUniqueOrThrow({
+    where: { id: org.id },
+    select: { discordWebhookUrl: true },
+  });
+
   return (
     <div className="max-w-2xl space-y-6">
+      <div>
+        <h2 className="mb-1 text-lg font-medium">Discord</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Post new announcements and match results to a Discord channel via an incoming webhook.
+        </p>
+        <DiscordPanel orgSlug={orgSlug} orgId={org.id} webhookUrl={fullOrg.discordWebhookUrl} />
+      </div>
+
       <div>
         <h2 className="mb-1 text-lg font-medium">API access</h2>
         <p className="mb-4 text-sm text-muted-foreground">

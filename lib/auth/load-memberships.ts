@@ -16,6 +16,7 @@ export async function loadMemberships(userId: string): Promise<SessionMembership
     orgId: m.orgId,
     orgSlug: m.org.slug,
     orgName: m.org.name,
+    orgLogoUrl: m.org.logoUrl,
     roleId: m.roleId,
     roleName: m.role.name,
     permissions: m.role.permissions.map((p) => p.permission),

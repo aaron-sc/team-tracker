@@ -3,7 +3,9 @@ import { getOrgContext } from "@/lib/org/context";
 import { prisma } from "@/lib/db/prisma";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Download } from "lucide-react";
 
 function initials(name: string) {
   return name
@@ -26,9 +28,17 @@ export default async function RosterPage({ params }: { params: Promise<{ orgSlug
 
   return (
     <div>
-      <p className="mb-4 text-sm text-muted-foreground">
-        {members.length} member{members.length === 1 ? "" : "s"} in the organization
-      </p>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {members.length} member{members.length === 1 ? "" : "s"} in the organization
+        </p>
+        <Button size="sm" variant="outline" asChild>
+          <a href={`/${orgSlug}/roster/export`} download>
+            <Download className="size-4" />
+            Export CSV
+          </a>
+        </Button>
+      </div>
       <div className="space-y-2">
         {members.map((m) => (
           <Link key={m.id} href={`/${orgSlug}/roster/${m.id}`}>

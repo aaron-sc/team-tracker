@@ -28,9 +28,11 @@ export default async function EditVenuePage({
         defaultTimezone={org.timezone}
         defaultValues={{
           name: venue.name,
-          addressLine1: venue.addressLine1,
+          isOnline: venue.isOnline,
+          onlineUrl: venue.onlineUrl ?? "",
+          addressLine1: venue.addressLine1 ?? "",
           addressLine2: venue.addressLine2 ?? "",
-          city: venue.city,
+          city: venue.city ?? "",
           state: venue.state ?? "",
           postalCode: venue.postalCode ?? "",
           country: venue.country,

@@ -2,6 +2,7 @@ import { getOrgContext } from "@/lib/org/context";
 import { requirePagePermission } from "@/lib/org/require-permission-page";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { OrgProfileForm } from "@/components/settings/org-profile-form";
+import { OrgLogoForm } from "@/components/settings/org-logo-form";
 
 const COMMON_TIMEZONES = [
   "America/Los_Angeles",
@@ -35,19 +36,29 @@ export default async function OrgSettingsPage({ params }: { params: Promise<{ or
   requirePagePermission(orgSlug, membership, Permission.org_settings_manage);
 
   return (
-    <div>
-      <h2 className="mb-1 text-lg font-medium">Organization profile</h2>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Basic details about your organization. The timezone is used as the default for scheduling.
-      </p>
-      <OrgProfileForm
-        orgSlug={orgSlug}
-        orgId={org.id}
-        name={org.name}
-        timezone={org.timezone}
-        timezones={getTimezones()}
-        themeColor={org.themeColor}
-      />
+    <div className="space-y-8">
+      <div>
+        <h2 className="mb-1 text-lg font-medium">Logo</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Shown in the sidebar and organization picker.
+        </p>
+        <OrgLogoForm orgSlug={orgSlug} orgId={org.id} orgName={org.name} logoUrl={org.logoUrl} />
+      </div>
+
+      <div>
+        <h2 className="mb-1 text-lg font-medium">Organization profile</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Basic details about your organization. The timezone is used as the default for scheduling.
+        </p>
+        <OrgProfileForm
+          orgSlug={orgSlug}
+          orgId={org.id}
+          name={org.name}
+          timezone={org.timezone}
+          timezones={getTimezones()}
+          themeColor={org.themeColor}
+        />
+      </div>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit/log";
 import { matchSchema, matchResultSchema } from "@/lib/validations/match";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
+import { notifyDiscord, FORMATION_EMBED_COLOR } from "@/lib/integrations/discord";
 
 async function resolveOpponent(orgId: string, opponentId: string, newOpponentName: string): Promise<string | null> {
   if (opponentId) return opponentId;
@@ -138,7 +139,7 @@ export async function recordMatchResultAction(
 ): Promise<ActionState> {
   const { membership } = await requirePermission(orgId, Permission.match_result_record);
 
-  const match = await prisma.match.findUnique({ where: { id: matchId }, include: { team: true } });
+  const match = await prisma.match.findUnique({ where: { id: matchId }, include: { team: true, opponent: true } });
   if (!match || match.team.orgId !== orgId) return { error: "Match not found." };
 
   const parsed = matchResultSchema.safeParse({
@@ -170,6 +171,26 @@ export async function recordMatchResultAction(
     targetId: matchId,
     metadata: { status: parsed.data.status, resultStatus: parsed.data.resultStatus },
   });
+
+  if (parsed.data.status === "COMPLETED" && parsed.data.resultStatus) {
+    const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { discordWebhookUrl: true } });
+    const resultLabel = { WIN: "🏆 Win", LOSS: "❌ Loss", DRAW: "🤝 Draw" }[parsed.data.resultStatus];
+    const score =
+      typeof parsed.data.scoreFor === "number" && typeof parsed.data.scoreAgainst === "number"
+        ? `${parsed.data.scoreFor} - ${parsed.data.scoreAgainst}`
+        : undefined;
+    await notifyDiscord(org?.discordWebhookUrl, {
+      embeds: [
+        {
+          title: `${match.team.name} vs ${match.opponent.name}: ${resultLabel}`,
+          description: score ? `Final score: **${score}**` : undefined,
+          color:
+            parsed.data.resultStatus === "WIN" ? 0x22c55e : parsed.data.resultStatus === "LOSS" ? 0xef4444 : FORMATION_EMBED_COLOR,
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    });
+  }
 
   revalidatePath(`/${orgSlug}/schedule`);
   revalidatePath(`/${orgSlug}/schedule/matches/${matchId}`);

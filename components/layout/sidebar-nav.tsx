@@ -13,6 +13,7 @@ import {
   MapPinned,
   Target,
   Megaphone,
+  MessageCircle,
   Settings,
 } from "lucide-react";
 
@@ -40,6 +41,7 @@ export function SidebarNav({ orgSlug, permissions }: { orgSlug: string; permissi
     { href: `${base}/venues`, label: "Venues", icon: MapPinned, show: true },
     { href: `${base}/recruitment`, label: "Recruitment", icon: Target, show: has(Permission.recruitment_view) },
     { href: `${base}/announcements`, label: "Announcements", icon: Megaphone, show: true },
+    { href: `${base}/messages`, label: "Messages", icon: MessageCircle, show: true },
     { href: `${base}/settings`, label: "Settings", icon: Settings, show: hasAny(SETTINGS_PERMISSIONS) },
   ];
 

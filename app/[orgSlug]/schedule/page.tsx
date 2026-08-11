@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { MonthGrid } from "@/components/calendar/month-grid";
 import { WeekAgenda } from "@/components/calendar/week-agenda";
 import type { CalendarEvent } from "@/lib/calendar/types";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { SubscribeCalendarDialog } from "@/components/schedule/subscribe-calendar-dialog";
+import { ChevronLeft, ChevronRight, Plus, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function buildHref(base: string, params: Record<string, string | undefined>) {
@@ -150,6 +151,13 @@ export default async function SchedulePage({
               </Link>
             </Button>
           ) : null}
+          <Button size="sm" variant="outline" asChild>
+            <Link href={`/${orgSlug}/schedule/results`}>
+              <ListChecks className="size-4" />
+              Results
+            </Link>
+          </Button>
+          <SubscribeCalendarDialog orgSlug={orgSlug} apiKey={org.apiKey} />
         </div>
       </div>
 

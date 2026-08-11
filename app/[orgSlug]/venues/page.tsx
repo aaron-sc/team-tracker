@@ -3,9 +3,10 @@ import { getOrgContext } from "@/lib/org/context";
 import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteVenueButton } from "@/components/venues/delete-venue-button";
-import { Plus, MapPin, Users, Pencil } from "lucide-react";
+import { Plus, MapPin, Users, Pencil, Wifi } from "lucide-react";
 
 export default async function VenuesPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
@@ -41,18 +42,43 @@ export default async function VenuesPage({ params }: { params: Promise<{ orgSlug
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {venues.map((venue) => (
             <Card key={venue.id}>
-              <CardHeader>
+              <CardHeader className="flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-base">{venue.name}</CardTitle>
+                {venue.isOnline ? (
+                  <Badge variant="secondary" className="gap-1">
+                    <Wifi className="size-3" />
+                    Online
+                  </Badge>
+                ) : null}
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <div className="flex items-start gap-1.5 text-muted-foreground">
-                  <MapPin className="mt-0.5 size-4 shrink-0" />
-                  <span>
-                    {venue.addressLine1}
-                    {venue.addressLine2 ? `, ${venue.addressLine2}` : ""}, {venue.city}
-                    {venue.state ? `, ${venue.state}` : ""} {venue.postalCode ?? ""}
-                  </span>
-                </div>
+                {venue.isOnline ? (
+                  venue.onlineUrl ? (
+                    <a
+                      href={venue.onlineUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-start gap-1.5 text-primary underline underline-offset-4"
+                    >
+                      <Wifi className="mt-0.5 size-4 shrink-0" />
+                      <span className="break-all">{venue.onlineUrl}</span>
+                    </a>
+                  ) : (
+                    <div className="flex items-start gap-1.5 text-muted-foreground">
+                      <Wifi className="mt-0.5 size-4 shrink-0" />
+                      <span>No URL set</span>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex items-start gap-1.5 text-muted-foreground">
+                    <MapPin className="mt-0.5 size-4 shrink-0" />
+                    <span>
+                      {venue.addressLine1}
+                      {venue.addressLine2 ? `, ${venue.addressLine2}` : ""}, {venue.city}
+                      {venue.state ? `, ${venue.state}` : ""} {venue.postalCode ?? ""}
+                    </span>
+                  </div>
+                )}
                 {venue.capacity ? (
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Users className="size-4" />

@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteAnnouncementButton } from "@/components/announcements/delete-announcement-button";
+import { BroadcastDialog } from "@/components/notifications/broadcast-dialog";
 import { Plus, Pin } from "lucide-react";
 
 export default async function AnnouncementsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
-  const { org, membership } = await getOrgContext(orgSlug);
+  const { org, membership, teams } = await getOrgContext(orgSlug);
 
   const announcements = await prisma.announcement.findMany({
     where: { orgId: org.id },
@@ -20,6 +21,7 @@ export default async function AnnouncementsPage({ params }: { params: Promise<{ 
 
   const canCreate = membership.permissions.includes(Permission.announcement_create);
   const canDelete = membership.permissions.includes(Permission.announcement_delete);
+  const canBroadcast = membership.permissions.includes(Permission.notification_send_broadcast);
 
   return (
     <div className="max-w-2xl">
@@ -27,14 +29,17 @@ export default async function AnnouncementsPage({ params }: { params: Promise<{ 
         <p className="text-sm text-muted-foreground">
           {announcements.length} announcement{announcements.length === 1 ? "" : "s"}
         </p>
-        {canCreate ? (
-          <Button size="sm" asChild>
-            <Link href={`/${orgSlug}/announcements/new`}>
-              <Plus className="size-4" />
-              New announcement
-            </Link>
-          </Button>
-        ) : null}
+        <div className="flex gap-2">
+          {canBroadcast ? <BroadcastDialog orgSlug={orgSlug} orgId={org.id} teams={teams} /> : null}
+          {canCreate ? (
+            <Button size="sm" asChild>
+              <Link href={`/${orgSlug}/announcements/new`}>
+                <Plus className="size-4" />
+                New announcement
+              </Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {announcements.length === 0 ? (

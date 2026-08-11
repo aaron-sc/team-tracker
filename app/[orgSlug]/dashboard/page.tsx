@@ -4,7 +4,10 @@ import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Radio, Users, Shield, Target, Megaphone, MapPin } from "lucide-react";
+import { WinLossBar } from "@/components/dashboard/win-loss-bar";
+import { AttendanceMeter } from "@/components/dashboard/attendance-meter";
+import { FunnelBars } from "@/components/dashboard/funnel-bars";
+import { Calendar, Radio, Users, Shield, Target, Megaphone, MapPin, TrendingUp, ClipboardCheck } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
   SCOUTING: "Scouting",
@@ -17,12 +20,21 @@ const STAGE_LABELS: Record<string, string> = {
 
 export default async function DashboardPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
-  const { org, membership } = await getOrgContext(orgSlug);
+  const { org, membership, teams } = await getOrgContext(orgSlug);
 
   const now = new Date();
   const canViewRecruitment = membership.permissions.includes(Permission.recruitment_view);
 
-  const [upcomingMatches, upcomingSessions, announcements, memberCount, teamCount, prospectsByStage] = await Promise.all([
+  const [
+    upcomingMatches,
+    upcomingSessions,
+    announcements,
+    memberCount,
+    teamCount,
+    prospectsByStage,
+    matchResultsByTeam,
+    attendanceByStatus,
+  ] = await Promise.all([
     prisma.match.findMany({
       where: { team: { orgId: org.id }, scheduledAt: { gte: now }, status: "SCHEDULED" },
       include: { team: true, opponent: true },
@@ -46,7 +58,37 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
     canViewRecruitment
       ? prisma.recruitmentProspect.groupBy({ by: ["stage"], where: { orgId: org.id }, _count: true })
       : Promise.resolve([]),
+    prisma.match.groupBy({
+      by: ["teamId", "resultStatus"],
+      where: { team: { orgId: org.id }, status: "COMPLETED" },
+      _count: true,
+    }),
+    prisma.sessionAttendance.groupBy({
+      by: ["status"],
+      where: {
+        session: { team: { orgId: org.id }, scheduledAt: { lt: now } },
+        status: { in: ["ATTENDED", "ABSENT", "LATE"] },
+      },
+      _count: true,
+    }),
   ]);
+
+  const winLossByTeam = new Map(teams.map((t) => [t.id, { wins: 0, losses: 0, draws: 0 }]));
+  for (const row of matchResultsByTeam) {
+    const entry = winLossByTeam.get(row.teamId);
+    if (!entry || !row.resultStatus) continue;
+    if (row.resultStatus === "WIN") entry.wins += row._count;
+    else if (row.resultStatus === "LOSS") entry.losses += row._count;
+    else if (row.resultStatus === "DRAW") entry.draws += row._count;
+  }
+
+  const attendanceCounts: Record<string, number> = { ATTENDED: 0, ABSENT: 0, LATE: 0 };
+  for (const row of attendanceByStatus) attendanceCounts[row.status] = row._count;
+  const totalResolvedAttendance = attendanceCounts.ATTENDED + attendanceCounts.ABSENT + attendanceCounts.LATE;
+  const attendanceRate =
+    totalResolvedAttendance > 0 ? ((attendanceCounts.ATTENDED + attendanceCounts.LATE) / totalResolvedAttendance) * 100 : null;
+
+  const prospectCounts = Object.fromEntries(prospectsByStage.map((g) => [g.stage, g._count]));
 
   return (
     <div className="space-y-6">
@@ -164,17 +206,8 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
                 Recruitment pipeline
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {prospectsByStage.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No prospects tracked yet.</p>
-              ) : (
-                prospectsByStage.map((g) => (
-                  <div key={g.stage} className="flex items-center justify-between text-sm">
-                    <span>{STAGE_LABELS[g.stage]}</span>
-                    <Badge variant="secondary">{g._count}</Badge>
-                  </div>
-                ))
-              )}
+            <CardContent className="space-y-3">
+              <FunnelBars counts={prospectCounts} labels={STAGE_LABELS} />
               <Link href={`/${orgSlug}/recruitment`} className="text-sm text-primary underline underline-offset-4">
                 Open pipeline
               </Link>
@@ -198,6 +231,42 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
             </CardContent>
           </Card>
         )}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="size-4" />
+              Team performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {teams.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No teams yet.</p>
+            ) : (
+              teams.map((t) => {
+                const record = winLossByTeam.get(t.id) ?? { wins: 0, losses: 0, draws: 0 };
+                return <WinLossBar key={t.id} teamName={t.name} wins={record.wins} losses={record.losses} draws={record.draws} />;
+              })
+            )}
+            <Link href={`/${orgSlug}/schedule/results`} className="text-sm text-primary underline underline-offset-4">
+              View all results
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ClipboardCheck className="size-4" />
+              Practice attendance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AttendanceMeter rate={attendanceRate} sampleSize={totalResolvedAttendance} />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

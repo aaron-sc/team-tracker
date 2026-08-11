@@ -5,6 +5,7 @@ export type SessionMembership = {
   orgId: string;
   orgSlug: string;
   orgName: string;
+  orgLogoUrl: string | null;
   roleId: string;
   roleName: string;
   permissions: Permission[];

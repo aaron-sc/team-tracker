@@ -8,9 +8,10 @@ import { logAudit } from "@/lib/audit/log";
 import { announcementSchema } from "@/lib/validations/announcement";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
+import { notifyDiscord, FORMATION_EMBED_COLOR } from "@/lib/integrations/discord";
 
 export async function createAnnouncementAction(orgSlug: string, orgId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { membership } = await requirePermission(orgId, Permission.announcement_create);
+  const { session, membership } = await requirePermission(orgId, Permission.announcement_create);
 
   const parsed = announcementSchema.safeParse({
     title: formData.get("title"),
@@ -33,6 +34,19 @@ export async function createAnnouncementAction(orgSlug: string, orgId: string, _
       body: parsed.data.body,
       pinned,
     },
+  });
+
+  const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { discordWebhookUrl: true } });
+  await notifyDiscord(org?.discordWebhookUrl, {
+    embeds: [
+      {
+        title: parsed.data.title,
+        description: parsed.data.body.slice(0, 1500),
+        color: FORMATION_EMBED_COLOR,
+        footer: { text: `${session.user.name ?? "Formation"} • Announcement${pinned ? " (pinned)" : ""}` },
+        timestamp: new Date().toISOString(),
+      },
+    ],
   });
 
   revalidatePath(`/${orgSlug}/announcements`);

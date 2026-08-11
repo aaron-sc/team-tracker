@@ -16,6 +16,20 @@ import {
   resetPasswordSchema,
   changePasswordSchema,
 } from "@/lib/validations/auth";
+import { createNotification } from "@/lib/notifications/create";
+
+async function notifyInviterOfAcceptance(invite: { orgId: string; invitedById: string | null }, newMemberName: string) {
+  if (!invite.invitedById) return;
+  const inviterMembership = await prisma.membership.findUnique({
+    where: { userId_orgId: { userId: invite.invitedById, orgId: invite.orgId } },
+  });
+  if (!inviterMembership) return;
+  await createNotification({
+    membershipId: inviterMembership.id,
+    type: "invite_accepted",
+    title: `${newMemberName} accepted your invite`,
+  });
+}
 
 export type ActionState = { error?: string } | undefined;
 
@@ -144,6 +158,8 @@ export async function acceptInviteAsNewUserAction(_prev: ActionState, formData: 
     await tx.invite.update({ where: { id: invite.id }, data: { status: "ACCEPTED", acceptedAt: new Date() } });
   });
 
+  await notifyInviterOfAcceptance(invite, name);
+
   try {
     await signIn("credentials", { email: invite.email, password, redirectTo: "/orgs" });
   } catch (error) {
@@ -186,6 +202,7 @@ export async function acceptInviteAsExistingUserAction(_prev: ActionState, formD
       });
       await tx.invite.update({ where: { id: invite.id }, data: { status: "ACCEPTED", acceptedAt: new Date() } });
     });
+    await notifyInviterOfAcceptance(invite, user.name);
   } else {
     await prisma.invite.update({ where: { id: invite.id }, data: { status: "ACCEPTED", acceptedAt: new Date() } });
   }

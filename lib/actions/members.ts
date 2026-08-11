@@ -8,6 +8,10 @@ import { logAudit } from "@/lib/audit/log";
 import { inviteMemberSchema } from "@/lib/validations/org";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
+import { saveUploadedImage, deleteUploadedFile, UploadError } from "@/lib/storage/local";
+import { sendEmail } from "@/lib/email/resend";
+import { inviteEmailHtml } from "@/lib/email/templates";
+import { getBaseUrl } from "@/lib/utils/base-url";
 
 const INVITE_EXPIRY_DAYS = 7;
 
@@ -69,8 +73,28 @@ export async function createInviteAction(
     metadata: { email: parsed.data.email, role: role.name },
   });
 
+  const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { name: true, themeColor: true } });
+  const baseUrl = await getBaseUrl();
+  const inviteUrl = `${baseUrl}/invite/${token}`;
+
+  const emailResult = await sendEmail({
+    to: parsed.data.email,
+    subject: `You're invited to join ${org?.name ?? "an organization"} on Formation`,
+    html: inviteEmailHtml({
+      orgName: org?.name ?? "your organization",
+      accentColor: org?.themeColor ?? "#6366f1",
+      inviterName: session.user.name ?? session.user.email ?? "A teammate",
+      roleName: role.name,
+      inviteUrl,
+    }),
+  });
+
   revalidatePath(`/${orgSlug}/settings/members`);
-  return { success: `Invite link created for ${parsed.data.email}.` };
+  return {
+    success: emailResult.ok
+      ? `Invite email sent to ${parsed.data.email}.`
+      : `Invite created for ${parsed.data.email} — email delivery isn't configured yet, so share the link below manually.`,
+  };
 }
 
 export async function revokeInviteAction(orgSlug: string, orgId: string, inviteId: string): Promise<ActionState> {
@@ -198,4 +222,58 @@ export async function updateOrgProfileAction(
 
   revalidatePath(`/${orgSlug}`, "layout");
   return { success: "Organization settings saved." };
+}
+
+export async function updateOrgLogoAction(
+  orgSlug: string,
+  orgId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { membership } = await requirePermission(orgId, Permission.org_settings_manage);
+
+  const file = formData.get("logo");
+  let logoUrl: string;
+  try {
+    logoUrl = await saveUploadedImage(file as File, "org-logos");
+  } catch (err) {
+    return { error: err instanceof UploadError ? err.message : "Could not upload image." };
+  }
+
+  const previousOrg = await prisma.organization.findUnique({ where: { id: orgId }, select: { logoUrl: true } });
+  await prisma.organization.update({ where: { id: orgId }, data: { logoUrl } });
+  await deleteUploadedFile(previousOrg?.logoUrl);
+
+  await logAudit({
+    orgId,
+    actorMembershipId: membership.membershipId,
+    action: "org.logo_updated",
+    targetType: "Organization",
+    targetId: orgId,
+    metadata: { logoUrl },
+  });
+
+  revalidatePath(`/${orgSlug}`, "layout");
+  return { success: "Logo updated." };
+}
+
+export async function removeOrgLogoAction(orgSlug: string, orgId: string): Promise<ActionState> {
+  const { membership } = await requirePermission(orgId, Permission.org_settings_manage);
+
+  const org = await prisma.organization.findUnique({ where: { id: orgId } });
+  if (!org) return { error: "Organization not found." };
+
+  await prisma.organization.update({ where: { id: orgId }, data: { logoUrl: null } });
+  await deleteUploadedFile(org.logoUrl);
+
+  await logAudit({
+    orgId,
+    actorMembershipId: membership.membershipId,
+    action: "org.logo_removed",
+    targetType: "Organization",
+    targetId: orgId,
+  });
+
+  revalidatePath(`/${orgSlug}`, "layout");
+  return { success: "Logo removed." };
 }
