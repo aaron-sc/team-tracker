@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MatchResultForm } from "@/components/schedule/match-result-form";
 import { DeleteMatchButton } from "@/components/schedule/delete-match-button";
 import { recordMatchResultAction } from "@/lib/actions/matches";
-import { Calendar, MapPin, Radio, Pencil } from "lucide-react";
+import { venueDirectionsUrl } from "@/lib/utils/venue-directions";
+import { Calendar, MapPin, Radio, Pencil, Navigation } from "lucide-react";
 
 const RESULT_VARIANT: Record<string, "default" | "destructive" | "secondary"> = {
   WIN: "default",
@@ -65,6 +66,17 @@ export default async function MatchDetailPage({
           <div className="flex items-center gap-2">
             <MapPin className="size-4 text-muted-foreground" />
             {match.locationType === "LAN" ? match.venue?.name ?? "LAN (venue TBD)" : "Online"}
+            {match.locationType === "LAN" && match.venue && venueDirectionsUrl(match.venue) ? (
+              <a
+                href={venueDirectionsUrl(match.venue)!}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1 text-primary underline underline-offset-4"
+              >
+                <Navigation className="size-3.5" />
+                directions
+              </a>
+            ) : null}
           </div>
           {match.isStreamed ? (
             <div className="flex items-center gap-2">

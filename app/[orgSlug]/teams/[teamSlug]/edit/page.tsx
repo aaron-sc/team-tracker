@@ -4,6 +4,7 @@ import { requirePagePermission } from "@/lib/org/require-permission-page";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
 import { TeamForm } from "@/components/teams/team-form";
+import { TeamLogoForm } from "@/components/teams/team-logo-form";
 import { updateTeamAction } from "@/lib/actions/teams";
 import { DeleteTeamButton } from "@/components/teams/delete-team-button";
 
@@ -26,7 +27,13 @@ export default async function EditTeamPage({
     <div className="space-y-8">
       <div>
         <h1 className="mb-4 text-xl font-semibold">Edit team</h1>
-        <TeamForm action={action} defaultValues={{ name: team.name, game: team.game, logoUrl: team.logoUrl ?? "" }} />
+
+        <div className="mb-6">
+          <h2 className="mb-1 text-sm font-medium">Logo</h2>
+          <TeamLogoForm orgSlug={orgSlug} orgId={org.id} teamId={team.id} teamName={team.name} logoUrl={team.logoUrl} />
+        </div>
+
+        <TeamForm action={action} defaultValues={{ name: team.name, game: team.game }} />
       </div>
 
       {canDelete ? (

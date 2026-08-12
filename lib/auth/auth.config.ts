@@ -23,6 +23,7 @@ export const authConfig = {
         pathname.startsWith("/login") ||
         pathname.startsWith("/signup") ||
         pathname.startsWith("/invite") ||
+        pathname.startsWith("/join") ||
         pathname.startsWith("/forgot-password") ||
         pathname.startsWith("/reset-password") ||
         pathname.startsWith("/verify-email") ||

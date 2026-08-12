@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -10,8 +10,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Bell } from "lucide-react";
+import { Bell, BellRing } from "lucide-react";
 import { markNotificationReadAction, markAllNotificationsReadAction } from "@/lib/actions/notifications";
+import { useDesktopNotificationPermission, showDesktopNotification } from "@/lib/notifications/desktop";
 import { cn } from "@/lib/utils";
 
 type Notification = {
@@ -35,6 +36,8 @@ export function NotificationBell({
 }) {
   const [notifications, setNotifications] = useState(initialNotifications);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
+  const { permission, request } = useDesktopNotificationPermission();
+  const seenIds = useRef(new Set(initialNotifications.map((n) => n.id)));
 
   useEffect(() => {
     let cancelled = false;
@@ -43,10 +46,17 @@ export function NotificationBell({
         const res = await fetch(`/api/notifications?orgId=${orgId}`);
         if (!res.ok) return;
         const data: { notifications: Notification[]; unreadCount: number } = await res.json();
-        if (!cancelled) {
-          setNotifications(data.notifications);
-          setUnreadCount(data.unreadCount);
+        if (cancelled) return;
+
+        for (const n of data.notifications) {
+          if (!n.isRead && !seenIds.current.has(n.id)) {
+            showDesktopNotification(n.title, { body: n.body ?? undefined, linkUrl: n.linkUrl ?? undefined, tag: n.id });
+          }
         }
+        seenIds.current = new Set(data.notifications.map((n) => n.id));
+
+        setNotifications(data.notifications);
+        setUnreadCount(data.unreadCount);
       } catch {
         // transient network error — next poll will retry
       }
@@ -64,7 +74,7 @@ export function NotificationBell({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
-          <Bell className="size-4" />
+          {permission === "granted" ? <BellRing className="size-4" /> : <Bell className="size-4" />}
           {unreadCount > 0 ? (
             <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
               {unreadCount > 9 ? "9+" : unreadCount}
@@ -89,6 +99,18 @@ export function NotificationBell({
             </button>
           ) : null}
         </div>
+        {permission === "default" ? (
+          <div className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs text-muted-foreground">
+            <span>Get desktop alerts for new notifications</span>
+            <button
+              type="button"
+              className="shrink-0 font-medium text-primary underline underline-offset-4"
+              onClick={() => request()}
+            >
+              Enable
+            </button>
+          </div>
+        ) : null}
         <DropdownMenuSeparator />
         <div className="max-h-96 overflow-y-auto">
           {notifications.length === 0 ? (

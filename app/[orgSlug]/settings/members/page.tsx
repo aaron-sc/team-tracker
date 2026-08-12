@@ -9,6 +9,7 @@ import { MemberRoleSelect } from "@/components/settings/member-role-select";
 import { RemoveMemberButton } from "@/components/settings/remove-member-button";
 import { CopyInviteLinkButton } from "@/components/settings/copy-invite-link-button";
 import { RevokeInviteButton } from "@/components/settings/revoke-invite-button";
+import { TeamInviteLinkPanel } from "@/components/teams/team-invite-link-panel";
 import { redirect } from "next/navigation";
 
 function initials(name: string) {
@@ -27,20 +28,40 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
   const canInvite = membership.permissions.includes(Permission.org_members_invite);
   const canManageRoles = membership.permissions.includes(Permission.org_members_manage);
   const canRemove = membership.permissions.includes(Permission.org_members_remove);
-  if (!canInvite && !canManageRoles && !canRemove) redirect(`/${orgSlug}/dashboard`);
+  const canInviteOwnTeams = membership.permissions.includes(Permission.team_members_invite) && membership.teamIds.length > 0;
+  if (!canInvite && !canManageRoles && !canRemove && !canInviteOwnTeams) redirect(`/${orgSlug}/dashboard`);
 
-  const [members, invites, roles] = await Promise.all([
+  const inviteLinkTeamFilter = canInvite ? { orgId: org.id } : { orgId: org.id, id: { in: membership.teamIds } };
+
+  const [members, invites, roles, inviteLinkTeams, inviteLinks] = await Promise.all([
     prisma.membership.findMany({
       where: { orgId: org.id },
       include: { user: true, role: true },
       orderBy: { joinedAt: "asc" },
     }),
-    prisma.invite.findMany({
-      where: { orgId: org.id, status: "PENDING" },
-      include: { role: true },
-      orderBy: { createdAt: "desc" },
-    }),
+    canInvite
+      ? prisma.invite.findMany({
+          where: { orgId: org.id, status: "PENDING" },
+          include: { role: true },
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
     prisma.role.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } }),
+    canInvite || canInviteOwnTeams
+      ? prisma.team.findMany({ where: inviteLinkTeamFilter, orderBy: { name: "asc" } })
+      : Promise.resolve([]),
+    canInvite || canInviteOwnTeams
+      ? prisma.teamInviteLink.findMany({
+          where: {
+            teamId: canInvite ? undefined : { in: membership.teamIds },
+            orgId: org.id,
+            revokedAt: null,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          },
+          include: { role: true, team: true },
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
   ]);
 
   return (
@@ -78,6 +99,29 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
             ))}
           </div>
         </div>
+      ) : null}
+
+      {canInvite || canInviteOwnTeams ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Team invite links</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TeamInviteLinkPanel
+              orgSlug={orgSlug}
+              orgId={org.id}
+              teams={inviteLinkTeams.map((t) => ({ id: t.id, name: t.name }))}
+              roles={roles.map((r) => ({ id: r.id, name: r.name }))}
+              links={inviteLinks.map((l) => ({
+                id: l.id,
+                token: l.token,
+                teamName: l.team.name,
+                roleName: l.role.name,
+                useCount: l.useCount,
+              }))}
+            />
+          </CardContent>
+        </Card>
       ) : null}
 
       <div>

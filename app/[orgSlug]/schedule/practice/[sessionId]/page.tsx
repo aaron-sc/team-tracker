@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AttendanceStatusSelect } from "@/components/schedule/attendance-status-select";
 import { DeletePracticeButton } from "@/components/schedule/delete-practice-button";
 import { getConflictsForSession } from "@/lib/availability/conflicts";
-import { Calendar, MapPin, Clock, Pencil, AlertTriangle } from "lucide-react";
+import { venueDirectionsUrl } from "@/lib/utils/venue-directions";
+import { Calendar, MapPin, Clock, Pencil, AlertTriangle, Navigation } from "lucide-react";
 
 export default async function PracticeSessionDetailPage({
   params,
@@ -61,6 +62,17 @@ export default async function PracticeSessionDetailPage({
           <div className="flex items-center gap-2">
             <MapPin className="size-4 text-muted-foreground" />
             {session.locationType === "LAN" ? session.venue?.name ?? "LAN (venue TBD)" : "Online"}
+            {session.locationType === "LAN" && session.venue && venueDirectionsUrl(session.venue) ? (
+              <a
+                href={venueDirectionsUrl(session.venue)!}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1 text-primary underline underline-offset-4"
+              >
+                <Navigation className="size-3.5" />
+                directions
+              </a>
+            ) : null}
           </div>
           {session.notes ? <p className="whitespace-pre-wrap text-muted-foreground">{session.notes}</p> : null}
         </CardContent>

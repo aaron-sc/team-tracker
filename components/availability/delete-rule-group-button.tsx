@@ -2,20 +2,20 @@
 
 import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { deleteAvailabilityRuleAction } from "@/lib/actions/availability";
+import { deleteAvailabilityRuleGroupAction } from "@/lib/actions/availability";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 
-export function DeleteRuleButton({
+export function DeleteRuleGroupButton({
   orgSlug,
   orgId,
   membershipId,
-  ruleId,
+  ruleIds,
 }: {
   orgSlug: string;
   orgId: string;
   membershipId: string;
-  ruleId: string;
+  ruleIds: string[];
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -26,7 +26,7 @@ export function DeleteRuleButton({
       disabled={pending}
       onClick={() => {
         startTransition(async () => {
-          const result = await deleteAvailabilityRuleAction(orgSlug, orgId, membershipId, ruleId);
+          const result = await deleteAvailabilityRuleGroupAction(orgSlug, orgId, membershipId, ruleIds);
           if (result?.error) toast.error(result.error);
         });
       }}

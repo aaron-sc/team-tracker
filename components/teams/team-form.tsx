@@ -11,7 +11,7 @@ export function TeamForm({
   defaultValues,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
-  defaultValues?: { name?: string; game?: string; logoUrl?: string };
+  defaultValues?: { name?: string; game?: string };
 }) {
   const [state, formAction] = useActionState<ActionState, FormData>(action, undefined);
 
@@ -24,10 +24,6 @@ export function TeamForm({
       <div className="space-y-1.5">
         <Label htmlFor="game">Game</Label>
         <Input id="game" name="game" placeholder="Valorant" defaultValue={defaultValues?.game} required />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="logoUrl">Logo URL (optional)</Label>
-        <Input id="logoUrl" name="logoUrl" type="url" placeholder="https://…" defaultValue={defaultValues?.logoUrl} />
       </div>
       {state?.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
       <SubmitButton>Save team</SubmitButton>

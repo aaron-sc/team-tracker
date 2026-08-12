@@ -12,9 +12,11 @@ import {
   loginSchema,
   signupSchema,
   acceptInviteNewUserSchema,
+  joinTeamNewUserSchema,
   requestPasswordResetSchema,
   resetPasswordSchema,
   changePasswordSchema,
+  updateNameSchema,
 } from "@/lib/validations/auth";
 import { createNotification } from "@/lib/notifications/create";
 import { sendVerificationEmail } from "@/lib/actions/email-verification";
@@ -217,6 +219,98 @@ export async function acceptInviteAsExistingUserAction(_prev: ActionState, formD
   redirect("/orgs");
 }
 
+function isTeamInviteLinkValid(link: { revokedAt: Date | null; expiresAt: Date | null } | null): link is NonNullable<typeof link> {
+  if (!link) return false;
+  if (link.revokedAt) return false;
+  if (link.expiresAt && link.expiresAt < new Date()) return false;
+  return true;
+}
+
+/** Adds the team + (if new to the org) a Membership under the link's role. Reusable — not single-use. */
+export async function acceptTeamInviteLinkAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const token = formData.get("token");
+  if (typeof token !== "string" || !token) return { error: "Missing invite token." };
+
+  const session = await auth();
+  if (!session?.user) return { error: "You must be logged in to accept this invite." };
+
+  const link = await prisma.teamInviteLink.findUnique({ where: { token } });
+  if (!isTeamInviteLinkValid(link)) return { error: "This invite link is no longer valid." };
+
+  await prisma.$transaction(async (tx) => {
+    let membershipId: string;
+    const existingMembership = await tx.membership.findUnique({
+      where: { userId_orgId: { userId: session.user.id, orgId: link.orgId } },
+    });
+    if (existingMembership) {
+      membershipId = existingMembership.id;
+    } else {
+      const created = await tx.membership.create({
+        data: { userId: session.user.id, orgId: link.orgId, roleId: link.roleId },
+      });
+      membershipId = created.id;
+    }
+
+    const existingTeamMembership = await tx.teamMembership.findUnique({
+      where: { membershipId_teamId: { membershipId, teamId: link.teamId } },
+    });
+    if (!existingTeamMembership) {
+      await tx.teamMembership.create({ data: { membershipId, teamId: link.teamId } });
+    }
+
+    await tx.teamInviteLink.update({ where: { id: link.id }, data: { useCount: { increment: 1 } } });
+  });
+
+  redirect("/orgs");
+}
+
+/** Same as above, but for someone with no Formation account yet — creates the account first. */
+export async function acceptTeamInviteLinkAsNewUserAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = joinTeamNewUserSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+    token: formData.get("token"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+  const { name, email, password, token } = parsed.data;
+
+  const link = await prisma.teamInviteLink.findUnique({ where: { token } });
+  if (!isTeamInviteLinkValid(link)) return { error: "This invite link is no longer valid." };
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    return { error: "An account with that email already exists. Log in instead." };
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  const newUserId = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({ data: { name, email, passwordHash } });
+    const membership = await tx.membership.create({
+      data: { userId: user.id, orgId: link.orgId, roleId: link.roleId },
+    });
+    await tx.teamMembership.create({ data: { membershipId: membership.id, teamId: link.teamId } });
+    await tx.teamInviteLink.update({ where: { id: link.id }, data: { useCount: { increment: 1 } } });
+    return user.id;
+  });
+
+  // Unlike a targeted email Invite, a shareable link doesn't prove mailbox
+  // ownership — treat this like signup: verification required before access.
+  await sendVerificationEmail(newUserId, email, name);
+
+  try {
+    await signIn("credentials", { email, password, redirectTo: "/orgs" });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return { error: "Account created — but automatic sign-in failed. Please log in." };
+    }
+    throw error;
+  }
+}
+
 export async function logoutAction() {
   await signOut({ redirectTo: "/login" });
 }
@@ -309,4 +403,22 @@ export async function changePasswordAction(
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
 
   return { success: "Password updated." };
+}
+
+export type UpdateNameState = { error?: string; success?: string } | undefined;
+
+export async function updateNameAction(_prev: UpdateNameState, formData: FormData): Promise<UpdateNameState> {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "You must be logged in." };
+  }
+
+  const parsed = updateNameSchema.safeParse({ name: formData.get("name") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  await prisma.user.update({ where: { id: session.user.id }, data: { name: parsed.data.name } });
+
+  return { success: "Name updated." };
 }

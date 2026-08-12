@@ -5,14 +5,15 @@ import { Permission } from "@/lib/generated/prisma/enums";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AddRuleForm } from "@/components/availability/add-rule-form";
-import { DeleteRuleButton } from "@/components/availability/delete-rule-button";
+import { RuleGroupForm } from "@/components/availability/rule-group-form";
+import { EditRuleGroupDialog } from "@/components/availability/edit-rule-group-dialog";
+import { DeleteRuleGroupButton } from "@/components/availability/delete-rule-group-button";
 import { AddExceptionForm } from "@/components/availability/add-exception-form";
 import { DeleteExceptionButton } from "@/components/availability/delete-exception-button";
-import { addAvailabilityRuleAction, addAvailabilityExceptionAction } from "@/lib/actions/availability";
+import { saveAvailabilityRuleGroupAction, addAvailabilityExceptionAction } from "@/lib/actions/availability";
 import { Users } from "lucide-react";
 
-const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default async function AvailabilityPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
@@ -32,14 +33,27 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ o
     }),
   ]);
 
-  const addRuleAction = addAvailabilityRuleAction.bind(null, orgSlug, org.id, membership.membershipId);
+  const addRuleAction = saveAvailabilityRuleGroupAction.bind(null, orgSlug, org.id, membership.membershipId, []);
   const addExceptionAction = addAvailabilityExceptionAction.bind(null, orgSlug, org.id, membership.membershipId);
 
-  const rulesByDay = DAYS.map((label, dayOfWeek) => ({
-    label,
-    dayOfWeek,
-    rules: rules.filter((r) => r.dayOfWeek === dayOfWeek),
-  }));
+  const groupsByKey = new Map<
+    string,
+    { startTime: string; endTime: string; timezone: string; days: number[]; ruleIds: string[] }
+  >();
+  for (const rule of rules) {
+    const key = `${rule.startTime}-${rule.endTime}`;
+    const group = groupsByKey.get(key) ?? {
+      startTime: rule.startTime,
+      endTime: rule.endTime,
+      timezone: rule.timezone,
+      days: [],
+      ruleIds: [],
+    };
+    group.days.push(rule.dayOfWeek);
+    group.ruleIds.push(rule.id);
+    groupsByKey.set(key, group);
+  }
+  const ruleGroups = Array.from(groupsByKey.values()).sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -73,23 +87,54 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ o
               <CardTitle className="text-base">Weekly schedule</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {rulesByDay.map((day) => (
-                <div key={day.dayOfWeek} className="flex flex-wrap items-center gap-2">
-                  <span className="w-24 shrink-0 text-sm font-medium">{day.label}</span>
-                  {day.rules.length === 0 ? (
-                    <span className="text-sm text-muted-foreground">No availability set</span>
-                  ) : (
-                    day.rules.map((rule) => (
-                      <Badge key={rule.id} variant="secondary" className="gap-1 py-1 pr-1">
-                        {rule.startTime}–{rule.endTime}
-                        <DeleteRuleButton orgSlug={orgSlug} orgId={org.id} membershipId={membership.membershipId} ruleId={rule.id} />
-                      </Badge>
-                    ))
-                  )}
+              {ruleGroups.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No availability set yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {ruleGroups.map((group) => (
+                    <div
+                      key={`${group.startTime}-${group.endTime}`}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2.5"
+                    >
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {DAY_ABBR.map((label, i) => (
+                          <Badge
+                            key={i}
+                            variant={group.days.includes(i) ? "default" : "outline"}
+                            className={group.days.includes(i) ? "" : "text-muted-foreground/50"}
+                          >
+                            {label}
+                          </Badge>
+                        ))}
+                        <span className="ml-2 text-sm text-muted-foreground">
+                          {group.startTime}–{group.endTime}
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        <EditRuleGroupDialog
+                          orgSlug={orgSlug}
+                          orgId={org.id}
+                          membershipId={membership.membershipId}
+                          ruleIds={group.ruleIds}
+                          days={group.days}
+                          startTime={group.startTime}
+                          endTime={group.endTime}
+                          timezone={group.timezone}
+                        />
+                        <DeleteRuleGroupButton
+                          orgSlug={orgSlug}
+                          orgId={org.id}
+                          membershipId={membership.membershipId}
+                          ruleIds={group.ruleIds}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
               <div className="border-t pt-4">
-                <AddRuleForm action={addRuleAction} defaultTimezone={org.timezone} />
+                <p className="mb-2 text-sm font-medium">Add availability</p>
+                <RuleGroupForm action={addRuleAction} defaultTimezone={org.timezone} />
               </div>
             </CardContent>
           </Card>

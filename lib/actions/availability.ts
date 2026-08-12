@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireMembership } from "@/lib/auth/authorize";
-import { availabilityRuleSchema, availabilityExceptionSchema } from "@/lib/validations/availability";
+import { availabilityRuleGroupSchema, availabilityExceptionSchema } from "@/lib/validations/availability";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
 import type { SessionMembership } from "@/lib/auth/types";
@@ -18,17 +18,24 @@ async function requireAvailabilityAccess(orgId: string, targetMembershipId: stri
   throw new Error("You don't have permission to manage this availability.");
 }
 
-export async function addAvailabilityRuleAction(
+/**
+ * Creates (or replaces) a group of same-time rules across one or more days.
+ * Pass `replaceRuleIds` (all must belong to targetMembershipId) to treat this
+ * as an edit — those rows are deleted and the newly submitted days/time take
+ * their place — otherwise it's a plain add.
+ */
+export async function saveAvailabilityRuleGroupAction(
   orgSlug: string,
   orgId: string,
   targetMembershipId: string,
+  replaceRuleIds: string[],
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   await requireAvailabilityAccess(orgId, targetMembershipId);
 
-  const parsed = availabilityRuleSchema.safeParse({
-    dayOfWeek: formData.get("dayOfWeek"),
+  const parsed = availabilityRuleGroupSchema.safeParse({
+    daysOfWeek: formData.getAll("daysOfWeek"),
     startTime: formData.get("startTime"),
     endTime: formData.get("endTime"),
     timezone: formData.get("timezone"),
@@ -37,31 +44,46 @@ export async function addAvailabilityRuleAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  await prisma.availabilityRule.create({
-    data: {
-      membershipId: targetMembershipId,
-      dayOfWeek: parsed.data.dayOfWeek,
-      startTime: parsed.data.startTime,
-      endTime: parsed.data.endTime,
-      timezone: parsed.data.timezone,
-    },
-  });
+  if (replaceRuleIds.length > 0) {
+    const owned = await prisma.availabilityRule.count({
+      where: { id: { in: replaceRuleIds }, membershipId: targetMembershipId },
+    });
+    if (owned !== replaceRuleIds.length) return { error: "Not found." };
+  }
+
+  await prisma.$transaction([
+    ...(replaceRuleIds.length > 0
+      ? [prisma.availabilityRule.deleteMany({ where: { id: { in: replaceRuleIds } } })]
+      : []),
+    prisma.availabilityRule.createMany({
+      data: parsed.data.daysOfWeek.map((dayOfWeek) => ({
+        membershipId: targetMembershipId,
+        dayOfWeek,
+        startTime: parsed.data.startTime,
+        endTime: parsed.data.endTime,
+        timezone: parsed.data.timezone,
+      })),
+    }),
+  ]);
 
   revalidatePath(`/${orgSlug}/availability`);
+  return { success: replaceRuleIds.length > 0 ? "Updated." : "Added." };
 }
 
-export async function deleteAvailabilityRuleAction(
+export async function deleteAvailabilityRuleGroupAction(
   orgSlug: string,
   orgId: string,
   targetMembershipId: string,
-  ruleId: string,
+  ruleIds: string[],
 ): Promise<ActionState> {
   await requireAvailabilityAccess(orgId, targetMembershipId);
 
-  const rule = await prisma.availabilityRule.findUnique({ where: { id: ruleId } });
-  if (!rule || rule.membershipId !== targetMembershipId) return { error: "Not found." };
+  const owned = await prisma.availabilityRule.count({
+    where: { id: { in: ruleIds }, membershipId: targetMembershipId },
+  });
+  if (owned !== ruleIds.length) return { error: "Not found." };
 
-  await prisma.availabilityRule.delete({ where: { id: ruleId } });
+  await prisma.availabilityRule.deleteMany({ where: { id: { in: ruleIds } } });
   revalidatePath(`/${orgSlug}/availability`);
 }
 

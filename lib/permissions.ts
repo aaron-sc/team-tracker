@@ -18,7 +18,13 @@ export const PERMISSION_GROUPS: { label: string; permissions: Permission[] }[] =
   },
   {
     label: "Roster & Teams",
-    permissions: [Permission.team_create, Permission.team_edit, Permission.team_delete, Permission.roster_manage],
+    permissions: [
+      Permission.team_create,
+      Permission.team_edit,
+      Permission.team_delete,
+      Permission.roster_manage,
+      Permission.team_members_invite,
+    ],
   },
   {
     label: "Scheduling",
@@ -66,6 +72,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   team_edit: "Edit teams",
   team_delete: "Delete teams",
   roster_manage: "Manage roster (add/remove players, positions)",
+  team_members_invite: "Invite players to own team(s) via link",
   match_create: "Create matches",
   match_edit: "Edit matches",
   match_delete: "Delete matches",
@@ -143,6 +150,7 @@ export const ROLE_PRESETS: Record<string, { description: string; color: string; 
       Permission.practice_edit,
       Permission.attendance_manage,
       Permission.availability_manage_self,
+      Permission.team_members_invite,
     ],
   },
   Player: {

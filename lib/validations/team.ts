@@ -3,7 +3,6 @@ import { z } from "zod";
 export const teamSchema = z.object({
   name: z.string().trim().min(2, "Team name must be at least 2 characters.").max(60),
   game: z.string().trim().min(2, "Game is required.").max(60),
-  logoUrl: z.string().trim().url().optional().or(z.literal("")),
 });
 
 export const rosterEntrySchema = z.object({

@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordForm } from "@/components/account/change-password-form";
+import { UpdateNameForm } from "@/components/account/update-name-form";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { requireVerifiedEmailPage } from "@/lib/auth/require-verified-page";
 
@@ -30,14 +31,25 @@ export default async function AccountPage() {
       <h1 className="mb-1 text-2xl font-semibold">Account</h1>
       <p className="mb-6 text-muted-foreground">{session.user.name ?? session.user.email}</p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Change password</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChangePasswordForm />
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Profile</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <UpdateNameForm currentName={session.user.name ?? ""} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Change password</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChangePasswordForm />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

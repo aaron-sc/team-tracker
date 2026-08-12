@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit/log";
 import { teamSchema, rosterEntrySchema, updateRosterEntrySchema } from "@/lib/validations/team";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { isReservedSlug, slugify } from "@/lib/utils/slug";
+import { saveUploadedImage, deleteUploadedFile, UploadError } from "@/lib/storage/local";
 import type { ActionState } from "@/lib/actions/types";
 
 async function generateUniqueTeamSlug(orgId: string, name: string): Promise<string> {
@@ -27,7 +28,6 @@ export async function createTeamAction(orgSlug: string, orgId: string, _prev: Ac
   const parsed = teamSchema.safeParse({
     name: formData.get("name"),
     game: formData.get("game"),
-    logoUrl: formData.get("logoUrl") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -36,7 +36,7 @@ export async function createTeamAction(orgSlug: string, orgId: string, _prev: Ac
   const slug = await generateUniqueTeamSlug(orgId, parsed.data.name);
 
   const team = await prisma.team.create({
-    data: { orgId, name: parsed.data.name, game: parsed.data.game, slug, logoUrl: parsed.data.logoUrl || null },
+    data: { orgId, name: parsed.data.name, game: parsed.data.game, slug },
   });
 
   await logAudit({
@@ -66,7 +66,6 @@ export async function updateTeamAction(
   const parsed = teamSchema.safeParse({
     name: formData.get("name"),
     game: formData.get("game"),
-    logoUrl: formData.get("logoUrl") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -74,7 +73,7 @@ export async function updateTeamAction(
 
   await prisma.team.update({
     where: { id: teamId },
-    data: { name: parsed.data.name, game: parsed.data.game, logoUrl: parsed.data.logoUrl || null },
+    data: { name: parsed.data.name, game: parsed.data.game },
   });
 
   await logAudit({
@@ -88,6 +87,65 @@ export async function updateTeamAction(
 
   revalidatePath(`/${orgSlug}/teams/${team.slug}`);
   redirect(`/${orgSlug}/teams/${team.slug}`);
+}
+
+export async function updateTeamLogoAction(
+  orgSlug: string,
+  orgId: string,
+  teamId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { membership } = await requirePermission(orgId, Permission.team_edit);
+
+  const team = await prisma.team.findUnique({ where: { id: teamId } });
+  if (!team || team.orgId !== orgId) return { error: "Team not found." };
+
+  const file = formData.get("logo");
+  let logoUrl: string;
+  try {
+    logoUrl = await saveUploadedImage(file as File, "team-logos");
+  } catch (err) {
+    return { error: err instanceof UploadError ? err.message : "Could not upload image." };
+  }
+
+  await prisma.team.update({ where: { id: teamId }, data: { logoUrl } });
+  await deleteUploadedFile(team.logoUrl);
+
+  await logAudit({
+    orgId,
+    actorMembershipId: membership.membershipId,
+    action: "team.logo_updated",
+    targetType: "Team",
+    targetId: teamId,
+    metadata: { logoUrl },
+  });
+
+  revalidatePath(`/${orgSlug}/teams/${team.slug}`);
+  revalidatePath(`/${orgSlug}/teams/${team.slug}/edit`);
+  return { success: "Logo updated." };
+}
+
+export async function removeTeamLogoAction(orgSlug: string, orgId: string, teamId: string): Promise<ActionState> {
+  const { membership } = await requirePermission(orgId, Permission.team_edit);
+
+  const team = await prisma.team.findUnique({ where: { id: teamId } });
+  if (!team || team.orgId !== orgId) return { error: "Team not found." };
+
+  await prisma.team.update({ where: { id: teamId }, data: { logoUrl: null } });
+  await deleteUploadedFile(team.logoUrl);
+
+  await logAudit({
+    orgId,
+    actorMembershipId: membership.membershipId,
+    action: "team.logo_removed",
+    targetType: "Team",
+    targetId: teamId,
+  });
+
+  revalidatePath(`/${orgSlug}/teams/${team.slug}`);
+  revalidatePath(`/${orgSlug}/teams/${team.slug}/edit`);
+  return { success: "Logo removed." };
 }
 
 export async function deleteTeamAction(orgSlug: string, orgId: string, teamId: string): Promise<ActionState> {

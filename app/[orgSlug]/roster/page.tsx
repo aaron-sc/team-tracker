@@ -1,20 +1,8 @@
-import Link from "next/link";
 import { getOrgContext } from "@/lib/org/context";
 import { prisma } from "@/lib/db/prisma";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { RosterSearchList } from "@/components/roster/roster-search-list";
 import { Download } from "lucide-react";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
 
 export default async function RosterPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
@@ -39,33 +27,16 @@ export default async function RosterPage({ params }: { params: Promise<{ orgSlug
           </a>
         </Button>
       </div>
-      <div className="space-y-2">
-        {members.map((m) => (
-          <Link key={m.id} href={`/${orgSlug}/roster/${m.id}`}>
-            <Card className="transition-colors hover:bg-accent">
-              <CardContent className="flex items-center justify-between py-3">
-                <div className="flex items-center gap-3">
-                  <Avatar className="size-9">
-                    <AvatarFallback>{initials(m.user.name)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm font-medium">{m.user.name}</p>
-                    <p className="text-xs text-muted-foreground">{m.user.email}</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-1.5">
-                  <Badge variant="secondary">{m.role.name}</Badge>
-                  {m.teamMemberships.map((tm) => (
-                    <Badge key={tm.id} variant="outline">
-                      {tm.team.name}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      <RosterSearchList
+        orgSlug={orgSlug}
+        members={members.map((m) => ({
+          id: m.id,
+          name: m.user.name,
+          email: m.user.email,
+          roleName: m.role.name,
+          teamNames: m.teamMemberships.map((tm) => tm.team.name),
+        }))}
+      />
     </div>
   );
 }

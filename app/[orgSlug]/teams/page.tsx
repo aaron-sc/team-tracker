@@ -4,7 +4,17 @@ import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plus, Users, Gamepad2 } from "lucide-react";
+
+function teamInitials(name: string) {
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
 export default async function TeamsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
@@ -44,7 +54,15 @@ export default async function TeamsPage({ params }: { params: Promise<{ orgSlug:
             <Link key={team.id} href={`/${orgSlug}/teams/${team.slug}`}>
               <Card className="h-full transition-colors hover:bg-accent">
                 <CardHeader>
-                  <CardTitle className="flex items-center justify-between text-base">
+                  <CardTitle className="flex items-center gap-2.5 text-base">
+                    <Avatar className="size-8 rounded-md">
+                      {team.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={team.logoUrl} alt={team.name} className="size-full rounded-md object-cover" />
+                      ) : (
+                        <AvatarFallback className="rounded-md text-xs">{teamInitials(team.name)}</AvatarFallback>
+                      )}
+                    </Avatar>
                     {team.name}
                   </CardTitle>
                 </CardHeader>

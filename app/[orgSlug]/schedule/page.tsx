@@ -8,7 +8,7 @@ import { MonthGrid } from "@/components/calendar/month-grid";
 import { WeekAgenda } from "@/components/calendar/week-agenda";
 import type { CalendarEvent } from "@/lib/calendar/types";
 import { SubscribeCalendarDialog } from "@/components/schedule/subscribe-calendar-dialog";
-import { ChevronLeft, ChevronRight, Plus, ListChecks } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, ListChecks, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function buildHref(base: string, params: Record<string, string | undefined>) {
@@ -156,6 +156,12 @@ export default async function SchedulePage({
               <ListChecks className="size-4" />
               Results
             </Link>
+          </Button>
+          <Button size="sm" variant="outline" asChild>
+            <a href={`/${orgSlug}/schedule/export`} download>
+              <Download className="size-4" />
+              Export CSV
+            </a>
           </Button>
           <SubscribeCalendarDialog orgSlug={orgSlug} apiKey={org.apiKey} />
         </div>

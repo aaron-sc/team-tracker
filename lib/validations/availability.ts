@@ -2,9 +2,11 @@ import { z } from "zod";
 
 const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-export const availabilityRuleSchema = z
+export const availabilityRuleGroupSchema = z
   .object({
-    dayOfWeek: z.coerce.number().int().min(0).max(6),
+    daysOfWeek: z
+      .array(z.coerce.number().int().min(0).max(6))
+      .min(1, "Select at least one day."),
     startTime: z.string().regex(timeRegex, "Invalid time."),
     endTime: z.string().regex(timeRegex, "Invalid time."),
     timezone: z.string().trim().min(1),

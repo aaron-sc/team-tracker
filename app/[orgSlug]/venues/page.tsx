@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteVenueButton } from "@/components/venues/delete-venue-button";
-import { Plus, MapPin, Users, Pencil, Wifi } from "lucide-react";
+import { Plus, MapPin, Users, Pencil, Wifi, Navigation } from "lucide-react";
+import { venueDirectionsUrl } from "@/lib/utils/venue-directions";
 
 export default async function VenuesPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
@@ -79,6 +80,17 @@ export default async function VenuesPage({ params }: { params: Promise<{ orgSlug
                     </span>
                   </div>
                 )}
+                {!venue.isOnline && venueDirectionsUrl(venue) ? (
+                  <a
+                    href={venueDirectionsUrl(venue)!}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 text-primary underline underline-offset-4"
+                  >
+                    <Navigation className="size-4" />
+                    Get directions
+                  </a>
+                ) : null}
                 {venue.capacity ? (
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Users className="size-4" />

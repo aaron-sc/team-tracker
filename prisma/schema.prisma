@@ -88,6 +88,7 @@ enum Permission {
   team_edit
   team_delete
   roster_manage
+  team_members_invite
 
   match_create
   match_edit
@@ -141,6 +142,7 @@ model Organization {
   prospects     RecruitmentProspect[]
   prospectLevels ProspectLevel[]
   conversations Conversation[]
+  teamInviteLinks TeamInviteLink[]
 }
 
 model Team {
@@ -159,6 +161,7 @@ model Team {
   practiceSessions PracticeSession[]
   prospects        RecruitmentProspect[]
   announcements    Announcement[]
+  inviteLinks      TeamInviteLink[]
 
   @@unique([orgId, slug])
 }
@@ -216,6 +219,7 @@ model Role {
   permissions RolePermission[]
   memberships Membership[]
   invites     Invite[]
+  teamInviteLinks TeamInviteLink[]
 
   @@unique([orgId, name])
 }
@@ -253,6 +257,7 @@ model Membership {
   conversationsAsA       Conversation[]          @relation("ConversationMemberA")
   conversationsAsB       Conversation[]          @relation("ConversationMemberB")
   sentMessages           Message[]               @relation("MessageSender")
+  createdTeamInviteLinks TeamInviteLink[]
 
   @@unique([userId, orgId])
 }
@@ -287,6 +292,25 @@ model Invite {
   expiresAt   DateTime
   createdAt   DateTime     @default(now())
   acceptedAt  DateTime?
+}
+
+// Shareable, reusable link (unlike Invite, not tied to one email) that adds
+// whoever opens it to a specific team, under a set role.
+model TeamInviteLink {
+  id          String       @id @default(cuid())
+  orgId       String
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  teamId      String
+  team        Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  roleId      String
+  role        Role         @relation(fields: [roleId], references: [id])
+  token       String       @unique
+  createdById String
+  createdBy   Membership   @relation(fields: [createdById], references: [id])
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  useCount    Int          @default(0)
+  createdAt   DateTime     @default(now())
 }
 
 // ---------- Scheduling ----------
