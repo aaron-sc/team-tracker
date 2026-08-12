@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import type { ActionState } from "@/lib/actions/types";
 import { Input } from "@/components/ui/input";
+import { DateField } from "@/components/ui/date-field";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SubmitButton } from "@/components/auth/submit-button";
@@ -19,7 +20,7 @@ export function AddExceptionForm({
     <form action={formAction} className="flex flex-wrap items-end gap-3">
       <div className="space-y-1.5">
         <Label htmlFor="date">Date</Label>
-        <Input id="date" name="date" type="date" required className="w-40" />
+        <DateField id="date" name="date" type="date" required className="w-40" />
       </div>
       <div className="mb-1.5 flex items-center gap-2">
         <Checkbox id="isAvailable" name="isAvailable" checked={isAvailable} onCheckedChange={(v) => setIsAvailable(!!v)} />

@@ -4,8 +4,9 @@ import { prisma } from "@/lib/db/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Radio } from "lucide-react";
+import { ArrowLeft, Radio, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const RESULT_VARIANT: Record<string, "default" | "destructive" | "secondary"> = {
   WIN: "default",
@@ -83,8 +84,8 @@ export default async function MatchResultsPage({
 
       {matches.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">
-            Nothing recorded yet — results are added from a match&apos;s detail page.
+          <CardContent>
+            <EmptyState icon={Trophy} message="Nothing recorded yet — results are added from a match's detail page." />
           </CardContent>
         </Card>
       ) : (

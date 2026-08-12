@@ -4,7 +4,7 @@ import { getOrgContext } from "@/lib/org/context";
 import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { RoleBadge } from "@/components/ui/role-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -191,7 +191,7 @@ export default async function TeamDetailPage({
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{entry.membership.role.name}</Badge>
+                    <RoleBadge name={entry.membership.role.name} color={entry.membership.role.color} />
                   </TableCell>
                   <TableCell className="text-muted-foreground">{entry.position ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{entry.inGameName ?? "—"}</TableCell>

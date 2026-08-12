@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteVenueButton } from "@/components/venues/delete-venue-button";
 import { Plus, MapPin, Users, Pencil, Wifi, Navigation } from "lucide-react";
 import { venueDirectionsUrl } from "@/lib/utils/venue-directions";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default async function VenuesPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
@@ -37,7 +38,9 @@ export default async function VenuesPage({ params }: { params: Promise<{ orgSlug
 
       {venues.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">No venues yet.</CardContent>
+          <CardContent>
+            <EmptyState icon={MapPin} message="No venues yet." />
+          </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

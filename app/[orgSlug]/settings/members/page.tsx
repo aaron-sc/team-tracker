@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { RoleBadge } from "@/components/ui/role-badge";
 import { InviteForm } from "@/components/settings/invite-form";
 import { MemberRoleSelect } from "@/components/settings/member-role-select";
 import { RemoveMemberButton } from "@/components/settings/remove-member-button";
@@ -149,7 +149,7 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
                       roles={roles}
                     />
                   ) : (
-                    <Badge variant="secondary">{m.role.name}</Badge>
+                    <RoleBadge name={m.role.name} color={m.role.color} />
                   )}
                   {canRemove ? (
                     <RemoveMemberButton

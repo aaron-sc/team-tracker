@@ -17,6 +17,7 @@ import { logoutAction } from "@/lib/actions/auth";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { KeyboardShortcutsDialog } from "@/components/layout/keyboard-shortcuts-dialog";
 import { startProductTour } from "@/components/onboarding/product-tour";
 
 type OrgOption = { orgId: string; orgSlug: string; orgName: string; orgLogoUrl: string | null; roleName: string };
@@ -113,6 +114,7 @@ export function TopNav({
         <span data-tour="notifications" className="contents">
           <NotificationBell orgId={orgId} initialNotifications={initialNotifications} initialUnreadCount={initialUnreadCount} />
         </span>
+        <KeyboardShortcutsDialog />
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

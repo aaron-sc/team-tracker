@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { RoleBadge } from "@/components/ui/role-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
@@ -22,6 +23,7 @@ type RosterMember = {
   name: string;
   email: string;
   roleName: string;
+  roleColor: string | null;
   teamNames: string[];
 };
 
@@ -42,7 +44,7 @@ export function RosterSearchList({ orgSlug, members }: { orgSlug: string; member
 
   return (
     <div>
-      <div className="relative mb-4 max-w-sm">
+      <div className="no-print relative mb-4 max-w-sm">
         <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Search by name, email, role, or team…"
@@ -66,7 +68,7 @@ export function RosterSearchList({ orgSlug, members }: { orgSlug: string; member
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-1.5">
-                  <Badge variant="secondary">{m.roleName}</Badge>
+                  <RoleBadge name={m.roleName} color={m.roleColor} />
                   {m.teamNames.map((name) => (
                     <Badge key={name} variant="outline">
                       {name}

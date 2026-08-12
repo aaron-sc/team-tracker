@@ -173,6 +173,19 @@
 .driver-popover-arrow-side-left.driver-popover-arrow {
   border-left-color: var(--popover);
 }
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  main {
+    background: white !important;
+    padding: 0 !important;
+  }
+  body {
+    color: black !important;
+  }
+}
+
 .driver-popover-arrow-side-right.driver-popover-arrow {
   border-right-color: var(--popover);
 }

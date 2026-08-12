@@ -9,9 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AttendanceStatusSelect } from "@/components/schedule/attendance-status-select";
 import { DeletePracticeButton } from "@/components/schedule/delete-practice-button";
+import { DuplicatePracticeButton } from "@/components/schedule/duplicate-practice-button";
 import { getConflictsForSession } from "@/lib/availability/conflicts";
 import { venueDirectionsUrl } from "@/lib/utils/venue-directions";
-import { Calendar, MapPin, Clock, Pencil, AlertTriangle, Navigation } from "lucide-react";
+import { Calendar, MapPin, Clock, Pencil, AlertTriangle, Navigation, CalendarPlus } from "lucide-react";
 
 export default async function PracticeSessionDetailPage({
   params,
@@ -34,6 +35,7 @@ export default async function PracticeSessionDetailPage({
 
   const canEdit = membership.permissions.includes(Permission.practice_edit);
   const canDelete = membership.permissions.includes(Permission.practice_delete);
+  const canCreate = membership.permissions.includes(Permission.practice_create);
   const canManageAttendance = membership.permissions.includes(Permission.attendance_manage);
 
   const conflicts = await getConflictsForSession(session);
@@ -142,19 +144,24 @@ export default async function PracticeSessionDetailPage({
         </CardContent>
       </Card>
 
-      {canEdit || canDelete ? (
-        <div className="flex gap-2">
-          {canEdit ? (
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/${orgSlug}/schedule/practice/${session.id}/edit`}>
-                <Pencil className="size-4" />
-                Edit
-              </Link>
-            </Button>
-          ) : null}
-          {canDelete ? <DeletePracticeButton orgSlug={orgSlug} orgId={org.id} sessionId={session.id} /> : null}
-        </div>
-      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" asChild>
+          <a href={`/${orgSlug}/schedule/practice/${session.id}/ics`} download>
+            <CalendarPlus className="size-4" />
+            Add to calendar
+          </a>
+        </Button>
+        {canCreate ? <DuplicatePracticeButton orgSlug={orgSlug} orgId={org.id} sessionId={session.id} /> : null}
+        {canEdit ? (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/${orgSlug}/schedule/practice/${session.id}/edit`}>
+              <Pencil className="size-4" />
+              Edit
+            </Link>
+          </Button>
+        ) : null}
+        {canDelete ? <DeletePracticeButton orgSlug={orgSlug} orgId={org.id} sessionId={session.id} /> : null}
+      </div>
     </div>
   );
 }

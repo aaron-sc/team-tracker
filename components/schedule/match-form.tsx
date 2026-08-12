@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import type { ActionState } from "@/lib/actions/types";
 import { Input } from "@/components/ui/input";
+import { DateField } from "@/components/ui/date-field";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -104,7 +105,7 @@ export function MatchForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="scheduledAt">Date &amp; time</Label>
-          <Input
+          <DateField
             id="scheduledAt"
             name="scheduledAt"
             type="datetime-local"

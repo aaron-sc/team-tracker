@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MatchResultForm } from "@/components/schedule/match-result-form";
 import { DeleteMatchButton } from "@/components/schedule/delete-match-button";
+import { DuplicateMatchButton } from "@/components/schedule/duplicate-match-button";
 import { recordMatchResultAction } from "@/lib/actions/matches";
 import { venueDirectionsUrl } from "@/lib/utils/venue-directions";
-import { Calendar, MapPin, Radio, Pencil, Navigation } from "lucide-react";
+import { Calendar, MapPin, Radio, Pencil, Navigation, CalendarPlus } from "lucide-react";
 
 const RESULT_VARIANT: Record<string, "default" | "destructive" | "secondary"> = {
   WIN: "default",
@@ -34,6 +35,7 @@ export default async function MatchDetailPage({
 
   const canEdit = membership.permissions.includes(Permission.match_edit);
   const canDelete = membership.permissions.includes(Permission.match_delete);
+  const canCreate = membership.permissions.includes(Permission.match_create);
   const canRecordResult = membership.permissions.includes(Permission.match_result_record);
   const resultAction = recordMatchResultAction.bind(null, orgSlug, org.id, match.id);
 
@@ -113,19 +115,24 @@ export default async function MatchDetailPage({
         </Card>
       ) : null}
 
-      {canEdit || canDelete ? (
-        <div className="flex gap-2">
-          {canEdit ? (
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/${orgSlug}/schedule/matches/${match.id}/edit`}>
-                <Pencil className="size-4" />
-                Edit
-              </Link>
-            </Button>
-          ) : null}
-          {canDelete ? <DeleteMatchButton orgSlug={orgSlug} orgId={org.id} matchId={match.id} /> : null}
-        </div>
-      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" asChild>
+          <a href={`/${orgSlug}/schedule/matches/${match.id}/ics`} download>
+            <CalendarPlus className="size-4" />
+            Add to calendar
+          </a>
+        </Button>
+        {canCreate ? <DuplicateMatchButton orgSlug={orgSlug} orgId={org.id} matchId={match.id} /> : null}
+        {canEdit ? (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/${orgSlug}/schedule/matches/${match.id}/edit`}>
+              <Pencil className="size-4" />
+              Edit
+            </Link>
+          </Button>
+        ) : null}
+        {canDelete ? <DeleteMatchButton orgSlug={orgSlug} orgId={org.id} matchId={match.id} /> : null}
+      </div>
     </div>
   );
 }

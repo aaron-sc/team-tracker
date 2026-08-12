@@ -36,34 +36,36 @@ export default async function OrgLayout({
   return (
     <div className="flex min-h-screen flex-1 flex-col" style={accentStyle}>
       <ProductTourAutoStart />
-      <TopNav
-        orgName={org.name}
-        orgSlug={org.slug}
-        orgId={org.id}
-        orgLogoUrl={org.logoUrl}
-        roleName={membership.roleName}
-        userName={session.user.name ?? session.user.email ?? "User"}
-        userEmail={session.user.email ?? ""}
-        orgOptions={session.memberships.map((m) => ({
-          orgId: m.orgId,
-          orgSlug: m.orgSlug,
-          orgName: m.orgName,
-          orgLogoUrl: m.orgLogoUrl,
-          roleName: m.roleName,
-        }))}
-        initialNotifications={notifications.map((n) => ({
-          id: n.id,
-          type: n.type,
-          title: n.title,
-          body: n.body,
-          linkUrl: n.linkUrl,
-          isRead: n.isRead,
-          createdAt: n.createdAt.toISOString(),
-        }))}
-        initialUnreadCount={unreadCount}
-      />
+      <div className="no-print contents">
+        <TopNav
+          orgName={org.name}
+          orgSlug={org.slug}
+          orgId={org.id}
+          orgLogoUrl={org.logoUrl}
+          roleName={membership.roleName}
+          userName={session.user.name ?? session.user.email ?? "User"}
+          userEmail={session.user.email ?? ""}
+          orgOptions={session.memberships.map((m) => ({
+            orgId: m.orgId,
+            orgSlug: m.orgSlug,
+            orgName: m.orgName,
+            orgLogoUrl: m.orgLogoUrl,
+            roleName: m.roleName,
+          }))}
+          initialNotifications={notifications.map((n) => ({
+            id: n.id,
+            type: n.type,
+            title: n.title,
+            body: n.body,
+            linkUrl: n.linkUrl,
+            isRead: n.isRead,
+            createdAt: n.createdAt.toISOString(),
+          }))}
+          initialUnreadCount={unreadCount}
+        />
+      </div>
       <div className="flex flex-1">
-        <aside className="hidden w-56 shrink-0 border-r sm:block">
+        <aside className="no-print hidden w-56 shrink-0 border-r sm:block">
           <SidebarNav orgSlug={org.slug} permissions={membership.permissions} />
         </aside>
         <main className="flex-1 overflow-x-hidden bg-muted/20 p-6">{children}</main>

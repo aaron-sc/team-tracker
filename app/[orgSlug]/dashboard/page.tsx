@@ -7,7 +7,39 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WinLossBar } from "@/components/dashboard/win-loss-bar";
 import { AttendanceMeter } from "@/components/dashboard/attendance-meter";
 import { FunnelBars } from "@/components/dashboard/funnel-bars";
-import { Calendar, Radio, Users, Shield, Target, Megaphone, MapPin, TrendingUp, ClipboardCheck } from "lucide-react";
+import { RsvpQuickActions } from "@/components/dashboard/rsvp-quick-actions";
+import {
+  Calendar,
+  Radio,
+  Users,
+  Shield,
+  Target,
+  Megaphone,
+  MapPin,
+  TrendingUp,
+  ClipboardCheck,
+  CalendarCheck,
+  History,
+} from "lucide-react";
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  "match.created": "created a match",
+  "match.duplicated": "duplicated a match",
+  "match.result_recorded": "recorded a match result",
+  "match.deleted": "deleted a match",
+  "practice.created": "scheduled a practice",
+  "practice.duplicated": "duplicated a practice",
+  "practice.deleted": "deleted a practice",
+  "team.created": "created a team",
+  "team.updated": "updated a team",
+  "team.logo_updated": "updated a team logo",
+  "roster.member_added": "added a roster member",
+  "roster.member_removed": "removed a roster member",
+  "org.logo_updated": "updated the org logo",
+  "invite.created": "invited a member",
+  "member.removed": "removed a member",
+  "team_invite_link.created": "created a team invite link",
+};
 
 const STAGE_LABELS: Record<string, string> = {
   SCOUTING: "Scouting",
@@ -24,6 +56,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
 
   const now = new Date();
   const canViewRecruitment = membership.permissions.includes(Permission.recruitment_view);
+  const canViewAudit = membership.permissions.includes(Permission.audit_log_view);
 
   const [
     upcomingMatches,
@@ -34,6 +67,8 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
     prospectsByStage,
     matchResultsByTeam,
     attendanceByStatus,
+    pendingRsvps,
+    recentActivity,
   ] = await Promise.all([
     prisma.match.findMany({
       where: { team: { orgId: org.id }, scheduledAt: { gte: now }, status: "SCHEDULED" },
@@ -71,6 +106,20 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
       },
       _count: true,
     }),
+    prisma.sessionAttendance.findMany({
+      where: { membershipId: membership.membershipId, status: "INVITED", session: { scheduledAt: { gte: now } } },
+      include: { session: { include: { team: true, opponent: true } } },
+      orderBy: { session: { scheduledAt: "asc" } },
+      take: 5,
+    }),
+    canViewAudit
+      ? prisma.auditLog.findMany({
+          where: { orgId: org.id },
+          include: { actorMembership: { include: { user: true } } },
+          orderBy: { createdAt: "desc" },
+          take: 6,
+        })
+      : Promise.resolve([]),
   ]);
 
   const winLossByTeam = new Map(teams.map((t) => [t.id, { wins: 0, losses: 0, draws: 0 }]));
@@ -107,6 +156,36 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
           href={`/${orgSlug}/schedule`}
         />
       </div>
+
+      {pendingRsvps.length > 0 ? (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CalendarCheck className="size-4" />
+              Needs your response
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {pendingRsvps.map((a) => (
+              <div
+                key={a.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-background p-2.5 text-sm"
+              >
+                <div>
+                  <p className="font-medium">
+                    {a.session.team.name}{" "}
+                    {a.session.type === "SCRIM" ? `scrim vs ${a.session.opponent?.name ?? "TBD"}` : "practice"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {a.session.scheduledAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                  </p>
+                </div>
+                <RsvpQuickActions orgSlug={orgSlug} orgId={org.id} attendanceId={a.id} />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -268,6 +347,37 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
           </CardContent>
         </Card>
       </div>
+
+      {canViewAudit ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <History className="size-4" />
+              Recent activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {recentActivity.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No activity yet.</p>
+            ) : (
+              recentActivity.map((entry) => (
+                <div key={entry.id} className="flex items-center justify-between border-b pb-2 text-sm last:border-0 last:pb-0">
+                  <span>
+                    <span className="font-medium">{entry.actorMembership?.user.name ?? "Someone"}</span>{" "}
+                    {AUDIT_ACTION_LABELS[entry.action] ?? entry.action}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {entry.createdAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                  </span>
+                </div>
+              ))
+            )}
+            <Link href={`/${orgSlug}/settings/audit-log`} className="text-sm text-primary underline underline-offset-4">
+              View full audit log
+            </Link>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

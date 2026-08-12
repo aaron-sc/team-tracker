@@ -1,8 +1,9 @@
 import { getOrgContext } from "@/lib/org/context";
 import { prisma } from "@/lib/db/prisma";
 import { Button } from "@/components/ui/button";
+import { PrintButton } from "@/components/ui/print-button";
 import { RosterSearchList } from "@/components/roster/roster-search-list";
-import { Download } from "lucide-react";
+import { Download, Mail } from "lucide-react";
 
 export default async function RosterPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
@@ -14,18 +15,31 @@ export default async function RosterPage({ params }: { params: Promise<{ orgSlug
     orderBy: { user: { name: "asc" } },
   });
 
+  const mailtoHref = `mailto:?bcc=${members.map((m) => encodeURIComponent(m.user.email)).join(",")}`;
+
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           {members.length} member{members.length === 1 ? "" : "s"} in the organization
         </p>
-        <Button size="sm" variant="outline" asChild>
-          <a href={`/${orgSlug}/roster/export`} download>
-            <Download className="size-4" />
-            Export CSV
-          </a>
-        </Button>
+        <div className="no-print flex gap-2">
+          {members.length > 0 ? (
+            <Button size="sm" variant="outline" asChild>
+              <a href={mailtoHref}>
+                <Mail className="size-4" />
+                Email roster
+              </a>
+            </Button>
+          ) : null}
+          <PrintButton label="Print roster" />
+          <Button size="sm" variant="outline" asChild>
+            <a href={`/${orgSlug}/roster/export`} download>
+              <Download className="size-4" />
+              Export CSV
+            </a>
+          </Button>
+        </div>
       </div>
       <RosterSearchList
         orgSlug={orgSlug}
@@ -34,6 +48,7 @@ export default async function RosterPage({ params }: { params: Promise<{ orgSlug
           name: m.user.name,
           email: m.user.email,
           roleName: m.role.name,
+          roleColor: m.role.color,
           teamNames: m.teamMemberships.map((tm) => tm.team.name),
         }))}
       />

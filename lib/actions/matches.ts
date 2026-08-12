@@ -196,6 +196,45 @@ export async function recordMatchResultAction(
   revalidatePath(`/${orgSlug}/schedule/matches/${matchId}`);
 }
 
+export async function duplicateMatchAction(orgSlug: string, orgId: string, matchId: string): Promise<ActionState> {
+  const { membership } = await requirePermission(orgId, Permission.match_create);
+
+  const match = await prisma.match.findUnique({ where: { id: matchId }, include: { team: true } });
+  if (!match || match.team.orgId !== orgId) return { error: "Match not found." };
+
+  const nextWeek = new Date(match.scheduledAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  const copy = await prisma.match.create({
+    data: {
+      teamId: match.teamId,
+      opponentId: match.opponentId,
+      scheduledAt: nextWeek,
+      timezone: match.timezone,
+      format: match.format,
+      locationType: match.locationType,
+      venueId: match.venueId,
+      isStreamed: match.isStreamed,
+      streamPlatform: match.streamPlatform,
+      streamUrl: match.streamUrl,
+      casterName: match.casterName,
+      notes: match.notes,
+      createdById: membership.membershipId,
+    },
+  });
+
+  await logAudit({
+    orgId,
+    actorMembershipId: membership.membershipId,
+    action: "match.duplicated",
+    targetType: "Match",
+    targetId: copy.id,
+    metadata: { sourceMatchId: matchId },
+  });
+
+  revalidatePath(`/${orgSlug}/schedule`);
+  redirect(`/${orgSlug}/schedule/matches/${copy.id}`);
+}
+
 export async function deleteMatchAction(orgSlug: string, orgId: string, matchId: string): Promise<ActionState> {
   const { membership } = await requirePermission(orgId, Permission.match_delete);
 

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getOrgContext } from "@/lib/org/context";
 import { prisma } from "@/lib/db/prisma";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { RoleBadge } from "@/components/ui/role-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Phone, MessageSquare, Calendar } from "lucide-react";
 
@@ -37,7 +37,7 @@ export default async function MemberProfilePage({
         </Avatar>
         <div>
           <h1 className="text-xl font-semibold">{membership.user.name}</h1>
-          <Badge variant="secondary">{membership.role.name}</Badge>
+          <RoleBadge name={membership.role.name} color={membership.role.color} />
         </div>
       </div>
 

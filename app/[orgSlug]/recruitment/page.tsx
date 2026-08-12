@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StageSelect } from "@/components/recruitment/stage-select";
-import { Plus, Settings2 } from "lucide-react";
+import { Plus, Settings2, Download, Mail, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STAGES = ["SCOUTING", "CONTACTED", "TRYOUT", "OFFER", "SIGNED", "PASSED"] as const;
@@ -72,6 +72,12 @@ export default async function RecruitmentPage({
           ))}
         </div>
         <div className="flex gap-2">
+          <Button size="sm" variant="outline" asChild>
+            <a href={`/${orgSlug}/recruitment/export`} download>
+              <Download className="size-4" />
+              Export CSV
+            </a>
+          </Button>
           {canManage ? (
             <Button size="sm" variant="outline" asChild>
               <Link href={`/${orgSlug}/recruitment/levels`}>
@@ -117,6 +123,26 @@ export default async function RecruitmentPage({
                       ) : null}
                       <span>{p.game}</span>
                     </div>
+                    {p.email || p.discordHandle ? (
+                      <div className="flex items-center gap-2.5">
+                        {p.email ? (
+                          <a
+                            href={`mailto:${p.email}`}
+                            title={p.email}
+                            className="flex items-center gap-1 hover:text-foreground"
+                          >
+                            <Mail className="size-3.5" />
+                            Email
+                          </a>
+                        ) : null}
+                        {p.discordHandle ? (
+                          <span className="flex items-center gap-1" title={p.discordHandle}>
+                            <MessageCircle className="size-3.5" />
+                            {p.discordHandle}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {canManage ? (
                       <StageSelect orgSlug={orgSlug} orgId={org.id} prospectId={p.id} stage={p.stage} />
                     ) : null}

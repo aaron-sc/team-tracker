@@ -5,7 +5,8 @@ import { Permission } from "@/lib/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, Users, Gamepad2 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Plus, Users, Gamepad2, Shield } from "lucide-react";
 
 function teamInitials(name: string) {
   return name
@@ -46,7 +47,9 @@ export default async function TeamsPage({ params }: { params: Promise<{ orgSlug:
 
       {teams.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">No teams yet.</CardContent>
+          <CardContent>
+            <EmptyState icon={Shield} message="No teams yet." />
+          </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

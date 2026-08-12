@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteAnnouncementButton } from "@/components/announcements/delete-announcement-button";
 import { BroadcastDialog } from "@/components/notifications/broadcast-dialog";
-import { Plus, Pin } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Plus, Pin, Megaphone } from "lucide-react";
 
 export default async function AnnouncementsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
@@ -44,7 +45,9 @@ export default async function AnnouncementsPage({ params }: { params: Promise<{ 
 
       {announcements.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-muted-foreground">No announcements yet.</CardContent>
+          <CardContent>
+            <EmptyState icon={Megaphone} message="No announcements yet." />
+          </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">

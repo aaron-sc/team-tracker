@@ -124,6 +124,44 @@ export async function updatePracticeSessionAction(
   redirect(`/${orgSlug}/schedule/practice/${sessionId}`);
 }
 
+export async function duplicatePracticeSessionAction(orgSlug: string, orgId: string, sessionId: string): Promise<ActionState> {
+  const { membership } = await requirePermission(orgId, Permission.practice_create);
+
+  const session = await prisma.practiceSession.findUnique({ where: { id: sessionId }, include: { team: true } });
+  if (!session || session.team.orgId !== orgId) return { error: "Session not found." };
+
+  const roster = await prisma.teamMembership.findMany({ where: { teamId: session.teamId }, select: { membershipId: true } });
+  const nextWeek = new Date(session.scheduledAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  const copy = await prisma.practiceSession.create({
+    data: {
+      teamId: session.teamId,
+      type: session.type,
+      opponentId: session.opponentId,
+      scheduledAt: nextWeek,
+      durationMinutes: session.durationMinutes,
+      timezone: session.timezone,
+      locationType: session.locationType,
+      venueId: session.venueId,
+      notes: session.notes,
+      createdById: membership.membershipId,
+      attendances: { create: roster.map((r) => ({ membershipId: r.membershipId })) },
+    },
+  });
+
+  await logAudit({
+    orgId,
+    actorMembershipId: membership.membershipId,
+    action: "practice.duplicated",
+    targetType: "PracticeSession",
+    targetId: copy.id,
+    metadata: { sourceSessionId: sessionId },
+  });
+
+  revalidatePath(`/${orgSlug}/schedule`);
+  redirect(`/${orgSlug}/schedule/practice/${copy.id}`);
+}
+
 export async function deletePracticeSessionAction(orgSlug: string, orgId: string, sessionId: string): Promise<ActionState> {
   const { membership } = await requirePermission(orgId, Permission.practice_delete);
 
