@@ -6,6 +6,7 @@ declare module "next-auth" {
     user: {
       id: string;
       hasVerifiedEmail: boolean;
+      timezone: string | null;
     } & DefaultSession["user"];
     memberships: SessionMembership[];
   }

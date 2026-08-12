@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Radio, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
+import { formatDate } from "@/lib/utils/format-time";
 
 const RESULT_VARIANT: Record<string, "default" | "destructive" | "secondary"> = {
   WIN: "default",
@@ -23,7 +24,8 @@ export default async function MatchResultsPage({
 }) {
   const { orgSlug } = await params;
   const { team } = await searchParams;
-  const { org, teams } = await getOrgContext(orgSlug);
+  const { session, org, teams } = await getOrgContext(orgSlug);
+  const viewerTz = session.user.timezone ?? org.timezone;
 
   const teamWhere = team ? { teamId: team, team: { orgId: org.id } } : { team: { orgId: org.id } };
 
@@ -99,7 +101,7 @@ export default async function MatchResultsPage({
                       {m.team.name} vs {m.opponent.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {m.scheduledAt.toLocaleDateString(undefined, { dateStyle: "medium" })} · {m.format}
+                      {formatDate(m.scheduledAt, viewerTz)} · {m.format}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

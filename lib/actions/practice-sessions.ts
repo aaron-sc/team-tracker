@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { fromZonedTime } from "date-fns-tz";
 import { prisma } from "@/lib/db/prisma";
 import { requirePermission, requireMembership } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
@@ -60,7 +61,7 @@ export async function createPracticeSessionAction(
       teamId: team.id,
       type: parsed.data.type,
       opponentId,
-      scheduledAt: new Date(parsed.data.scheduledAt),
+      scheduledAt: fromZonedTime(parsed.data.scheduledAt, org.timezone),
       durationMinutes: parsed.data.durationMinutes,
       timezone: org.timezone,
       locationType: parsed.data.locationType,
@@ -112,7 +113,7 @@ export async function updatePracticeSessionAction(
     data: {
       type: parsed.data.type,
       opponentId,
-      scheduledAt: new Date(parsed.data.scheduledAt),
+      scheduledAt: fromZonedTime(parsed.data.scheduledAt, session.timezone),
       durationMinutes: parsed.data.durationMinutes,
       locationType: parsed.data.locationType,
       venueId: parsed.data.locationType === "LAN" ? parsed.data.venueId || null : null,

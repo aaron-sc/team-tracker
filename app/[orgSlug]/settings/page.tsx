@@ -5,32 +5,7 @@ import { OrgProfileForm } from "@/components/settings/org-profile-form";
 import { OrgLogoForm } from "@/components/settings/org-logo-form";
 import { Button } from "@/components/ui/button";
 import { DatabaseBackup } from "lucide-react";
-
-const COMMON_TIMEZONES = [
-  "America/Los_Angeles",
-  "America/Denver",
-  "America/Chicago",
-  "America/New_York",
-  "America/Sao_Paulo",
-  "Europe/London",
-  "Europe/Paris",
-  "Europe/Berlin",
-  "Europe/Moscow",
-  "Asia/Dubai",
-  "Asia/Kolkata",
-  "Asia/Shanghai",
-  "Asia/Seoul",
-  "Asia/Tokyo",
-  "Australia/Sydney",
-  "Pacific/Auckland",
-  "UTC",
-];
-
-function getTimezones(): string[] {
-  const supported =
-    typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : COMMON_TIMEZONES;
-  return supported;
-}
+import { getTimezones } from "@/lib/utils/timezones";
 
 export default async function OrgSettingsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;

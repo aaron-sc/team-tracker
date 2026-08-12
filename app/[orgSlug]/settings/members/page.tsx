@@ -11,6 +11,7 @@ import { CopyInviteLinkButton } from "@/components/settings/copy-invite-link-but
 import { RevokeInviteButton } from "@/components/settings/revoke-invite-button";
 import { TeamInviteLinkPanel } from "@/components/teams/team-invite-link-panel";
 import { redirect } from "next/navigation";
+import { formatDate } from "@/lib/utils/format-time";
 
 function initials(name: string) {
   return name
@@ -23,7 +24,8 @@ function initials(name: string) {
 
 export default async function MembersPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
-  const { org, membership } = await getOrgContext(orgSlug);
+  const { session, org, membership } = await getOrgContext(orgSlug);
+  const viewerTz = session.user.timezone ?? org.timezone;
 
   const canInvite = membership.permissions.includes(Permission.org_members_invite);
   const canManageRoles = membership.permissions.includes(Permission.org_members_manage);
@@ -87,7 +89,7 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
                   <div>
                     <p className="text-sm font-medium">{invite.email}</p>
                     <p className="text-xs text-muted-foreground">
-                      Invited as {invite.role.name} · expires {invite.expiresAt.toLocaleDateString()}
+                      Invited as {invite.role.name} · expires {formatDate(invite.expiresAt, viewerTz)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -132,7 +134,12 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
               <CardContent className="flex items-center justify-between py-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="size-8">
-                    <AvatarFallback>{initials(m.user.name)}</AvatarFallback>
+                    {m.user.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.user.avatarUrl} alt={m.user.name} className="size-full rounded-full object-cover" />
+                    ) : (
+                      <AvatarFallback>{initials(m.user.name)}</AvatarFallback>
+                    )}
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">{m.user.name}</p>

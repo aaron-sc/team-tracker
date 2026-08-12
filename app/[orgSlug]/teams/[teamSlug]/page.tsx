@@ -13,7 +13,7 @@ import { RemoveRosterButton } from "@/components/teams/remove-roster-button";
 import { EditRosterEntryDialog } from "@/components/teams/edit-roster-entry-dialog";
 import { TeamInviteLinkPanel } from "@/components/teams/team-invite-link-panel";
 import { addToRosterAction } from "@/lib/actions/teams";
-import { Pencil, Star, Calendar, Swords } from "lucide-react";
+import { Pencil, Star, Calendar, Swords, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 
 export default async function TeamDetailPage({
@@ -174,6 +174,7 @@ export default async function TeamDetailPage({
                 <TableHead>Role</TableHead>
                 <TableHead>Position</TableHead>
                 <TableHead>In-game name</TableHead>
+                <TableHead>Tracker</TableHead>
                 <TableHead>#</TableHead>
                 <TableHead>Starter</TableHead>
                 {canManageRoster ? <TableHead className="w-20" /> : null}
@@ -195,6 +196,21 @@ export default async function TeamDetailPage({
                   </TableCell>
                   <TableCell className="text-muted-foreground">{entry.position ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{entry.inGameName ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {entry.trackerLink ? (
+                      <a
+                        href={entry.trackerLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1 text-primary underline underline-offset-4"
+                      >
+                        <ExternalLink className="size-3.5" />
+                        Stats
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{entry.jerseyNumber ?? "—"}</TableCell>
                   <TableCell>{entry.isStarter ? <Star className="size-4 fill-primary text-primary" /> : null}</TableCell>
                   {canManageRoster ? (
@@ -208,6 +224,7 @@ export default async function TeamDetailPage({
                           position: entry.position ?? "",
                           jerseyNumber: entry.jerseyNumber ?? "",
                           inGameName: entry.inGameName ?? "",
+                          trackerLink: entry.trackerLink ?? "",
                           isStarter: entry.isStarter,
                         }}
                       />
@@ -218,7 +235,7 @@ export default async function TeamDetailPage({
               ))}
               {roster.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={canManageRoster ? 7 : 6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={canManageRoster ? 8 : 7} className="text-center text-muted-foreground">
                     No one on the roster yet.
                   </TableCell>
                 </TableRow>

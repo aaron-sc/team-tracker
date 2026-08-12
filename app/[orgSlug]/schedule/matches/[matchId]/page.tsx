@@ -11,6 +11,7 @@ import { DeleteMatchButton } from "@/components/schedule/delete-match-button";
 import { DuplicateMatchButton } from "@/components/schedule/duplicate-match-button";
 import { recordMatchResultAction } from "@/lib/actions/matches";
 import { venueDirectionsUrl } from "@/lib/utils/venue-directions";
+import { formatDateTimeLong } from "@/lib/utils/format-time";
 import { Calendar, MapPin, Radio, Pencil, Navigation, CalendarPlus } from "lucide-react";
 
 const RESULT_VARIANT: Record<string, "default" | "destructive" | "secondary"> = {
@@ -25,7 +26,8 @@ export default async function MatchDetailPage({
   params: Promise<{ orgSlug: string; matchId: string }>;
 }) {
   const { orgSlug, matchId } = await params;
-  const { org, membership } = await getOrgContext(orgSlug);
+  const { session, org, membership } = await getOrgContext(orgSlug);
+  const viewerTz = session.user.timezone ?? org.timezone;
 
   const match = await prisma.match.findUnique({
     where: { id: matchId },
@@ -63,7 +65,7 @@ export default async function MatchDetailPage({
         <CardContent className="space-y-3 pt-6 text-sm">
           <div className="flex items-center gap-2">
             <Calendar className="size-4 text-muted-foreground" />
-            {match.scheduledAt.toLocaleString(undefined, { dateStyle: "full", timeStyle: "short" })}
+            {formatDateTimeLong(match.scheduledAt, viewerTz)}
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="size-4 text-muted-foreground" />

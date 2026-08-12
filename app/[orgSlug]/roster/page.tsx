@@ -47,6 +47,7 @@ export default async function RosterPage({ params }: { params: Promise<{ orgSlug
           id: m.id,
           name: m.user.name,
           email: m.user.email,
+          avatarUrl: m.user.avatarUrl,
           roleName: m.role.name,
           roleColor: m.role.color,
           teamNames: m.teamMemberships.map((tm) => tm.team.name),

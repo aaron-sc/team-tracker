@@ -45,6 +45,7 @@ export default async function OrgLayout({
           roleName={membership.roleName}
           userName={session.user.name ?? session.user.email ?? "User"}
           userEmail={session.user.email ?? ""}
+          userImage={session.user.image ?? null}
           orgOptions={session.memberships.map((m) => ({
             orgId: m.orgId,
             orgSlug: m.orgSlug,

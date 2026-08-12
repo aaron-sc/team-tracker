@@ -5,12 +5,7 @@ import { Permission } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
 import { PracticeForm } from "@/components/schedule/practice-form";
 import { updatePracticeSessionAction } from "@/lib/actions/practice-sessions";
-
-function toLocalDateTimeInput(date: Date): string {
-  const offset = date.getTimezoneOffset();
-  const local = new Date(date.getTime() - offset * 60 * 1000);
-  return local.toISOString().slice(0, 16);
-}
+import { toDatetimeLocalValue } from "@/lib/utils/format-time";
 
 export default async function EditPracticeSessionPage({
   params,
@@ -44,7 +39,7 @@ export default async function EditPracticeSessionPage({
           teamId: session.teamId,
           type: session.type,
           opponentId: session.opponentId ?? undefined,
-          scheduledAt: toLocalDateTimeInput(session.scheduledAt),
+          scheduledAt: toDatetimeLocalValue(session.scheduledAt, session.timezone),
           durationMinutes: session.durationMinutes,
           locationType: session.locationType,
           venueId: session.venueId ?? undefined,

@@ -21,6 +21,7 @@ import {
   CalendarCheck,
   History,
 } from "lucide-react";
+import { formatDateTime } from "@/lib/utils/format-time";
 
 const AUDIT_ACTION_LABELS: Record<string, string> = {
   "match.created": "created a match",
@@ -52,7 +53,8 @@ const STAGE_LABELS: Record<string, string> = {
 
 export default async function DashboardPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
-  const { org, membership, teams } = await getOrgContext(orgSlug);
+  const { session, org, membership, teams } = await getOrgContext(orgSlug);
+  const viewerTz = session.user.timezone ?? org.timezone;
 
   const now = new Date();
   const canViewRecruitment = membership.permissions.includes(Permission.recruitment_view);
@@ -146,6 +148,20 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
         <p className="text-muted-foreground">Welcome back, here&apos;s what&apos;s happening.</p>
       </div>
 
+      {!session.user.timezone ? (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+            <span>
+              Set your timezone so match and practice times show correctly for you — right now they&apos;re shown in{" "}
+              {org.timezone.replace(/_/g, " ")} (the organization&apos;s default).
+            </span>
+            <Link href="/account" className="shrink-0 font-medium text-primary underline underline-offset-4">
+              Set timezone
+            </Link>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard icon={<Users className="size-5" />} label="Members" value={memberCount} href={`/${orgSlug}/roster`} />
         <StatCard icon={<Shield className="size-5" />} label="Teams" value={teamCount} href={`/${orgSlug}/teams`} />
@@ -177,7 +193,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
                     {a.session.type === "SCRIM" ? `scrim vs ${a.session.opponent?.name ?? "TBD"}` : "practice"}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {a.session.scheduledAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                    {formatDateTime(a.session.scheduledAt, viewerTz)}
                   </p>
                 </div>
                 <RsvpQuickActions orgSlug={orgSlug} orgId={org.id} attendanceId={a.id} />
@@ -207,7 +223,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
                       {m.team.name} vs {m.opponent.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {m.scheduledAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                      {formatDateTime(m.scheduledAt, viewerTz)}
                     </p>
                   </div>
                   {m.isStreamed ? (
@@ -241,7 +257,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
                       {s.team.name} {s.type === "SCRIM" ? `vs ${s.opponent?.name ?? "TBD"}` : "practice"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {s.scheduledAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                      {formatDateTime(s.scheduledAt, viewerTz)}
                     </p>
                   </div>
                   <Badge variant="outline">{s.type}</Badge>
@@ -367,7 +383,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
                     {AUDIT_ACTION_LABELS[entry.action] ?? entry.action}
                   </span>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {entry.createdAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                    {formatDateTime(entry.createdAt, viewerTz)}
                   </span>
                 </div>
               ))

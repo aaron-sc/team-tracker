@@ -16,6 +16,7 @@ export function EditRuleGroupDialog({
   startTime,
   endTime,
   timezone,
+  timezones,
 }: {
   orgSlug: string;
   orgId: string;
@@ -25,6 +26,7 @@ export function EditRuleGroupDialog({
   startTime: string;
   endTime: string;
   timezone: string;
+  timezones: string[];
 }) {
   const [open, setOpen] = useState(false);
   const action = saveAvailabilityRuleGroupAction.bind(null, orgSlug, orgId, membershipId, ruleIds);
@@ -43,6 +45,7 @@ export function EditRuleGroupDialog({
         <RuleGroupForm
           action={action}
           defaultTimezone={timezone}
+          timezones={timezones}
           defaultDays={days}
           defaultStartTime={startTime}
           defaultEndTime={endTime}

@@ -39,6 +39,7 @@ export function TopNav({
   roleName,
   userName,
   userEmail,
+  userImage,
   orgOptions,
   initialNotifications,
   initialUnreadCount,
@@ -50,6 +51,7 @@ export function TopNav({
   roleName: string;
   userName: string;
   userEmail: string;
+  userImage: string | null;
   orgOptions: OrgOption[];
   initialNotifications: NotificationItem[];
   initialUnreadCount: number;
@@ -69,8 +71,10 @@ export function TopNav({
           <span className="hidden sm:inline">Formation</span>
         </Link>
         {orgLogoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={orgLogoUrl} alt={orgName} className="size-6 rounded object-cover" />
+          <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-background">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={orgLogoUrl} alt={orgName} className="size-full object-contain" />
+          </span>
         ) : null}
         {orgOptions.length > 1 ? (
           <DropdownMenu>
@@ -88,8 +92,10 @@ export function TopNav({
                   <Link href={`/${o.orgSlug}/dashboard`} className="flex items-center justify-between">
                     <span className="flex items-center gap-2">
                       {o.orgLogoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={o.orgLogoUrl} alt="" className="size-4 rounded object-cover" />
+                        <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded border bg-background">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={o.orgLogoUrl} alt="" className="size-full object-contain" />
+                        </span>
                       ) : null}
                       {o.orgName}
                     </span>
@@ -120,7 +126,12 @@ export function TopNav({
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full" data-tour="user-menu">
               <Avatar className="size-8">
-                <AvatarFallback>{initials || "?"}</AvatarFallback>
+                {userImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={userImage} alt={userName} className="size-full rounded-full object-cover" />
+                ) : (
+                  <AvatarFallback>{initials || "?"}</AvatarFallback>
+                )}
               </Avatar>
             </Button>
           </DropdownMenuTrigger>

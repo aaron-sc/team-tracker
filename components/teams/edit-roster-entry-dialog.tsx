@@ -20,7 +20,7 @@ export function EditRosterEntryDialog({
   orgId: string;
   teamMembershipId: string;
   playerName: string;
-  defaultValues: { position: string; jerseyNumber: string; inGameName: string; isStarter: boolean };
+  defaultValues: { position: string; jerseyNumber: string; inGameName: string; trackerLink: string; isStarter: boolean };
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | undefined>();
@@ -63,6 +63,16 @@ export function EditRosterEntryDialog({
           <div className="space-y-1.5">
             <Label htmlFor="edit-jerseyNumber">Jersey #</Label>
             <Input id="edit-jerseyNumber" name="jerseyNumber" defaultValue={defaultValues.jerseyNumber} className="w-20" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-trackerLink">Tracker link</Label>
+            <Input
+              id="edit-trackerLink"
+              name="trackerLink"
+              type="url"
+              placeholder="https://tracker.gg/valorant/…"
+              defaultValue={defaultValues.trackerLink}
+            />
           </div>
           <div className="flex items-center gap-2">
             <Checkbox id="edit-isStarter" name="isStarter" defaultChecked={defaultValues.isStarter} />

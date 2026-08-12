@@ -3,6 +3,7 @@ import { requirePagePermission } from "@/lib/org/require-permission-page";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatDateTime } from "@/lib/utils/format-time";
 
 const ACTION_LABELS: Record<string, string> = {
   "role.created": "Role created",
@@ -17,7 +18,8 @@ const ACTION_LABELS: Record<string, string> = {
 
 export default async function AuditLogPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
-  const { org, membership } = await getOrgContext(orgSlug);
+  const { session, org, membership } = await getOrgContext(orgSlug);
+  const viewerTz = session.user.timezone ?? org.timezone;
   requirePagePermission(orgSlug, membership, Permission.audit_log_view);
 
   const entries = await prisma.auditLog.findMany({
@@ -41,7 +43,7 @@ export default async function AuditLogPage({ params }: { params: Promise<{ orgSl
         {entries.map((entry) => (
           <TableRow key={entry.id}>
             <TableCell className="whitespace-nowrap text-muted-foreground">
-              {entry.createdAt.toLocaleString()}
+              {formatDateTime(entry.createdAt, viewerTz)}
             </TableCell>
             <TableCell>{entry.actorMembership?.user.name ?? "System"}</TableCell>
             <TableCell>{ACTION_LABELS[entry.action] ?? entry.action}</TableCell>

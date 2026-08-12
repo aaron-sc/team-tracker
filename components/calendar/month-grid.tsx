@@ -1,11 +1,22 @@
-import { eachDayOfInterval, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, startOfMonth, startOfWeek } from "date-fns";
+import { eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth, startOfMonth, startOfWeek } from "date-fns";
 import { cn } from "@/lib/utils";
 import { EventChip } from "@/components/calendar/event-chip";
+import { isSameDayInTz } from "@/lib/utils/format-time";
 import type { CalendarEvent } from "@/lib/calendar/types";
 
 const MAX_VISIBLE = 3;
 
-export function MonthGrid({ month, events, today }: { month: Date; events: CalendarEvent[]; today: Date }) {
+export function MonthGrid({
+  month,
+  events,
+  today,
+  timeZone,
+}: {
+  month: Date;
+  events: CalendarEvent[];
+  today: Date;
+  timeZone: string;
+}) {
   const start = startOfWeek(startOfMonth(month));
   const end = endOfWeek(endOfMonth(month));
   const days = eachDayOfInterval({ start, end });
@@ -22,7 +33,7 @@ export function MonthGrid({ month, events, today }: { month: Date; events: Calen
       <div className="grid grid-cols-7">
         {days.map((day) => {
           const dayEvents = events
-            .filter((e) => isSameDay(e.start, day))
+            .filter((e) => isSameDayInTz(e.start, day, timeZone))
             .sort((a, b) => a.start.getTime() - b.start.getTime());
           const visible = dayEvents.slice(0, MAX_VISIBLE);
           const overflow = dayEvents.length - visible.length;
@@ -38,13 +49,13 @@ export function MonthGrid({ month, events, today }: { month: Date; events: Calen
               <div
                 className={cn(
                   "text-xs",
-                  isSameDay(day, today) && "flex size-5 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground",
+                  isSameDayInTz(day, today, timeZone) && "flex size-5 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground",
                 )}
               >
                 {format(day, "d")}
               </div>
               {visible.map((event) => (
-                <EventChip key={event.id} event={event} />
+                <EventChip key={event.id} event={event} timeZone={timeZone} />
               ))}
               {overflow > 0 ? <p className="px-1.5 text-xs text-muted-foreground">+{overflow} more</p> : null}
             </div>

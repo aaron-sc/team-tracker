@@ -182,6 +182,7 @@ export async function addToRosterAction(
     jerseyNumber: formData.get("jerseyNumber") ?? "",
     position: formData.get("position") ?? "",
     inGameName: formData.get("inGameName") ?? "",
+    trackerLink: formData.get("trackerLink") ?? "",
     isStarter: formData.get("isStarter") === "on",
   });
   if (!parsed.success) {
@@ -207,6 +208,7 @@ export async function addToRosterAction(
       jerseyNumber: parsed.data.jerseyNumber || null,
       position: parsed.data.position || null,
       inGameName: parsed.data.inGameName || null,
+      trackerLink: parsed.data.trackerLink || null,
       isStarter: parsed.data.isStarter,
     },
   });
@@ -236,6 +238,7 @@ export async function updateRosterEntryAction(
     jerseyNumber: formData.get("jerseyNumber") ?? "",
     position: formData.get("position") ?? "",
     inGameName: formData.get("inGameName") ?? "",
+    trackerLink: formData.get("trackerLink") ?? "",
     isStarter: formData.get("isStarter") === "on",
   });
   if (!parsed.success) {
@@ -254,6 +257,7 @@ export async function updateRosterEntryAction(
       jerseyNumber: parsed.data.jerseyNumber || null,
       position: parsed.data.position || null,
       inGameName: parsed.data.inGameName || null,
+      trackerLink: parsed.data.trackerLink || null,
       isStarter: parsed.data.isStarter,
     },
   });

@@ -12,6 +12,7 @@ import { DeletePracticeButton } from "@/components/schedule/delete-practice-butt
 import { DuplicatePracticeButton } from "@/components/schedule/duplicate-practice-button";
 import { getConflictsForSession } from "@/lib/availability/conflicts";
 import { venueDirectionsUrl } from "@/lib/utils/venue-directions";
+import { formatDateTimeLong } from "@/lib/utils/format-time";
 import { Calendar, MapPin, Clock, Pencil, AlertTriangle, Navigation, CalendarPlus } from "lucide-react";
 
 export default async function PracticeSessionDetailPage({
@@ -20,7 +21,8 @@ export default async function PracticeSessionDetailPage({
   params: Promise<{ orgSlug: string; sessionId: string }>;
 }) {
   const { orgSlug, sessionId } = await params;
-  const { org, membership } = await getOrgContext(orgSlug);
+  const { session: authSession, org, membership } = await getOrgContext(orgSlug);
+  const viewerTz = authSession.user.timezone ?? org.timezone;
 
   const session = await prisma.practiceSession.findUnique({
     where: { id: sessionId },
@@ -55,7 +57,7 @@ export default async function PracticeSessionDetailPage({
         <CardContent className="space-y-3 pt-6 text-sm">
           <div className="flex items-center gap-2">
             <Calendar className="size-4 text-muted-foreground" />
-            {session.scheduledAt.toLocaleString(undefined, { dateStyle: "full", timeStyle: "short" })}
+            {formatDateTimeLong(session.scheduledAt, viewerTz)}
           </div>
           <div className="flex items-center gap-2">
             <Clock className="size-4 text-muted-foreground" />

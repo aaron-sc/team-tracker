@@ -17,9 +17,12 @@ import {
   resetPasswordSchema,
   changePasswordSchema,
   updateNameSchema,
+  updateTimezoneSchema,
+  updateProfileDetailsSchema,
 } from "@/lib/validations/auth";
 import { createNotification } from "@/lib/notifications/create";
 import { sendVerificationEmail } from "@/lib/actions/email-verification";
+import { saveUploadedImage, deleteUploadedFile, UploadError } from "@/lib/storage/local";
 
 async function notifyInviterOfAcceptance(invite: { orgId: string; invitedById: string | null }, newMemberName: string) {
   if (!invite.invitedById) return;
@@ -421,4 +424,87 @@ export async function updateNameAction(_prev: UpdateNameState, formData: FormDat
   await prisma.user.update({ where: { id: session.user.id }, data: { name: parsed.data.name } });
 
   return { success: "Name updated." };
+}
+
+export type UpdateTimezoneState = { error?: string; success?: string } | undefined;
+
+export async function updateTimezoneAction(_prev: UpdateTimezoneState, formData: FormData): Promise<UpdateTimezoneState> {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "You must be logged in." };
+  }
+
+  const parsed = updateTimezoneSchema.safeParse({ timezone: formData.get("timezone") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  await prisma.user.update({ where: { id: session.user.id }, data: { timezone: parsed.data.timezone } });
+
+  return { success: "Timezone updated. Match and practice times will now show in your local time." };
+}
+
+export type UpdateProfileDetailsState = { error?: string; success?: string } | undefined;
+
+export async function updateProfileDetailsAction(
+  _prev: UpdateProfileDetailsState,
+  formData: FormData,
+): Promise<UpdateProfileDetailsState> {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "You must be logged in." };
+  }
+
+  const parsed = updateProfileDetailsSchema.safeParse({
+    discordHandle: formData.get("discordHandle") ?? "",
+    phone: formData.get("phone") ?? "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { discordHandle: parsed.data.discordHandle || null, phone: parsed.data.phone || null },
+  });
+
+  return { success: "Profile updated." };
+}
+
+export type UpdateAvatarState = { error?: string; success?: string } | undefined;
+
+export async function updateAvatarAction(_prev: UpdateAvatarState, formData: FormData): Promise<UpdateAvatarState> {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "You must be logged in." };
+  }
+
+  const file = formData.get("avatar");
+  let avatarUrl: string;
+  try {
+    avatarUrl = await saveUploadedImage(file as File, "avatars");
+  } catch (err) {
+    return { error: err instanceof UploadError ? err.message : "Could not upload image." };
+  }
+
+  const previousUser = await prisma.user.findUnique({ where: { id: session.user.id }, select: { avatarUrl: true } });
+  await prisma.user.update({ where: { id: session.user.id }, data: { avatarUrl } });
+  await deleteUploadedFile(previousUser?.avatarUrl);
+
+  return { success: "Profile picture updated." };
+}
+
+export async function removeAvatarAction(): Promise<UpdateAvatarState> {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "You must be logged in." };
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (!user) return { error: "User not found." };
+
+  await prisma.user.update({ where: { id: session.user.id }, data: { avatarUrl: null } });
+  await deleteUploadedFile(user.avatarUrl);
+
+  return { success: "Profile picture removed." };
 }

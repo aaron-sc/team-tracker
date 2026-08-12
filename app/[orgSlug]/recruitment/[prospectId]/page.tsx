@@ -11,6 +11,7 @@ import { StageSelect } from "@/components/recruitment/stage-select";
 import { DeleteProspectButton } from "@/components/recruitment/delete-prospect-button";
 import { InviteProspectDialog } from "@/components/recruitment/invite-prospect-dialog";
 import { Mail, Phone, MessageSquare, Pencil, ExternalLink, UserCheck, Clock } from "lucide-react";
+import { formatDate } from "@/lib/utils/format-time";
 
 export default async function ProspectDetailPage({
   params,
@@ -18,7 +19,8 @@ export default async function ProspectDetailPage({
   params: Promise<{ orgSlug: string; prospectId: string }>;
 }) {
   const { orgSlug, prospectId } = await params;
-  const { org, membership } = await getOrgContext(orgSlug);
+  const { session, org, membership } = await getOrgContext(orgSlug);
+  const viewerTz = session.user.timezone ?? org.timezone;
   requirePagePermission(orgSlug, membership, Permission.recruitment_view);
 
   const prospect = await prisma.recruitmentProspect.findUnique({
@@ -167,7 +169,7 @@ export default async function ProspectDetailPage({
                 {h.note ? ` — ${h.note}` : ""}
               </span>
               <span className="text-xs text-muted-foreground">
-                {h.changedBy.user.name} · {h.changedAt.toLocaleDateString()}
+                {h.changedBy.user.name} · {formatDate(h.changedAt, viewerTz)}
               </span>
             </div>
           ))}

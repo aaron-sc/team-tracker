@@ -11,13 +11,16 @@ import { DeleteRuleGroupButton } from "@/components/availability/delete-rule-gro
 import { AddExceptionForm } from "@/components/availability/add-exception-form";
 import { DeleteExceptionButton } from "@/components/availability/delete-exception-button";
 import { saveAvailabilityRuleGroupAction, addAvailabilityExceptionAction } from "@/lib/actions/availability";
+import { getTimezones } from "@/lib/utils/timezones";
+import { formatCalendarDate } from "@/lib/utils/format-time";
 import { Users } from "lucide-react";
 
 const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default async function AvailabilityPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
-  const { org, membership } = await getOrgContext(orgSlug);
+  const { session, org, membership } = await getOrgContext(orgSlug);
+  const myTimezone = session.user.timezone ?? org.timezone;
 
   const canManageSelf = membership.permissions.includes(Permission.availability_manage_self);
   const canManageOthers = membership.permissions.includes(Permission.availability_manage_others);
@@ -107,7 +110,7 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ o
                           </Badge>
                         ))}
                         <span className="ml-2 text-sm text-muted-foreground">
-                          {group.startTime}–{group.endTime}
+                          {group.startTime}–{group.endTime} ({group.timezone.replace(/_/g, " ")})
                         </span>
                       </div>
                       <div className="flex items-center">
@@ -120,6 +123,7 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ o
                           startTime={group.startTime}
                           endTime={group.endTime}
                           timezone={group.timezone}
+                          timezones={getTimezones()}
                         />
                         <DeleteRuleGroupButton
                           orgSlug={orgSlug}
@@ -134,7 +138,7 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ o
               )}
               <div className="border-t pt-4">
                 <p className="mb-2 text-sm font-medium">Add availability</p>
-                <RuleGroupForm action={addRuleAction} defaultTimezone={org.timezone} />
+                <RuleGroupForm action={addRuleAction} defaultTimezone={myTimezone} timezones={getTimezones()} />
               </div>
             </CardContent>
           </Card>
@@ -151,7 +155,7 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ o
                   {exceptions.map((exception) => (
                     <div key={exception.id} className="flex items-center justify-between text-sm">
                       <span>
-                        {exception.date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} —{" "}
+                        {formatCalendarDate(exception.date)} —{" "}
                         {exception.isAvailable ? "Extra available" : "Unavailable"}
                         {exception.startTime && exception.endTime ? ` (${exception.startTime}–${exception.endTime})` : ""}
                         {exception.reason ? ` · ${exception.reason}` : ""}

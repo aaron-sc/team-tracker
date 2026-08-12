@@ -5,12 +5,7 @@ import { Permission } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
 import { MatchForm } from "@/components/schedule/match-form";
 import { updateMatchAction } from "@/lib/actions/matches";
-
-function toLocalDateTimeInput(date: Date): string {
-  const offset = date.getTimezoneOffset();
-  const local = new Date(date.getTime() - offset * 60 * 1000);
-  return local.toISOString().slice(0, 16);
-}
+import { toDatetimeLocalValue } from "@/lib/utils/format-time";
 
 export default async function EditMatchPage({
   params,
@@ -43,7 +38,7 @@ export default async function EditMatchPage({
         defaultValues={{
           teamId: match.teamId,
           opponentId: match.opponentId,
-          scheduledAt: toLocalDateTimeInput(match.scheduledAt),
+          scheduledAt: toDatetimeLocalValue(match.scheduledAt, match.timezone),
           format: match.format,
           locationType: match.locationType,
           venueId: match.venueId ?? undefined,

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { CalendarEvent } from "@/lib/calendar/types";
+import { formatTimeShort } from "@/lib/utils/format-time";
 
-export function EventChip({ event, className }: { event: CalendarEvent; className?: string }) {
+export function EventChip({ event, timeZone, className }: { event: CalendarEvent; timeZone: string; className?: string }) {
   return (
     <Link
       href={event.href}
@@ -15,7 +16,7 @@ export function EventChip({ event, className }: { event: CalendarEvent; classNam
       )}
       title={event.title}
     >
-      {event.start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} {event.title}
+      {formatTimeShort(event.start, timeZone)} {event.title}
     </Link>
   );
 }

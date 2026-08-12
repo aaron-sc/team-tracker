@@ -29,7 +29,8 @@ export default async function SchedulePage({
 }) {
   const { orgSlug } = await params;
   const { view = "month", date, team } = await searchParams;
-  const { org, membership, teams } = await getOrgContext(orgSlug);
+  const { session, org, membership, teams } = await getOrgContext(orgSlug);
+  const viewerTz = session.user.timezone ?? org.timezone;
 
   const anchor = date ? new Date(`${date}T00:00:00`) : new Date();
   const isWeek = view === "week";
@@ -167,7 +168,11 @@ export default async function SchedulePage({
         </div>
       </div>
 
-      {isWeek ? <WeekAgenda week={anchor} events={events} /> : <MonthGrid month={anchor} events={events} today={new Date()} />}
+      {isWeek ? (
+        <WeekAgenda week={anchor} events={events} timeZone={viewerTz} />
+      ) : (
+        <MonthGrid month={anchor} events={events} today={new Date()} timeZone={viewerTz} />
+      )}
     </div>
   );
 }

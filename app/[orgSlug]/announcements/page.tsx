@@ -9,10 +9,12 @@ import { DeleteAnnouncementButton } from "@/components/announcements/delete-anno
 import { BroadcastDialog } from "@/components/notifications/broadcast-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Plus, Pin, Megaphone } from "lucide-react";
+import { formatDate } from "@/lib/utils/format-time";
 
 export default async function AnnouncementsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
-  const { org, membership, teams } = await getOrgContext(orgSlug);
+  const { session, org, membership, teams } = await getOrgContext(orgSlug);
+  const viewerTz = session.user.timezone ?? org.timezone;
 
   const announcements = await prisma.announcement.findMany({
     where: { orgId: org.id },
@@ -60,7 +62,7 @@ export default async function AnnouncementsPage({ params }: { params: Promise<{ 
                     {a.title}
                   </CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {a.author.user.name} · {a.createdAt.toLocaleDateString()}
+                    {a.author.user.name} · {formatDate(a.createdAt, viewerTz)}
                     {a.team ? (
                       <>
                         {" "}

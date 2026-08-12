@@ -50,6 +50,10 @@ export function AddRosterForm({
         <Label htmlFor="jerseyNumber">Jersey #</Label>
         <Input id="jerseyNumber" name="jerseyNumber" className="w-20" />
       </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="trackerLink">Tracker link</Label>
+        <Input id="trackerLink" name="trackerLink" type="url" placeholder="https://tracker.gg/valorant/…" className="w-56" />
+      </div>
       <div className="mb-1.5 flex items-center gap-2">
         <Checkbox id="isStarter" name="isStarter" />
         <Label htmlFor="isStarter" className="cursor-pointer font-normal">

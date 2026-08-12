@@ -22,6 +22,7 @@ type RosterMember = {
   id: string;
   name: string;
   email: string;
+  avatarUrl: string | null;
   roleName: string;
   roleColor: string | null;
   teamNames: string[];
@@ -60,7 +61,12 @@ export function RosterSearchList({ orgSlug, members }: { orgSlug: string; member
               <CardContent className="flex items-center justify-between py-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="size-9">
-                    <AvatarFallback>{initials(m.name)}</AvatarFallback>
+                    {m.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.avatarUrl} alt={m.name} className="size-full rounded-full object-cover" />
+                    ) : (
+                      <AvatarFallback>{initials(m.name)}</AvatarFallback>
+                    )}
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">{m.name}</p>

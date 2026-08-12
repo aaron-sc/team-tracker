@@ -5,6 +5,7 @@ import type { ActionState } from "@/lib/actions/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubmitButton } from "@/components/auth/submit-button";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -12,6 +13,7 @@ const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export function RuleGroupForm({
   action,
   defaultTimezone,
+  timezones,
   defaultDays = [],
   defaultStartTime = "18:00",
   defaultEndTime = "21:00",
@@ -20,6 +22,7 @@ export function RuleGroupForm({
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   defaultTimezone: string;
+  timezones: string[];
   defaultDays?: number[];
   defaultStartTime?: string;
   defaultEndTime?: string;
@@ -63,7 +66,21 @@ export function RuleGroupForm({
           <Label htmlFor="endTime">End</Label>
           <Input id="endTime" name="endTime" type="time" className="w-28" required defaultValue={defaultEndTime} />
         </div>
-        <input type="hidden" name="timezone" value={defaultTimezone} />
+        <div className="space-y-1.5">
+          <Label htmlFor="timezone">Timezone</Label>
+          <Select name="timezone" defaultValue={defaultTimezone}>
+            <SelectTrigger id="timezone" className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {timezones.map((tz) => (
+                <SelectItem key={tz} value={tz}>
+                  {tz.replace(/_/g, " ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <SubmitButton>{submitLabel}</SubmitButton>
       </div>
       {state?.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
