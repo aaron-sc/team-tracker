@@ -7,10 +7,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { logoutAction } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck } from "lucide-react";
+import { requireVerifiedEmailPage } from "@/lib/auth/require-verified-page";
 
 export default async function OrgsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  requireVerifiedEmailPage(session);
 
   if (session.memberships.length === 1) {
     redirect(`/${session.memberships[0].orgSlug}/dashboard`);

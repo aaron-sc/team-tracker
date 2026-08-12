@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordForm } from "@/components/account/change-password-form";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { requireVerifiedEmailPage } from "@/lib/auth/require-verified-page";
 
 export default async function AccountPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  requireVerifiedEmailPage(session);
 
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">

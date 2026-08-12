@@ -5,6 +5,7 @@ declare module "next-auth" {
   interface Session {
     user: {
       id: string;
+      hasVerifiedEmail: boolean;
     } & DefaultSession["user"];
     memberships: SessionMembership[];
   }

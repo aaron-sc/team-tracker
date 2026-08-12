@@ -33,16 +33,28 @@ export function SidebarNav({ orgSlug, permissions }: { orgSlug: string; permissi
   const hasAny = (ps: Permission[]) => ps.some((p) => permissions.includes(p));
 
   const items = [
-    { href: `${base}/dashboard`, label: "Dashboard", icon: LayoutDashboard, show: true },
-    { href: `${base}/roster`, label: "Roster", icon: Users, show: true },
-    { href: `${base}/teams`, label: "Teams", icon: Shield, show: true },
-    { href: `${base}/schedule`, label: "Schedule", icon: CalendarClock, show: true },
-    { href: `${base}/availability`, label: "Availability", icon: ClipboardList, show: true },
-    { href: `${base}/venues`, label: "Venues", icon: MapPinned, show: true },
-    { href: `${base}/recruitment`, label: "Recruitment", icon: Target, show: has(Permission.recruitment_view) },
-    { href: `${base}/announcements`, label: "Announcements", icon: Megaphone, show: true },
-    { href: `${base}/messages`, label: "Messages", icon: MessageCircle, show: true },
-    { href: `${base}/settings`, label: "Settings", icon: Settings, show: hasAny(SETTINGS_PERMISSIONS) },
+    { href: `${base}/dashboard`, label: "Dashboard", icon: LayoutDashboard, show: true, tour: "nav-dashboard" },
+    { href: `${base}/roster`, label: "Roster", icon: Users, show: true, tour: "nav-roster" },
+    { href: `${base}/teams`, label: "Teams", icon: Shield, show: true, tour: "nav-teams" },
+    { href: `${base}/schedule`, label: "Schedule", icon: CalendarClock, show: true, tour: "nav-schedule" },
+    { href: `${base}/availability`, label: "Availability", icon: ClipboardList, show: true, tour: undefined },
+    { href: `${base}/venues`, label: "Venues", icon: MapPinned, show: true, tour: undefined },
+    {
+      href: `${base}/recruitment`,
+      label: "Recruitment",
+      icon: Target,
+      show: has(Permission.recruitment_view),
+      tour: "nav-recruitment",
+    },
+    { href: `${base}/announcements`, label: "Announcements", icon: Megaphone, show: true, tour: undefined },
+    { href: `${base}/messages`, label: "Messages", icon: MessageCircle, show: true, tour: "nav-messages" },
+    {
+      href: `${base}/settings`,
+      label: "Settings",
+      icon: Settings,
+      show: hasAny(SETTINGS_PERMISSIONS),
+      tour: "nav-settings",
+    },
   ];
 
   return (
@@ -56,6 +68,7 @@ export function SidebarNav({ orgSlug, permissions }: { orgSlug: string; permissi
             <Link
               key={item.href}
               href={item.href}
+              data-tour={item.tour}
               className={cn(
                 "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 active

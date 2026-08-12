@@ -74,7 +74,7 @@ async function main() {
   type Seeded = { membershipId: string; userId: string; name: string };
 
   async function createUser(name: string, email: string, roleId: string): Promise<Seeded> {
-    const user = await prisma.user.create({ data: { name, email, passwordHash } });
+    const user = await prisma.user.create({ data: { name, email, passwordHash, emailVerifiedAt: new Date() } });
     const membership = await prisma.membership.create({ data: { userId: user.id, orgId: org.id, roleId } });
     return { membershipId: membership.id, userId: user.id, name };
   }

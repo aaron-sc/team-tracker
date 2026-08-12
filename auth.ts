@@ -18,7 +18,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       if (token.userId && session.user) {
         session.user.id = token.userId as string;
-        session.memberships = await loadMemberships(token.userId as string);
+        const [memberships, user] = await Promise.all([
+          loadMemberships(token.userId as string),
+          prisma.user.findUnique({ where: { id: token.userId as string }, select: { emailVerifiedAt: true } }),
+        ]);
+        session.memberships = memberships;
+        session.user.hasVerifiedEmail = !!user?.emailVerifiedAt;
       } else {
         session.memberships = [];
       }

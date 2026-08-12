@@ -25,6 +25,7 @@ export const authConfig = {
         pathname.startsWith("/invite") ||
         pathname.startsWith("/forgot-password") ||
         pathname.startsWith("/reset-password") ||
+        pathname.startsWith("/verify-email") ||
         pathname.startsWith("/api/auth") ||
         pathname.startsWith("/api/v1");
       return isPublic || isLoggedIn;

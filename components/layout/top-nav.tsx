@@ -12,11 +12,12 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronsUpDown, ShieldCheck, LogOut, Check, UserCog } from "lucide-react";
+import { ChevronsUpDown, ShieldCheck, LogOut, Check, UserCog, Compass } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { startProductTour } from "@/components/onboarding/product-tour";
 
 type OrgOption = { orgId: string; orgSlug: string; orgName: string; orgLogoUrl: string | null; roleName: string };
 type NotificationItem = {
@@ -103,15 +104,19 @@ export function TopNav({
       </div>
 
       <div className="flex items-center gap-3">
-        <CommandPalette orgId={orgId} />
+        <span data-tour="search" className="contents">
+          <CommandPalette orgId={orgId} />
+        </span>
         <Badge variant="secondary" className="hidden sm:inline-flex">
           {roleName}
         </Badge>
-        <NotificationBell orgId={orgId} initialNotifications={initialNotifications} initialUnreadCount={initialUnreadCount} />
+        <span data-tour="notifications" className="contents">
+          <NotificationBell orgId={orgId} initialNotifications={initialNotifications} initialUnreadCount={initialUnreadCount} />
+        </span>
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
+            <Button variant="ghost" size="icon" className="rounded-full" data-tour="user-menu">
               <Avatar className="size-8">
                 <AvatarFallback>{initials || "?"}</AvatarFallback>
               </Avatar>
@@ -133,6 +138,10 @@ export function TopNav({
                 <UserCog className="size-4" />
                 Account &amp; password
               </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => startProductTour()}>
+              <Compass className="size-4" />
+              Take a tour
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <form action={logoutAction} className="w-full">

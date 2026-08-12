@@ -3,6 +3,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db/prisma";
+import { requireVerifiedEmailPage } from "@/lib/auth/require-verified-page";
 import type { SessionMembership } from "@/lib/auth/types";
 import type { Session } from "next-auth";
 
@@ -29,6 +30,7 @@ export type OrgContext = {
 export const getOrgContext = cache(async (orgSlug: string): Promise<OrgContext> => {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  requireVerifiedEmailPage(session);
 
   const membership = session.memberships.find((m) => m.orgSlug === orgSlug);
   if (!membership) redirect("/orgs");

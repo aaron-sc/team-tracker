@@ -166,21 +166,33 @@ model Team {
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
-  passwordHash  String
-  name          String
-  avatarUrl     String?
-  phone         String?
-  discordHandle String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  lastLoginAt   DateTime?
+  passwordHash    String
+  name            String
+  avatarUrl       String?
+  phone           String?
+  discordHandle   String?
+  emailVerifiedAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastLoginAt     DateTime?
 
-  memberships         Membership[]
-  invitesSent         Invite[]             @relation("InvitedBy")
-  passwordResetTokens PasswordResetToken[]
+  memberships             Membership[]
+  invitesSent             Invite[]             @relation("InvitedBy")
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 }
 
 model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model EmailVerificationToken {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -2,6 +2,7 @@ import { getOrgContext } from "@/lib/org/context";
 import { prisma } from "@/lib/db/prisma";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { TopNav } from "@/components/layout/top-nav";
+import { ProductTourAutoStart } from "@/components/onboarding/product-tour";
 import { getContrastColor } from "@/lib/utils/color";
 
 export default async function OrgLayout({
@@ -34,6 +35,7 @@ export default async function OrgLayout({
 
   return (
     <div className="flex min-h-screen flex-1 flex-col" style={accentStyle}>
+      <ProductTourAutoStart />
       <TopNav
         orgName={org.name}
         orgSlug={org.slug}

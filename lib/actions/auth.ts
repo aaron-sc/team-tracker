@@ -17,6 +17,7 @@ import {
   changePasswordSchema,
 } from "@/lib/validations/auth";
 import { createNotification } from "@/lib/notifications/create";
+import { sendVerificationEmail } from "@/lib/actions/email-verification";
 
 async function notifyInviterOfAcceptance(invite: { orgId: string; invitedById: string | null }, newMemberName: string) {
   if (!invite.invitedById) return;
@@ -93,7 +94,7 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
   const slug = await generateUniqueOrgSlug(orgName);
   const passwordHash = await bcrypt.hash(password, 12);
 
-  await prisma.$transaction(async (tx) => {
+  const newUserId = await prisma.$transaction(async (tx) => {
     const org = await tx.organization.create({ data: { name: orgName, slug } });
     const user = await tx.user.create({ data: { name, email, passwordHash } });
 
@@ -115,7 +116,11 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
     await tx.membership.create({
       data: { userId: user.id, orgId: org.id, roleId: ownerRoleId! },
     });
+
+    return user.id;
   });
+
+  await sendVerificationEmail(newUserId, email, name);
 
   try {
     await signIn("credentials", { email, password, redirectTo: "/orgs" });
@@ -151,7 +156,9 @@ export async function acceptInviteAsNewUserAction(_prev: ActionState, formData: 
   const passwordHash = await bcrypt.hash(password, 12);
 
   await prisma.$transaction(async (tx) => {
-    const user = await tx.user.create({ data: { name, email: invite.email, passwordHash } });
+    const user = await tx.user.create({
+      data: { name, email: invite.email, passwordHash, emailVerifiedAt: new Date() },
+    });
     await tx.membership.create({
       data: { userId: user.id, orgId: invite.orgId, roleId: invite.roleId, invitedById: invite.invitedById },
     });

@@ -159,7 +159,9 @@ for these changes:
 
 The repo includes a `Dockerfile`, `docker-compose.yml`, and `Caddyfile` — this runs the app plus
 a Caddy reverse proxy that gets you HTTPS automatically (via Let's Encrypt) for free, no manual
-certificate handling.
+certificate handling. Caddy serves the app on `DOMAIN` and redirects the bare `APEX_DOMAIN` to
+it — handy if you're putting more than one tool on the same domain, each on its own subdomain
+(e.g. `formation.yourdomain.example`, `atlas.yourdomain.example`, …).
 
 On a fresh Ubuntu/Debian VM:
 
@@ -175,11 +177,12 @@ cd formation
 
 # 3. Configure
 cp .env.example .env
-nano .env   # set AUTH_SECRET, RESEND_API_KEY, EMAIL_FROM, AUTH_URL, APP_URL
-echo "DOMAIN=yourdomain.com" >> .env
+nano .env   # set AUTH_SECRET, RESEND_API_KEY, EMAIL_FROM, AUTH_URL, APP_URL, DOMAIN, APEX_DOMAIN
+# AUTH_URL and APP_URL should match DOMAIN, e.g. https://formation.yourdomain.example
 
-# 4. Point DNS
-# Add an A record: yourdomain.com -> this VM's public IP (at your registrar/Cloudflare DNS)
+# 4. Point DNS (at your registrar/Cloudflare DNS)
+# formation.yourdomain.example -> this VM's public IP  (A record)
+# yourdomain.example           -> this VM's public IP  (A record, if not already pointed here)
 
 # 5. Build and run
 docker compose up -d --build
@@ -188,8 +191,8 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-The app is now live at `https://yourdomain.com` — Caddy requests and renews the TLS certificate
-automatically once DNS resolves to the VM.
+The app is now live at `https://<DOMAIN>` — Caddy requests and renews TLS certificates
+automatically (for both `DOMAIN` and `APEX_DOMAIN`) once DNS resolves to the VM.
 
 **Seeding demo data** (optional, skip for a real deployment):
 `docker compose exec app npx prisma db seed`
