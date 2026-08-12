@@ -13,6 +13,7 @@ import { DuplicatePracticeButton } from "@/components/schedule/duplicate-practic
 import { getConflictsForSession } from "@/lib/availability/conflicts";
 import { venueDirectionsUrl } from "@/lib/utils/venue-directions";
 import { formatDateTimeLong } from "@/lib/utils/format-time";
+import { RefreshOnMount } from "@/components/ui/refresh-on-mount";
 import { Calendar, MapPin, Clock, Pencil, AlertTriangle, Navigation, CalendarPlus } from "lucide-react";
 
 export default async function PracticeSessionDetailPage({
@@ -44,6 +45,7 @@ export default async function PracticeSessionDetailPage({
 
   return (
     <div className="max-w-2xl space-y-6">
+      <RefreshOnMount />
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-semibold">
