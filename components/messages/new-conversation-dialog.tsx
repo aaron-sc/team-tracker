@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
 
-type OrgMember = { id: string; name: string; email: string };
+type OrgMember = { id: string; name: string; email: string | null };
 
 export function NewConversationDialog({
   orgSlug,
@@ -27,7 +27,7 @@ export function NewConversationDialog({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return members;
-    return members.filter((m) => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q));
+    return members.filter((m) => m.name.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q));
   }, [members, query]);
 
   return (
@@ -77,7 +77,7 @@ export function NewConversationDialog({
                 </Avatar>
                 <div>
                   <p className="font-medium">{m.name}</p>
-                  <p className="text-xs text-muted-foreground">{m.email}</p>
+                  {m.email ? <p className="text-xs text-muted-foreground">{m.email}</p> : null}
                 </div>
               </button>
             ))

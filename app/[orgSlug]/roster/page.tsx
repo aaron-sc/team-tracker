@@ -1,5 +1,6 @@
 import { getOrgContext } from "@/lib/org/context";
 import { prisma } from "@/lib/db/prisma";
+import { Permission } from "@/lib/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
 import { PrintButton } from "@/components/ui/print-button";
 import { RosterSearchList } from "@/components/roster/roster-search-list";
@@ -7,7 +8,8 @@ import { Download, Mail } from "lucide-react";
 
 export default async function RosterPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
-  const { org } = await getOrgContext(orgSlug);
+  const { org, membership } = await getOrgContext(orgSlug);
+  const canViewEmails = membership.permissions.includes(Permission.org_members_contact_view);
 
   const members = await prisma.membership.findMany({
     where: { orgId: org.id },
@@ -24,7 +26,7 @@ export default async function RosterPage({ params }: { params: Promise<{ orgSlug
           {members.length} member{members.length === 1 ? "" : "s"} in the organization
         </p>
         <div className="no-print flex gap-2">
-          {members.length > 0 ? (
+          {canViewEmails && members.length > 0 ? (
             <Button size="sm" variant="outline" asChild>
               <a href={mailtoHref}>
                 <Mail className="size-4" />
@@ -46,7 +48,7 @@ export default async function RosterPage({ params }: { params: Promise<{ orgSlug
         members={members.map((m) => ({
           id: m.id,
           name: m.user.name,
-          email: m.user.email,
+          email: canViewEmails ? m.user.email : null,
           avatarUrl: m.user.avatarUrl,
           roleName: m.role.name,
           roleColor: m.role.color,

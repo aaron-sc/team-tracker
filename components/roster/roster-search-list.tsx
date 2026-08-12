@@ -21,7 +21,7 @@ function initials(name: string) {
 type RosterMember = {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   avatarUrl: string | null;
   roleName: string;
   roleColor: string | null;
@@ -30,6 +30,7 @@ type RosterMember = {
 
 export function RosterSearchList({ orgSlug, members }: { orgSlug: string; members: RosterMember[] }) {
   const [query, setQuery] = useState("");
+  const canViewEmails = members.some((m) => m.email !== null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -37,7 +38,7 @@ export function RosterSearchList({ orgSlug, members }: { orgSlug: string; member
     return members.filter(
       (m) =>
         m.name.toLowerCase().includes(q) ||
-        m.email.toLowerCase().includes(q) ||
+        m.email?.toLowerCase().includes(q) ||
         m.roleName.toLowerCase().includes(q) ||
         m.teamNames.some((t) => t.toLowerCase().includes(q)),
     );
@@ -48,7 +49,7 @@ export function RosterSearchList({ orgSlug, members }: { orgSlug: string; member
       <div className="no-print relative mb-4 max-w-sm">
         <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search by name, email, role, or team…"
+          placeholder={canViewEmails ? "Search by name, email, role, or team…" : "Search by name, role, or team…"}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="pl-8"
@@ -70,7 +71,7 @@ export function RosterSearchList({ orgSlug, members }: { orgSlug: string; member
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">{m.name}</p>
-                    <p className="text-xs text-muted-foreground">{m.email}</p>
+                    {m.email ? <p className="text-xs text-muted-foreground">{m.email}</p> : null}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-1.5">

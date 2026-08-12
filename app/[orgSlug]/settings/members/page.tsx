@@ -31,6 +31,7 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
   const canManageRoles = membership.permissions.includes(Permission.org_members_manage);
   const canRemove = membership.permissions.includes(Permission.org_members_remove);
   const canInviteOwnTeams = membership.permissions.includes(Permission.team_members_invite) && membership.teamIds.length > 0;
+  const canViewEmails = membership.permissions.includes(Permission.org_members_contact_view);
   if (!canInvite && !canManageRoles && !canRemove && !canInviteOwnTeams) redirect(`/${orgSlug}/dashboard`);
 
   const inviteLinkTeamFilter = canInvite ? { orgId: org.id } : { orgId: org.id, id: { in: membership.teamIds } };
@@ -143,7 +144,9 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">{m.user.name}</p>
-                    <p className="text-xs text-muted-foreground">{m.user.email}</p>
+                    {canViewEmails || m.id === membership.membershipId ? (
+                      <p className="text-xs text-muted-foreground">{m.user.email}</p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getOrgContext } from "@/lib/org/context";
 import { prisma } from "@/lib/db/prisma";
+import { Permission } from "@/lib/generated/prisma/enums";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +19,7 @@ function initials(name: string) {
 export default async function MessagesPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { org, membership } = await getOrgContext(orgSlug);
+  const canViewEmails = membership.permissions.includes(Permission.org_members_contact_view);
 
   const [conversations, members] = await Promise.all([
     prisma.conversation.findMany({
@@ -56,7 +58,7 @@ export default async function MessagesPage({ params }: { params: Promise<{ orgSl
         <NewConversationDialog
           orgSlug={orgSlug}
           orgId={org.id}
-          members={members.map((m) => ({ id: m.id, name: m.user.name, email: m.user.email }))}
+          members={members.map((m) => ({ id: m.id, name: m.user.name, email: canViewEmails ? m.user.email : null }))}
         />
       </div>
 

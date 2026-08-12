@@ -82,6 +82,7 @@ enum Permission {
   org_members_manage
   org_members_invite
   org_members_remove
+  org_members_contact_view
   audit_log_view
 
   team_create

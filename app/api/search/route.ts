@@ -18,10 +18,14 @@ export async function GET(req: NextRequest) {
 
   const orgSlug = membership.orgSlug;
   const canViewRecruitment = membership.permissions.includes(Permission.recruitment_view);
+  const canViewEmails = membership.permissions.includes(Permission.org_members_contact_view);
 
   const [members, teams, venues, prospects] = await Promise.all([
     prisma.membership.findMany({
-      where: { orgId, user: { OR: [{ name: { contains: q } }, { email: { contains: q } }] } },
+      where: {
+        orgId,
+        user: canViewEmails ? { OR: [{ name: { contains: q } }, { email: { contains: q } }] } : { name: { contains: q } },
+      },
       include: { user: true },
       take: 6,
     }),
@@ -43,7 +47,7 @@ export async function GET(req: NextRequest) {
       type: "Member",
       id: m.id,
       label: m.user.name,
-      sublabel: m.user.email,
+      sublabel: canViewEmails ? m.user.email : undefined,
       href: `/${orgSlug}/roster/${m.id}`,
     })),
     ...teams.map((t) => ({ type: "Team", id: t.id, label: t.name, sublabel: t.game, href: `/${orgSlug}/teams/${t.slug}` })),

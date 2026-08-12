@@ -6,6 +6,7 @@ import { RoleBadge } from "@/components/ui/role-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Phone, MessageSquare, Calendar, ExternalLink } from "lucide-react";
 import { formatDate } from "@/lib/utils/format-time";
+import { Permission } from "@/lib/generated/prisma/enums";
 
 function initials(name: string) {
   return name
@@ -22,7 +23,7 @@ export default async function MemberProfilePage({
   params: Promise<{ orgSlug: string; membershipId: string }>;
 }) {
   const { orgSlug, membershipId } = await params;
-  const { session, org } = await getOrgContext(orgSlug);
+  const { session, org, membership: viewerMembership } = await getOrgContext(orgSlug);
   const viewerTz = session.user.timezone ?? org.timezone;
 
   const membership = await prisma.membership.findUnique({
@@ -30,6 +31,10 @@ export default async function MemberProfilePage({
     include: { user: true, role: true, teamMemberships: { include: { team: true } } },
   });
   if (!membership || membership.orgId !== org.id) notFound();
+
+  const canViewEmail =
+    viewerMembership.membershipId === membership.id ||
+    viewerMembership.permissions.includes(Permission.org_members_contact_view);
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -53,10 +58,12 @@ export default async function MemberProfilePage({
           <CardTitle className="text-base">Contact</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <Mail className="size-4 text-muted-foreground" />
-            {membership.user.email}
-          </div>
+          {canViewEmail ? (
+            <div className="flex items-center gap-2">
+              <Mail className="size-4 text-muted-foreground" />
+              {membership.user.email}
+            </div>
+          ) : null}
           {membership.user.phone ? (
             <div className="flex items-center gap-2">
               <Phone className="size-4 text-muted-foreground" />
