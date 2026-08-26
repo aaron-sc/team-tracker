@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { logoutAction } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
+import { CreateOrgDialog } from "@/components/auth/create-org-dialog";
 import { ShieldCheck } from "lucide-react";
 import { requireVerifiedEmailPage } from "@/lib/auth/require-verified-page";
 
@@ -32,13 +33,19 @@ export default async function OrgsPage() {
         </form>
       </div>
 
-      <h1 className="mb-1 text-2xl font-semibold">Your organizations</h1>
-      <p className="mb-6 text-muted-foreground">Pick an organization to continue.</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="mb-1 text-2xl font-semibold">Your organizations</h1>
+          <p className="text-muted-foreground">Pick an organization to continue.</p>
+        </div>
+        <CreateOrgDialog />
+      </div>
 
       {session.memberships.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            You&apos;re not a member of any organization yet. Ask your team admin for an invite link.
+            You&apos;re not a member of any organization yet. Ask your team admin for an invite link, or create your
+            own above.
           </CardContent>
         </Card>
       ) : (

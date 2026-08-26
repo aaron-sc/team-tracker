@@ -37,6 +37,7 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   "roster.member_added": "added a roster member",
   "roster.member_removed": "removed a roster member",
   "org.logo_updated": "updated the org logo",
+  "org.data_reset": "reset the organization's data",
   "invite.created": "invited a member",
   "member.removed": "removed a member",
   "team_invite_link.created": "created a team invite link",

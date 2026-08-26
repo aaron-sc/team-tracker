@@ -14,6 +14,7 @@ const ACTION_LABELS: Record<string, string> = {
   "member.role_changed": "Member role changed",
   "member.removed": "Member removed",
   "org.settings_updated": "Organization settings updated",
+  "org.data_reset": "Organization data reset",
 };
 
 export default async function AuditLogPage({ params }: { params: Promise<{ orgSlug: string }> }) {

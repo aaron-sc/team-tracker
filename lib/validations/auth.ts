@@ -38,6 +38,10 @@ export const updateNameSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters.").max(80),
 });
 
+export const createOrgSchema = z.object({
+  orgName: z.string().trim().min(2, "Organization name must be at least 2 characters.").max(80),
+});
+
 export const updateTimezoneSchema = z.object({
   timezone: z.string().trim().min(1, "Choose a timezone."),
 });

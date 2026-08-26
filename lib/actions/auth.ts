@@ -11,6 +11,7 @@ import { isReservedSlug, slugify } from "@/lib/utils/slug";
 import {
   loginSchema,
   signupSchema,
+  createOrgSchema,
   acceptInviteNewUserSchema,
   joinTeamNewUserSchema,
   requestPasswordResetSchema,
@@ -135,6 +136,46 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
     }
     throw error;
   }
+}
+
+/** Lets an already-logged-in user create and own a second (or third, ...) organization. */
+export async function createAdditionalOrgAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "You must be logged in." };
+  }
+
+  const parsed = createOrgSchema.safeParse({ orgName: formData.get("orgName") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  const slug = await generateUniqueOrgSlug(parsed.data.orgName);
+
+  await prisma.$transaction(async (tx) => {
+    const org = await tx.organization.create({ data: { name: parsed.data.orgName, slug } });
+
+    let ownerRoleId: string | null = null;
+    for (const [roleName, preset] of Object.entries(ROLE_PRESETS)) {
+      const role = await tx.role.create({
+        data: {
+          orgId: org.id,
+          name: roleName,
+          description: preset.description,
+          color: preset.color,
+          isSystem: true,
+          permissions: { create: preset.permissions.map((permission) => ({ permission })) },
+        },
+      });
+      if (roleName === "Owner") ownerRoleId = role.id;
+    }
+
+    await tx.membership.create({
+      data: { userId: session.user.id, orgId: org.id, roleId: ownerRoleId! },
+    });
+  });
+
+  redirect(`/${slug}/dashboard`);
 }
 
 export async function acceptInviteAsNewUserAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

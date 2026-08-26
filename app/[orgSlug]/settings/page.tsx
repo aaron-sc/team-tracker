@@ -3,6 +3,7 @@ import { requirePagePermission } from "@/lib/org/require-permission-page";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { OrgProfileForm } from "@/components/settings/org-profile-form";
 import { OrgLogoForm } from "@/components/settings/org-logo-form";
+import { ResetOrgDataDialog } from "@/components/settings/reset-org-data-dialog";
 import { Button } from "@/components/ui/button";
 import { DatabaseBackup } from "lucide-react";
 import { getTimezones } from "@/lib/utils/timezones";
@@ -11,6 +12,7 @@ export default async function OrgSettingsPage({ params }: { params: Promise<{ or
   const { orgSlug } = await params;
   const { org, membership } = await getOrgContext(orgSlug);
   requirePagePermission(orgSlug, membership, Permission.org_settings_manage);
+  const canResetData = membership.permissions.includes(Permission.org_data_reset);
 
   return (
     <div className="space-y-8">
@@ -49,6 +51,17 @@ export default async function OrgSettingsPage({ params }: { params: Promise<{ or
           </a>
         </Button>
       </div>
+
+      {canResetData ? (
+        <div className="rounded-lg border border-destructive/30 p-4">
+          <h2 className="mb-1 text-lg font-medium text-destructive">Danger zone</h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Reset this organization&apos;s roster, schedule, recruitment pipeline, messages, and announcements —
+            useful for starting a new season clean. Export a backup first if you want to keep a copy.
+          </p>
+          <ResetOrgDataDialog orgSlug={orgSlug} orgId={org.id} orgName={org.name} />
+        </div>
+      ) : null}
     </div>
   );
 }

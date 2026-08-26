@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import {
   DropdownMenu,
@@ -12,12 +13,13 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronsUpDown, ShieldCheck, LogOut, Check, UserCog, Compass } from "lucide-react";
+import { ChevronsUpDown, ShieldCheck, LogOut, Check, UserCog, Compass, Plus } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { KeyboardShortcutsDialog } from "@/components/layout/keyboard-shortcuts-dialog";
+import { CreateOrgDialog } from "@/components/auth/create-org-dialog";
 import { startProductTour } from "@/components/onboarding/product-tour";
 
 type OrgOption = { orgId: string; orgSlug: string; orgName: string; orgLogoUrl: string | null; roleName: string };
@@ -62,6 +64,7 @@ export function TopNav({
     .slice(0, 2)
     .join("")
     .toUpperCase();
+  const [createOrgOpen, setCreateOrgOpen] = useState(false);
 
   return (
     <header className="flex h-14 items-center justify-between border-b bg-background px-4">
@@ -76,39 +79,46 @@ export function TopNav({
             <img src={orgLogoUrl} alt={orgName} className="size-full object-contain" />
           </span>
         ) : null}
-        {orgOptions.length > 1 ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                {orgName}
-                <ChevronsUpDown className="size-3.5 text-muted-foreground" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuLabel>Switch organization</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {orgOptions.map((o) => (
-                <DropdownMenuItem key={o.orgId} asChild>
-                  <Link href={`/${o.orgSlug}/dashboard`} className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      {o.orgLogoUrl ? (
-                        <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded border bg-background">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={o.orgLogoUrl} alt="" className="size-full object-contain" />
-                        </span>
-                      ) : null}
-                      {o.orgName}
-                    </span>
-                    {o.orgSlug === orgSlug ? <Check className="size-4" /> : null}
-                  </Link>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <span className="text-sm font-medium text-muted-foreground">{orgName}</span>
-        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1.5">
+              {orgName}
+              <ChevronsUpDown className="size-3.5 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuLabel>Switch organization</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {orgOptions.map((o) => (
+              <DropdownMenuItem key={o.orgId} asChild>
+                <Link href={`/${o.orgSlug}/dashboard`} className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    {o.orgLogoUrl ? (
+                      <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded border bg-background">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={o.orgLogoUrl} alt="" className="size-full object-contain" />
+                      </span>
+                    ) : null}
+                    {o.orgName}
+                  </span>
+                  {o.orgSlug === orgSlug ? <Check className="size-4" /> : null}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                setCreateOrgOpen(true);
+              }}
+            >
+              <Plus className="size-4" />
+              Create new organization
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+      <CreateOrgDialog open={createOrgOpen} onOpenChange={setCreateOrgOpen} />
 
       <div className="flex items-center gap-3">
         <span data-tour="search" className="contents">
