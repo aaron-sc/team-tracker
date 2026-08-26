@@ -1,4 +1,5 @@
 import { getOrgContext } from "@/lib/org/context";
+import { requireOnboardingCompletePage } from "@/lib/onboarding/gate";
 import { requirePagePermission } from "@/lib/org/require-permission-page";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { OrgProfileForm } from "@/components/settings/org-profile-form";
@@ -11,6 +12,7 @@ import { getTimezones } from "@/lib/utils/timezones";
 export default async function OrgSettingsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { org, membership } = await getOrgContext(orgSlug);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
   requirePagePermission(orgSlug, membership, Permission.org_settings_manage);
   const canResetData = membership.permissions.includes(Permission.org_data_reset);
 

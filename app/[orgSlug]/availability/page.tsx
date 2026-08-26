@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getOrgContext } from "@/lib/org/context";
+import { requireOnboardingCompletePage } from "@/lib/onboarding/gate";
 import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,7 @@ const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export default async function AvailabilityPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { session, org, membership } = await getOrgContext(orgSlug);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
   const myTimezone = session.user.timezone ?? org.timezone;
 
   const canManageSelf = membership.permissions.includes(Permission.availability_manage_self);

@@ -17,9 +17,9 @@ async function resolveOpponent(orgId: string, opponentId: string, newOpponentNam
   return opponent.id;
 }
 
-function parseSessionForm(formData: FormData) {
+function parseSessionForm(formData: FormData, fallbackTeamId?: string) {
   return practiceSessionSchema.safeParse({
-    teamId: formData.get("teamId"),
+    teamId: formData.get("teamId") ?? fallbackTeamId,
     type: formData.get("type"),
     opponentId: formData.get("opponentId") ?? "",
     newOpponentName: formData.get("newOpponentName") ?? "",
@@ -97,7 +97,7 @@ export async function updatePracticeSessionAction(
   const session = await prisma.practiceSession.findUnique({ where: { id: sessionId }, include: { team: true } });
   if (!session || session.team.orgId !== orgId) return { error: "Session not found." };
 
-  const parsed = parseSessionForm(formData);
+  const parsed = parseSessionForm(formData, session.teamId);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }

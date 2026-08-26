@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getOrgContext } from "@/lib/org/context";
+import { requireOnboardingCompletePage } from "@/lib/onboarding/gate";
 import { requirePagePermission } from "@/lib/org/require-permission-page";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
@@ -30,6 +31,7 @@ export default async function RecruitmentPage({
   const { orgSlug } = await params;
   const { level } = await searchParams;
   const { org, membership } = await getOrgContext(orgSlug);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
   requirePagePermission(orgSlug, membership, Permission.recruitment_view);
 
   const canManage = membership.permissions.includes(Permission.recruitment_manage);

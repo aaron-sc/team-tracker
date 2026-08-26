@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getOrgContext } from "@/lib/org/context";
+import { requireOnboardingCompletePage } from "@/lib/onboarding/gate";
 import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ function teamInitials(name: string) {
 export default async function TeamsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { org, membership } = await getOrgContext(orgSlug);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
 
   const teams = await prisma.team.findMany({
     where: { orgId: org.id },

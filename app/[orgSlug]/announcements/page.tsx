@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getOrgContext } from "@/lib/org/context";
+import { requireOnboardingCompletePage } from "@/lib/onboarding/gate";
 import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { formatDate } from "@/lib/utils/format-time";
 export default async function AnnouncementsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { session, org, membership, teams } = await getOrgContext(orgSlug);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
   const viewerTz = session.user.timezone ?? org.timezone;
 
   const announcements = await prisma.announcement.findMany({

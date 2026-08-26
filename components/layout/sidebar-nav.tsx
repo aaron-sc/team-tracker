@@ -15,6 +15,7 @@ import {
   Megaphone,
   MessageCircle,
   Settings,
+  GraduationCap,
 } from "lucide-react";
 
 const SETTINGS_PERMISSIONS: Permission[] = [
@@ -23,6 +24,7 @@ const SETTINGS_PERMISSIONS: Permission[] = [
   Permission.org_members_manage,
   Permission.org_members_invite,
   Permission.audit_log_view,
+  Permission.onboarding_manage,
 ];
 
 export function SidebarNav({ orgSlug, permissions }: { orgSlug: string; permissions: Permission[] }) {
@@ -48,6 +50,7 @@ export function SidebarNav({ orgSlug, permissions }: { orgSlug: string; permissi
     },
     { href: `${base}/announcements`, label: "Announcements", icon: Megaphone, show: true, tour: undefined },
     { href: `${base}/messages`, label: "Messages", icon: MessageCircle, show: true, tour: "nav-messages" },
+    { href: `${base}/onboarding`, label: "Onboarding", icon: GraduationCap, show: true, tour: undefined },
     {
       href: `${base}/settings`,
       label: "Settings",

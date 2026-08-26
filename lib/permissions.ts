@@ -61,6 +61,10 @@ export const PERMISSION_GROUPS: { label: string; permissions: Permission[] }[] =
     label: "Notifications",
     permissions: [Permission.notification_send_broadcast],
   },
+  {
+    label: "Onboarding",
+    permissions: [Permission.onboarding_manage],
+  },
 ];
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
@@ -97,6 +101,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   announcement_pin: "Pin announcements",
   announcement_delete: "Delete announcements",
   notification_send_broadcast: "Send broadcast notifications",
+  onboarding_manage: "Manage onboarding tasks (create/edit/delete, required for new members)",
 };
 
 /** Default permission grants for system-seeded roles, applied at org creation time. */

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getOrgContext } from "@/lib/org/context";
+import { requireOnboardingCompletePage } from "@/lib/onboarding/gate";
 import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 export default async function VenuesPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { org, membership } = await getOrgContext(orgSlug);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
 
   const venues = await prisma.venue.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } });
 

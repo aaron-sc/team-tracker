@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { addMonths, addWeeks, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, subMonths, subWeeks } from "date-fns";
 import { getOrgContext } from "@/lib/org/context";
+import { requireOnboardingCompletePage } from "@/lib/onboarding/gate";
 import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ export default async function SchedulePage({
   const { orgSlug } = await params;
   const { view = "month", date, team } = await searchParams;
   const { session, org, membership, teams } = await getOrgContext(orgSlug);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
   const viewerTz = session.user.timezone ?? org.timezone;
 
   const anchor = date ? new Date(`${date}T00:00:00`) : new Date();

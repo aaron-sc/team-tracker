@@ -76,6 +76,14 @@ enum ProspectStage {
   PASSED
 }
 
+enum OnboardingTaskType {
+  ACKNOWLEDGE
+  DOCUMENT
+  LINK
+  VIDEO
+  SIGNATURE
+}
+
 enum Permission {
   org_settings_manage
   org_roles_manage
@@ -117,6 +125,8 @@ enum Permission {
   announcement_delete
 
   notification_send_broadcast
+
+  onboarding_manage
 }
 
 // ---------- Core tenancy ----------
@@ -145,6 +155,7 @@ model Organization {
   prospectLevels ProspectLevel[]
   conversations Conversation[]
   teamInviteLinks TeamInviteLink[]
+  onboardingTasks OnboardingTask[]
 }
 
 model Team {
@@ -261,6 +272,8 @@ model Membership {
   conversationsAsB       Conversation[]          @relation("ConversationMemberB")
   sentMessages           Message[]               @relation("MessageSender")
   createdTeamInviteLinks TeamInviteLink[]
+  createdOnboardingTasks OnboardingTask[]
+  onboardingCompletions  OnboardingCompletion[]
 
   @@unique([userId, orgId])
 }
@@ -571,4 +584,43 @@ model Message {
   readAt         DateTime?
 
   @@index([conversationId, createdAt])
+}
+
+// ---------- HR / onboarding ----------
+
+model OnboardingTask {
+  id          String             @id @default(cuid())
+  orgId       String
+  org         Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  type        OnboardingTaskType @default(ACKNOWLEDGE)
+  url         String?
+  body        String?
+  required    Boolean            @default(true)
+  order       Int                @default(0)
+  active      Boolean            @default(true)
+  createdById String?
+  createdBy   Membership?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  completions OnboardingCompletion[]
+}
+
+// One row per member per task, created the moment they complete/sign it.
+// signedSnapshot freezes the exact document text at signing time, so an
+// e-signature stays provably tied to what was actually agreed to even if the
+// task's body is edited afterward.
+model OnboardingCompletion {
+  id             String         @id @default(cuid())
+  taskId         String
+  task           OnboardingTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  membershipId   String
+  membership     Membership     @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  completedAt    DateTime       @default(now())
+  signatureName  String?
+  signedSnapshot String?
+
+  @@unique([taskId, membershipId])
 }
