@@ -8,7 +8,7 @@ import { logAudit } from "@/lib/audit/log";
 import { announcementSchema } from "@/lib/validations/announcement";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
-import { notifyDiscord, FORMATION_EMBED_COLOR } from "@/lib/integrations/discord";
+import { notifyDiscord, FORMATION_EMBED_COLOR, roleMentionPrefix } from "@/lib/integrations/discord";
 
 export async function createAnnouncementAction(orgSlug: string, orgId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const { session, membership } = await requirePermission(orgId, Permission.announcement_create);
@@ -36,8 +36,23 @@ export async function createAnnouncementAction(orgSlug: string, orgId: string, _
     },
   });
 
-  const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { discordWebhookUrl: true } });
-  await notifyDiscord(org?.discordWebhookUrl, {
+  let webhookUrl: string | null | undefined;
+  let mentionRoleId: string | null | undefined;
+  if (parsed.data.teamId) {
+    const team = await prisma.team.findUnique({
+      where: { id: parsed.data.teamId },
+      select: { discordWebhookUrl: true, discordMentionRoleId: true },
+    });
+    webhookUrl = team?.discordWebhookUrl;
+    mentionRoleId = team?.discordMentionRoleId;
+  }
+  if (!webhookUrl) {
+    const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { discordWebhookUrl: true } });
+    webhookUrl = org?.discordWebhookUrl;
+    mentionRoleId = null;
+  }
+  await notifyDiscord(webhookUrl, {
+    content: roleMentionPrefix(mentionRoleId) || undefined,
     embeds: [
       {
         title: parsed.data.title,

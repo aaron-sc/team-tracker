@@ -169,6 +169,12 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  discordWebhookUrl               String?
+  discordMentionRoleId            String?
+  discordMatchReminderMinutes     Int?
+  discordPracticeReminderMinutes  Int?
+  discordScrimReminderMinutes     Int?
+
   teamMemberships  TeamMembership[]
   matches          Match[]
   practiceSessions PracticeSession[]
@@ -368,6 +374,7 @@ model Match {
   scoreFor       Int?
   scoreAgainst   Int?
   notes          String?
+  reminderSentAt DateTime?
   createdById    String
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -414,6 +421,7 @@ model PracticeSession {
   venueId         String?
   venue           Venue?       @relation(fields: [venueId], references: [id])
   notes           String?
+  reminderSentAt  DateTime?
   createdById     String
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt

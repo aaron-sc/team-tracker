@@ -1,5 +1,15 @@
 import "server-only";
 
+export const DISCORD_WEBHOOK_PATTERN = /^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\/\d+\/[\w-]+$/;
+
+// Discord snowflake IDs (roles, users, etc.) are 17-20 digit integers.
+export const DISCORD_SNOWFLAKE_PATTERN = /^\d{17,20}$/;
+
+/** `<@&roleId>` mention syntax, which Discord parses and pings by default (no allowed_mentions override needed). */
+export function roleMentionPrefix(roleId: string | null | undefined): string {
+  return roleId ? `<@&${roleId}> ` : "";
+}
+
 type DiscordEmbed = {
   title?: string;
   description?: string;

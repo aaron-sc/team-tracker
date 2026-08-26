@@ -9,7 +9,7 @@ import { logAudit } from "@/lib/audit/log";
 import { matchSchema, matchResultSchema } from "@/lib/validations/match";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
-import { notifyDiscord, FORMATION_EMBED_COLOR } from "@/lib/integrations/discord";
+import { notifyDiscord, FORMATION_EMBED_COLOR, roleMentionPrefix } from "@/lib/integrations/discord";
 
 async function resolveOpponent(orgId: string, opponentId: string, newOpponentName: string): Promise<string | null> {
   if (opponentId) return opponentId;
@@ -111,11 +111,14 @@ export async function updateMatchAction(
   const opponentId = await resolveOpponent(orgId, parsed.data.opponentId ?? "", parsed.data.newOpponentName ?? "");
   if (!opponentId) return { error: "Choose an opponent or enter a new one." };
 
+  const newScheduledAt = fromZonedTime(parsed.data.scheduledAt, match.timezone);
+  const rescheduled = newScheduledAt.getTime() !== match.scheduledAt.getTime();
+
   await prisma.match.update({
     where: { id: matchId },
     data: {
       opponentId,
-      scheduledAt: fromZonedTime(parsed.data.scheduledAt, match.timezone),
+      scheduledAt: newScheduledAt,
       format: parsed.data.format,
       locationType: parsed.data.locationType,
       venueId: parsed.data.locationType === "LAN" ? parsed.data.venueId || null : null,
@@ -124,6 +127,7 @@ export async function updateMatchAction(
       streamUrl: parsed.data.isStreamed ? parsed.data.streamUrl || null : null,
       casterName: parsed.data.isStreamed ? parsed.data.casterName || null : null,
       notes: parsed.data.notes || null,
+      reminderSentAt: rescheduled ? null : undefined,
     },
   });
 
@@ -174,13 +178,19 @@ export async function recordMatchResultAction(
   });
 
   if (parsed.data.status === "COMPLETED" && parsed.data.resultStatus) {
-    const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { discordWebhookUrl: true } });
+    let webhookUrl: string | null | undefined = match.team.discordWebhookUrl;
+    const mentionRoleId: string | null = match.team.discordWebhookUrl ? match.team.discordMentionRoleId : null;
+    if (!webhookUrl) {
+      const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { discordWebhookUrl: true } });
+      webhookUrl = org?.discordWebhookUrl;
+    }
     const resultLabel = { WIN: "🏆 Win", LOSS: "❌ Loss", DRAW: "🤝 Draw" }[parsed.data.resultStatus];
     const score =
       typeof parsed.data.scoreFor === "number" && typeof parsed.data.scoreAgainst === "number"
         ? `${parsed.data.scoreFor} - ${parsed.data.scoreAgainst}`
         : undefined;
-    await notifyDiscord(org?.discordWebhookUrl, {
+    await notifyDiscord(webhookUrl, {
+      content: roleMentionPrefix(mentionRoleId) || undefined,
       embeds: [
         {
           title: `${match.team.name} vs ${match.opponent.name}: ${resultLabel}`,

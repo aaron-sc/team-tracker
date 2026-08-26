@@ -6,9 +6,7 @@ import { requirePermission } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
-import { sendDiscordWebhook, FORMATION_EMBED_COLOR } from "@/lib/integrations/discord";
-
-const DISCORD_WEBHOOK_PATTERN = /^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\/\d+\/[\w-]+$/;
+import { sendDiscordWebhook, FORMATION_EMBED_COLOR, DISCORD_WEBHOOK_PATTERN } from "@/lib/integrations/discord";
 
 export async function saveDiscordWebhookAction(
   orgSlug: string,

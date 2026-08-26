@@ -108,16 +108,20 @@ export async function updatePracticeSessionAction(
     if (!opponentId) return { error: "Choose an opponent for a scrim." };
   }
 
+  const newScheduledAt = fromZonedTime(parsed.data.scheduledAt, session.timezone);
+  const rescheduled = newScheduledAt.getTime() !== session.scheduledAt.getTime();
+
   await prisma.practiceSession.update({
     where: { id: sessionId },
     data: {
       type: parsed.data.type,
       opponentId,
-      scheduledAt: fromZonedTime(parsed.data.scheduledAt, session.timezone),
+      scheduledAt: newScheduledAt,
       durationMinutes: parsed.data.durationMinutes,
       locationType: parsed.data.locationType,
       venueId: parsed.data.locationType === "LAN" ? parsed.data.venueId || null : null,
       notes: parsed.data.notes || null,
+      reminderSentAt: rescheduled ? null : undefined,
     },
   });
 

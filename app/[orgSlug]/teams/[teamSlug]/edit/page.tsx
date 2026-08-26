@@ -5,6 +5,7 @@ import { Permission } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
 import { TeamForm } from "@/components/teams/team-form";
 import { TeamLogoForm } from "@/components/teams/team-logo-form";
+import { TeamDiscordPanel } from "@/components/teams/team-discord-panel";
 import { updateTeamAction } from "@/lib/actions/teams";
 import { DeleteTeamButton } from "@/components/teams/delete-team-button";
 
@@ -34,6 +35,24 @@ export default async function EditTeamPage({
         </div>
 
         <TeamForm action={action} defaultValues={{ name: team.name, game: team.game }} />
+      </div>
+
+      <div>
+        <h2 className="mb-1 text-sm font-medium">Discord notifications</h2>
+        <p className="mb-3 text-sm text-muted-foreground">
+          Post this team&apos;s announcements and send reminders before matches, practices, and scrims to a Discord
+          channel.
+        </p>
+        <TeamDiscordPanel
+          orgSlug={orgSlug}
+          orgId={org.id}
+          teamId={team.id}
+          webhookUrl={team.discordWebhookUrl}
+          mentionRoleId={team.discordMentionRoleId}
+          matchReminderMinutes={team.discordMatchReminderMinutes}
+          practiceReminderMinutes={team.discordPracticeReminderMinutes}
+          scrimReminderMinutes={team.discordScrimReminderMinutes}
+        />
       </div>
 
       {canDelete ? (

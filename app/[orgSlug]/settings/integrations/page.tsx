@@ -21,7 +21,9 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ o
       <div>
         <h2 className="mb-1 text-lg font-medium">Discord</h2>
         <p className="mb-4 text-sm text-muted-foreground">
-          Post new announcements and match results to a Discord channel via an incoming webhook.
+          Post new announcements and match results to a Discord channel via an incoming webhook. Used whenever a
+          team doesn&apos;t have its own webhook configured — set one per team on that team&apos;s edit page for
+          match/practice/scrim reminders and a dedicated channel.
         </p>
         <DiscordPanel orgSlug={orgSlug} orgId={org.id} webhookUrl={fullOrg.discordWebhookUrl} />
       </div>
