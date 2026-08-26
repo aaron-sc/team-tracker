@@ -32,7 +32,7 @@ export default async function MemberProfilePage({
   });
   if (!membership || membership.orgId !== org.id) notFound();
 
-  const canViewEmail =
+  const canViewContactInfo =
     viewerMembership.membershipId === membership.id ||
     viewerMembership.permissions.includes(Permission.org_members_contact_view);
 
@@ -58,13 +58,13 @@ export default async function MemberProfilePage({
           <CardTitle className="text-base">Contact</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          {canViewEmail ? (
+          {canViewContactInfo ? (
             <div className="flex items-center gap-2">
               <Mail className="size-4 text-muted-foreground" />
               {membership.user.email}
             </div>
           ) : null}
-          {membership.user.phone ? (
+          {canViewContactInfo && membership.user.phone ? (
             <div className="flex items-center gap-2">
               <Phone className="size-4 text-muted-foreground" />
               {membership.user.phone}

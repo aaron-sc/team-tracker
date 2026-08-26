@@ -310,7 +310,7 @@ model TeamInviteLink {
   role        Role         @relation(fields: [roleId], references: [id])
   token       String       @unique
   createdById String
-  createdBy   Membership   @relation(fields: [createdById], references: [id])
+  createdBy   Membership   @relation(fields: [createdById], references: [id], onDelete: Cascade)
   expiresAt   DateTime?
   revokedAt   DateTime?
   useCount    Int          @default(0)
@@ -481,7 +481,7 @@ model RecruitmentProspect {
   socialLinks            Json?
   notes                  String?
   assignedToMembershipId String?
-  assignedTo             Membership?   @relation(fields: [assignedToMembershipId], references: [id])
+  assignedTo             Membership?   @relation(fields: [assignedToMembershipId], references: [id], onDelete: SetNull)
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
 
@@ -494,8 +494,8 @@ model ProspectStatusHistory {
   prospect    RecruitmentProspect  @relation(fields: [prospectId], references: [id], onDelete: Cascade)
   fromStage   ProspectStage?
   toStage     ProspectStage
-  changedById String
-  changedBy   Membership           @relation(fields: [changedById], references: [id])
+  changedById String?
+  changedBy   Membership?          @relation(fields: [changedById], references: [id], onDelete: SetNull)
   note        String?
   changedAt   DateTime             @default(now())
 }
@@ -508,8 +508,8 @@ model Announcement {
   org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   teamId    String?
   team      Team?        @relation(fields: [teamId], references: [id])
-  authorId  String
-  author    Membership   @relation(fields: [authorId], references: [id])
+  authorId  String?
+  author    Membership?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
   title     String
   body      String
   pinned    Boolean      @default(false)
@@ -522,7 +522,7 @@ model AuditLog {
   orgId             String
   org               Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   actorMembershipId String?
-  actorMembership   Membership?  @relation(fields: [actorMembershipId], references: [id])
+  actorMembership   Membership?  @relation(fields: [actorMembershipId], references: [id], onDelete: SetNull)
   action            String
   targetType        String
   targetId          String

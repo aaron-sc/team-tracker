@@ -62,7 +62,7 @@ export default async function AnnouncementsPage({ params }: { params: Promise<{ 
                     {a.title}
                   </CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {a.author.user.name} · {formatDate(a.createdAt, viewerTz)}
+                    {a.author?.user.name ?? "Former member"} · {formatDate(a.createdAt, viewerTz)}
                     {a.team ? (
                       <>
                         {" "}

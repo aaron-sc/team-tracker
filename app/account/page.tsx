@@ -9,6 +9,8 @@ import { UpdateNameForm } from "@/components/account/update-name-form";
 import { UpdateTimezoneForm } from "@/components/account/update-timezone-form";
 import { UpdateProfileDetailsForm } from "@/components/account/update-profile-details-form";
 import { AvatarUploadForm } from "@/components/account/avatar-upload-form";
+import { LeaveOrgButton } from "@/components/account/leave-org-button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { requireVerifiedEmailPage } from "@/lib/auth/require-verified-page";
 import { getTimezones } from "@/lib/utils/timezones";
@@ -75,6 +77,44 @@ export default async function AccountPage() {
           </CardHeader>
           <CardContent>
             <UpdateTimezoneForm currentTimezone={user.timezone} timezones={getTimezones()} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Your organizations</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {session.memberships.length === 0 ? (
+              <p className="text-sm text-muted-foreground">You&apos;re not a member of any organization.</p>
+            ) : (
+              session.memberships.map((m) => (
+                <div key={m.orgId} className="flex items-center justify-between gap-3 rounded-md border p-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <Avatar className="size-8 rounded-md">
+                      {m.orgLogoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={m.orgLogoUrl} alt={m.orgName} className="size-full rounded-md object-cover" />
+                      ) : (
+                        <AvatarFallback className="rounded-md text-xs">
+                          {m.orgName
+                            .split(" ")
+                            .map((p) => p[0])
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-medium">{m.orgName}</p>
+                      <p className="text-xs text-muted-foreground">{m.roleName}</p>
+                    </div>
+                  </div>
+                  <LeaveOrgButton orgId={m.orgId} orgName={m.orgName} />
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
 

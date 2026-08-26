@@ -13,6 +13,7 @@ const ACTION_LABELS: Record<string, string> = {
   "invite.revoked": "Invite revoked",
   "member.role_changed": "Member role changed",
   "member.removed": "Member removed",
+  "member.left": "Member left",
   "org.settings_updated": "Organization settings updated",
   "org.data_reset": "Organization data reset",
 };

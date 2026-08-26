@@ -40,6 +40,7 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   "org.data_reset": "reset the organization's data",
   "invite.created": "invited a member",
   "member.removed": "removed a member",
+  "member.left": "left the organization",
   "team_invite_link.created": "created a team invite link",
 };
 
@@ -380,7 +381,11 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
               recentActivity.map((entry) => (
                 <div key={entry.id} className="flex items-center justify-between border-b pb-2 text-sm last:border-0 last:pb-0">
                   <span>
-                    <span className="font-medium">{entry.actorMembership?.user.name ?? "Someone"}</span>{" "}
+                    <span className="font-medium">
+                      {entry.actorMembership?.user.name ??
+                        (entry.metadata as { memberName?: string } | null)?.memberName ??
+                        "Someone"}
+                    </span>{" "}
                     {AUDIT_ACTION_LABELS[entry.action] ?? entry.action}
                   </span>
                   <span className="shrink-0 text-xs text-muted-foreground">

@@ -169,7 +169,7 @@ export default async function ProspectDetailPage({
                 {h.note ? ` — ${h.note}` : ""}
               </span>
               <span className="text-xs text-muted-foreground">
-                {h.changedBy.user.name} · {formatDate(h.changedAt, viewerTz)}
+                {h.changedBy?.user.name ?? "Former member"} · {formatDate(h.changedAt, viewerTz)}
               </span>
             </div>
           ))}

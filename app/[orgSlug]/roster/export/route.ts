@@ -11,7 +11,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ orgSlug
 
   const membership = session.memberships.find((m) => m.orgSlug === orgSlug);
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const canViewEmails = membership.permissions.includes(Permission.org_members_contact_view);
+  const canViewContactInfo = membership.permissions.includes(Permission.org_members_contact_view);
 
   const members = await prisma.membership.findMany({
     where: { orgId: membership.orgId },
@@ -23,10 +23,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ orgSlug
     ["Name", "Email", "Role", "Teams", "Phone", "Discord", "Joined"],
     members.map((m) => [
       m.user.name,
-      canViewEmails ? m.user.email : "",
+      canViewContactInfo ? m.user.email : "",
       m.role.name,
       m.teamMemberships.map((tm) => tm.team.name).join("; "),
-      m.user.phone ?? "",
+      canViewContactInfo ? (m.user.phone ?? "") : "",
       m.user.discordHandle ?? "",
       m.joinedAt.toISOString().slice(0, 10),
     ]),
