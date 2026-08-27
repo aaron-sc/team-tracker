@@ -14,11 +14,9 @@ export const onboardingTaskSchema = z
   .refine((data) => data.type !== "LINK" && data.type !== "VIDEO" ? true : !!data.url, {
     message: "A link or video task needs a URL.",
     path: ["url"],
-  })
-  .refine((data) => (data.type !== "SIGNATURE" ? true : !!data.body), {
-    message: "A signature task needs document text for people to sign.",
-    path: ["body"],
   });
+  // Note: SIGNATURE tasks need document text and/or an uploaded file — checked in the action,
+  // since file presence isn't known from these text-only form fields.
 
 export const completeTaskSchema = z.object({
   signatureName: z.string().trim().max(120).optional().or(z.literal("")),

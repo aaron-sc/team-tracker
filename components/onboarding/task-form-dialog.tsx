@@ -29,6 +29,7 @@ type Defaults = {
   url?: string;
   body?: string;
   required?: boolean;
+  fileName?: string | null;
 };
 
 export function TaskFormDialog({
@@ -136,10 +137,29 @@ export function TaskFormDialog({
           ) : null}
 
           {type === "SIGNATURE" ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="body">Document text to sign</Label>
-              <Textarea id="body" name="body" defaultValue={defaultValues?.body} rows={8} required />
-            </div>
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="body">Document text to sign (optional if a file is attached)</Label>
+                <Textarea id="body" name="body" defaultValue={defaultValues?.body} rows={6} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="file">Attach a file to sign (PDF, Word, or text — optional)</Label>
+                <Input id="file" name="file" type="file" accept=".pdf,.doc,.docx,.txt" />
+                {defaultValues?.fileName ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>Current file: {defaultValues.fileName}</span>
+                    <Label htmlFor="removeFile" className="flex cursor-pointer items-center gap-1.5 font-normal">
+                      <Checkbox id="removeFile" name="removeFile" className="size-3.5" />
+                      Remove
+                    </Label>
+                  </div>
+                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  Uploading a new file replaces the current one. People sign a permanent snapshot of whatever file is
+                  attached at the moment they sign — later replacing it doesn&apos;t change what past signers agreed to.
+                </p>
+              </div>
+            </>
           ) : null}
 
           <div className="flex items-center gap-2">

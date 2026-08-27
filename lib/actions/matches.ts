@@ -10,6 +10,7 @@ import { matchSchema, matchResultSchema } from "@/lib/validations/match";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
 import { notifyDiscord, FORMATION_EMBED_COLOR, roleMentionPrefix } from "@/lib/integrations/discord";
+import { getBaseUrl } from "@/lib/utils/base-url";
 
 async function resolveOpponent(orgId: string, opponentId: string, newOpponentName: string): Promise<string | null> {
   if (opponentId) return opponentId;
@@ -189,11 +190,13 @@ export async function recordMatchResultAction(
       typeof parsed.data.scoreFor === "number" && typeof parsed.data.scoreAgainst === "number"
         ? `${parsed.data.scoreFor} - ${parsed.data.scoreAgainst}`
         : undefined;
+    const baseUrl = await getBaseUrl();
     await notifyDiscord(webhookUrl, {
       content: roleMentionPrefix(mentionRoleId) || undefined,
       embeds: [
         {
           title: `${match.team.name} vs ${match.opponent.name}: ${resultLabel}`,
+          url: `${baseUrl}/${orgSlug}/schedule/matches/${matchId}`,
           description: score ? `Final score: **${score}**` : undefined,
           color:
             parsed.data.resultStatus === "WIN" ? 0x22c55e : parsed.data.resultStatus === "LOSS" ? 0xef4444 : FORMATION_EMBED_COLOR,

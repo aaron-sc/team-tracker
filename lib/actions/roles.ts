@@ -69,7 +69,7 @@ export async function updateRoleAction(
   }
 
   const parsed = roleSchema.safeParse({
-    name: formData.get("name"),
+    name: formData.get("name") ?? role.name,
     description: formData.get("description") ?? "",
     color: formData.get("color") ?? "",
     permissions: formData.getAll("permissions"),

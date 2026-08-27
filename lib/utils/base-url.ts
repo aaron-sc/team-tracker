@@ -15,3 +15,16 @@ export async function getBaseUrl(): Promise<string> {
   const proto = host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https";
   return `${proto}://${host}`;
 }
+
+/**
+ * Same idea as getBaseUrl(), but for code with no incoming request to read headers from (e.g.
+ * the Discord reminder sweep, which runs off a setInterval — not a request). Falls back to the
+ * DOMAIN env var Caddy already requires for self-hosted deploys (see docker-compose.yml), so it
+ * works out of the box in production without extra config. Returns null if neither is set (e.g.
+ * local dev), letting the caller omit the link rather than build a broken one.
+ */
+export function getBackgroundBaseUrl(): string | null {
+  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
+  if (process.env.DOMAIN) return `https://${process.env.DOMAIN}`;
+  return null;
+}

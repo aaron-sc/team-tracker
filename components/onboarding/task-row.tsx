@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trash2, FileText, Link2, Video, PenLine, ClipboardCheck } from "lucide-react";
+import { Trash2, FileText, Link2, Video, PenLine, ClipboardCheck, Paperclip } from "lucide-react";
 
 type Task = {
   id: string;
@@ -16,6 +16,8 @@ type Task = {
   type: "ACKNOWLEDGE" | "DOCUMENT" | "LINK" | "VIDEO" | "SIGNATURE";
   url: string | null;
   body: string | null;
+  fileUrl: string | null;
+  fileName: string | null;
   required: boolean;
   active: boolean;
   completionCount: number;
@@ -38,7 +40,18 @@ export function TaskRow({ orgSlug, orgId, task }: { orgSlug: string; orgId: stri
               {task.required ? <Badge variant="secondary">Required</Badge> : <Badge variant="outline">Optional</Badge>}
               {!task.active ? <Badge variant="outline">Inactive</Badge> : null}
             </p>
-            <p className="text-xs text-muted-foreground">{task.completionCount} completed</p>
+            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{task.completionCount} completed</span>
+              {task.fileUrl ? (
+                <a
+                  href={`/api/onboarding/tasks/${task.id}/file`}
+                  className="flex items-center gap-1 text-primary underline underline-offset-4"
+                >
+                  <Paperclip className="size-3" />
+                  {task.fileName ?? "attached file"}
+                </a>
+              ) : null}
+            </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -66,6 +79,7 @@ export function TaskRow({ orgSlug, orgId, task }: { orgSlug: string; orgId: stri
               url: task.url ?? "",
               body: task.body ?? "",
               required: task.required,
+              fileName: task.fileName,
             }}
           />
           <Button

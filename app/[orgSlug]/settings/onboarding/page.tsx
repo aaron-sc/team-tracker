@@ -1,12 +1,14 @@
+import Link from "next/link";
 import { getOrgContext } from "@/lib/org/context";
 import { requirePagePermission } from "@/lib/org/require-permission-page";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { TaskFormDialog } from "@/components/onboarding/task-form-dialog";
 import { TaskRow } from "@/components/onboarding/task-row";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, History } from "lucide-react";
 
 export default async function OnboardingSettingsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
@@ -28,7 +30,15 @@ export default async function OnboardingSettingsPage({ params }: { params: Promi
             Required tasks block access to the rest of the org until every active member completes them.
           </p>
         </div>
-        <TaskFormDialog orgSlug={orgSlug} orgId={org.id} />
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/${orgSlug}/settings/onboarding/records`}>
+              <History className="size-4" />
+              View records
+            </Link>
+          </Button>
+          <TaskFormDialog orgSlug={orgSlug} orgId={org.id} />
+        </div>
       </div>
 
       {tasks.length === 0 ? (
@@ -51,6 +61,8 @@ export default async function OnboardingSettingsPage({ params }: { params: Promi
                 type: task.type,
                 url: task.url,
                 body: task.body,
+                fileUrl: task.fileUrl,
+                fileName: task.fileName,
                 required: task.required,
                 active: task.active,
                 completionCount: task._count.completions,

@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db/prisma";
 import { notifyDiscord, FORMATION_EMBED_COLOR, roleMentionPrefix } from "@/lib/integrations/discord";
 import { formatDateTime } from "@/lib/utils/format-time";
+import { getBackgroundBaseUrl } from "@/lib/utils/base-url";
 
 const POLL_INTERVAL_MS = 60_000;
 // Don't fire a reminder for an event whose start time has already passed by more than this —
@@ -27,6 +28,7 @@ async function runSweep() {
 
 async function sweepMatches() {
   const now = new Date();
+  const baseUrl = getBackgroundBaseUrl();
   const matches = await prisma.match.findMany({
     where: {
       status: "SCHEDULED",
@@ -34,7 +36,7 @@ async function sweepMatches() {
       scheduledAt: { gte: new Date(now.getTime() - MAX_STALE_MINUTES * 60_000) },
       team: { discordWebhookUrl: { not: null }, discordMatchReminderMinutes: { not: null } },
     },
-    include: { team: true, opponent: true, venue: true },
+    include: { team: { include: { org: true } }, opponent: true, venue: true },
   });
 
   for (const match of matches) {
@@ -47,12 +49,14 @@ async function sweepMatches() {
 
     const location =
       match.locationType === "LAN" ? (match.venue?.name ?? "Venue TBD") : match.isStreamed ? "Online (streamed)" : "Online";
+    const eventUrl = baseUrl ? `${baseUrl}/${match.team.org.slug}/schedule/matches/${match.id}` : undefined;
 
     await notifyDiscord(match.team.discordWebhookUrl, {
       content: `${roleMentionPrefix(match.team.discordMentionRoleId)}**${match.team.name}** — Match vs ${match.opponent.name} in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}!`,
       embeds: [
         {
           title: `${match.team.name} vs ${match.opponent.name}`,
+          url: eventUrl,
           color: FORMATION_EMBED_COLOR,
           fields: [
             { name: "When", value: formatDateTime(match.scheduledAt, match.timezone), inline: true },
@@ -68,13 +72,14 @@ async function sweepMatches() {
 
 async function sweepPracticeSessions() {
   const now = new Date();
+  const baseUrl = getBackgroundBaseUrl();
   const sessions = await prisma.practiceSession.findMany({
     where: {
       reminderSentAt: null,
       scheduledAt: { gte: new Date(now.getTime() - MAX_STALE_MINUTES * 60_000) },
       team: { discordWebhookUrl: { not: null } },
     },
-    include: { team: true, opponent: true, venue: true },
+    include: { team: { include: { org: true } }, opponent: true, venue: true },
   });
 
   for (const session of sessions) {
@@ -88,12 +93,14 @@ async function sweepPracticeSessions() {
 
     const label = session.type === "SCRIM" ? `Scrim vs ${session.opponent?.name ?? "TBD"}` : "Practice";
     const location = session.locationType === "LAN" ? (session.venue?.name ?? "Venue TBD") : "Online";
+    const eventUrl = baseUrl ? `${baseUrl}/${session.team.org.slug}/schedule/practice/${session.id}` : undefined;
 
     await notifyDiscord(session.team.discordWebhookUrl, {
       content: `${roleMentionPrefix(session.team.discordMentionRoleId)}**${session.team.name}** — ${label} in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}!`,
       embeds: [
         {
           title: `${session.team.name} — ${label}`,
+          url: eventUrl,
           color: FORMATION_EMBED_COLOR,
           fields: [
             { name: "When", value: formatDateTime(session.scheduledAt, session.timezone), inline: true },

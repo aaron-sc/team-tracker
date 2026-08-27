@@ -85,14 +85,19 @@ export default async function OnboardingPage({ params }: { params: Promise<{ org
                     type: task.type,
                     url: task.url,
                     body: task.body,
+                    fileUrl: task.fileUrl,
+                    fileName: task.fileName,
                     required: task.required,
                   }}
                   completion={
                     task.completions[0]
                       ? {
+                          id: task.completions[0].id,
                           completedAt: task.completions[0].completedAt.toISOString(),
                           signatureName: task.completions[0].signatureName,
                           signedSnapshot: task.completions[0].signedSnapshot,
+                          signedFileUrl: task.completions[0].signedFileUrl,
+                          signedFileName: task.completions[0].signedFileName,
                         }
                       : null
                   }

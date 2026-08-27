@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { CheckCircle2, ExternalLink, Loader2, FileText, Link2, Video, PenLine, ClipboardCheck } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, FileText, Link2, Video, PenLine, ClipboardCheck, Download } from "lucide-react";
 
 type Task = {
   id: string;
@@ -17,10 +17,19 @@ type Task = {
   type: "ACKNOWLEDGE" | "DOCUMENT" | "LINK" | "VIDEO" | "SIGNATURE";
   url: string | null;
   body: string | null;
+  fileUrl: string | null;
+  fileName: string | null;
   required: boolean;
 };
 
-type Completion = { completedAt: string; signatureName: string | null; signedSnapshot: string | null } | null;
+type Completion = {
+  id: string;
+  completedAt: string;
+  signatureName: string | null;
+  signedSnapshot: string | null;
+  signedFileUrl: string | null;
+  signedFileName: string | null;
+} | null;
 
 const TYPE_ICON = { ACKNOWLEDGE: ClipboardCheck, DOCUMENT: FileText, LINK: Link2, VIDEO: Video, SIGNATURE: PenLine };
 const TYPE_LABEL = { ACKNOWLEDGE: "Acknowledge", DOCUMENT: "Read", LINK: "Visit link", VIDEO: "Watch video", SIGNATURE: "Sign" };
@@ -100,6 +109,15 @@ export function CompleteTaskDialog({
                     {completion.signedSnapshot}
                   </p>
                 ) : null}
+                {completion.signedFileUrl ? (
+                  <a
+                    href={`/api/onboarding/completions/${completion.id}/file`}
+                    className="flex items-center gap-1.5 border-t pt-2 text-sm text-primary underline underline-offset-4"
+                  >
+                    <Download className="size-3.5" />
+                    Download your signed copy{completion.signedFileName ? ` (${completion.signedFileName})` : ""}
+                  </a>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -136,7 +154,20 @@ export function CompleteTaskDialog({
             ) : null}
 
             {task.type === "SIGNATURE" ? (
-              <div className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md border p-3 text-sm">{task.body}</div>
+              <div className="space-y-2">
+                {task.fileUrl ? (
+                  <a
+                    href={`/api/onboarding/tasks/${task.id}/file`}
+                    className="flex items-center gap-2 rounded-md border p-3 text-sm text-primary underline underline-offset-4"
+                  >
+                    <Download className="size-4" />
+                    Download document to review{task.fileName ? ` (${task.fileName})` : ""}
+                  </a>
+                ) : null}
+                {task.body ? (
+                  <div className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md border p-3 text-sm">{task.body}</div>
+                ) : null}
+              </div>
             ) : null}
 
             <form action={submit} className="space-y-3">

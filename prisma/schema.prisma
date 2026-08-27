@@ -605,6 +605,8 @@ model OnboardingTask {
   type        OnboardingTaskType @default(ACKNOWLEDGE)
   url         String?
   body        String?
+  fileUrl     String?
+  fileName    String?
   required    Boolean            @default(true)
   order       Int                @default(0)
   active      Boolean            @default(true)
@@ -617,18 +619,21 @@ model OnboardingTask {
 }
 
 // One row per member per task, created the moment they complete/sign it.
-// signedSnapshot freezes the exact document text at signing time, so an
-// e-signature stays provably tied to what was actually agreed to even if the
-// task's body is edited afterward.
+// signedSnapshot/signedFileUrl freeze the exact document text/file at signing
+// time (the file is a physical copy, not just a reference), so an e-signature
+// stays provably tied to what was actually agreed to even if the task's body
+// or uploaded file is changed afterward.
 model OnboardingCompletion {
-  id             String         @id @default(cuid())
-  taskId         String
-  task           OnboardingTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  membershipId   String
-  membership     Membership     @relation(fields: [membershipId], references: [id], onDelete: Cascade)
-  completedAt    DateTime       @default(now())
-  signatureName  String?
-  signedSnapshot String?
+  id              String         @id @default(cuid())
+  taskId          String
+  task            OnboardingTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  membershipId    String
+  membership      Membership     @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  completedAt     DateTime       @default(now())
+  signatureName   String?
+  signedSnapshot  String?
+  signedFileUrl   String?
+  signedFileName  String?
 
   @@unique([taskId, membershipId])
 }

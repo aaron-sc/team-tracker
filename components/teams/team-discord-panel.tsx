@@ -13,8 +13,13 @@ import { Send } from "lucide-react";
 import { REMINDER_MINUTES_OPTIONS } from "@/lib/utils/reminder-options";
 
 function ReminderSelect({ id, name, defaultMinutes }: { id: string; name: string; defaultMinutes: number | null }) {
+  const value = defaultMinutes ? String(defaultMinutes) : "off";
   return (
-    <Select name={name} defaultValue={defaultMinutes ? String(defaultMinutes) : "off"}>
+    // Keyed by the saved value so a successful save (which brings a fresh `defaultMinutes`
+    // prop via revalidatePath) remounts this uncontrolled Select instead of silently keeping
+    // whatever it showed at initial mount — otherwise the dropdown appears stuck until a
+    // full page reload.
+    <Select key={value} name={name} defaultValue={value}>
       <SelectTrigger id={id} className="w-full">
         <SelectValue />
       </SelectTrigger>
@@ -58,6 +63,7 @@ export function TeamDiscordPanel({
         <div className="space-y-1.5">
           <Label htmlFor="webhookUrl">Webhook URL</Label>
           <Input
+            key={webhookUrl ?? ""}
             id="webhookUrl"
             name="webhookUrl"
             placeholder="https://discord.com/api/webhooks/..."
@@ -74,6 +80,7 @@ export function TeamDiscordPanel({
         <div className="space-y-1.5">
           <Label htmlFor="mentionRoleId">Mention role ID</Label>
           <Input
+            key={mentionRoleId ?? ""}
             id="mentionRoleId"
             name="mentionRoleId"
             placeholder="123456789012345678"
