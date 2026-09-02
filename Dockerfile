@@ -21,6 +21,12 @@ RUN npm ci
 
 FROM base AS builder
 WORKDIR /app
+# Next.js inlines NEXT_PUBLIC_* vars into the client bundle at build time, so
+# this one has to arrive as a build arg (see docker-compose.yml) — setting it
+# only in the runtime .env, like every other secret here, would leave the
+# browser bundle with no key and push permanently stuck in "not configured".
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/lib/generated ./lib/generated
 COPY . .

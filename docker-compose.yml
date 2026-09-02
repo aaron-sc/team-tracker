@@ -1,6 +1,12 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        # Only NEXT_PUBLIC_* vars need to cross into the image at build time
+        # (see Dockerfile) — read from the shell/.env by compose's own
+        # variable substitution, separate from the env_file below.
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
     restart: unless-stopped
     env_file:
       - .env
