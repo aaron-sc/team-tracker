@@ -15,6 +15,7 @@ import {
   Globe,
   ArrowRight,
 } from "lucide-react";
+import { FORMATION_DOCS_URL, FORMATION_BOT_TERMS_URL, FORMATION_BOT_PRIVACY_URL } from "@/lib/links";
 
 export default async function HomePage() {
   const session = await auth();
@@ -155,8 +156,21 @@ export default async function HomePage() {
         </section>
       </main>
 
-      <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        Formation — built for competitive esports organizations.
+      <footer className="border-t py-6">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-6 text-center text-sm text-muted-foreground sm:flex-row sm:justify-between sm:text-left">
+          <p>Formation — built for competitive esports organizations.</p>
+          <div className="flex items-center gap-4">
+            <a href={FORMATION_DOCS_URL} target="_blank" rel="noreferrer" className="hover:text-foreground hover:underline">
+              Docs
+            </a>
+            <a href={FORMATION_BOT_TERMS_URL} target="_blank" rel="noreferrer" className="hover:text-foreground hover:underline">
+              Bot terms
+            </a>
+            <a href={FORMATION_BOT_PRIVACY_URL} target="_blank" rel="noreferrer" className="hover:text-foreground hover:underline">
+              Bot privacy
+            </a>
+          </div>
+        </div>
       </footer>
     </div>
   );

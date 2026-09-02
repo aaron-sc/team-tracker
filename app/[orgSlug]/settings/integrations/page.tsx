@@ -7,6 +7,8 @@ import { DiscordPanel } from "@/components/settings/discord-panel";
 import { DiscordBotPanel } from "@/components/settings/discord-bot-panel";
 import { buildDiscordInviteUrl } from "@/lib/integrations/discord-invite-url";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FORMATION_DOCS_URL, FORMATION_BOT_TERMS_URL, FORMATION_BOT_PRIVACY_URL } from "@/lib/links";
+import { ExternalLink } from "lucide-react";
 
 export default async function IntegrationsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
@@ -42,6 +44,16 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ o
           inviteUrl={buildDiscordInviteUrl()}
           connectedGuildId={fullOrg.discordGuildId}
         />
+        <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <a href={FORMATION_BOT_TERMS_URL} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-foreground hover:underline">
+            <ExternalLink className="size-3" />
+            Bot terms of service
+          </a>
+          <a href={FORMATION_BOT_PRIVACY_URL} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-foreground hover:underline">
+            <ExternalLink className="size-3" />
+            Bot privacy policy
+          </a>
+        </p>
       </div>
 
       <div>
@@ -69,7 +81,11 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ o
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           <p className="text-muted-foreground">
-            Send the key as a bearer token on every request:
+            Full setup guides and the complete API reference live in the{" "}
+            <a href={FORMATION_DOCS_URL} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">
+              Formation docs
+            </a>
+            . Send the key as a bearer token on every request:
           </p>
           <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">
 {`Authorization: Bearer <api key>`}

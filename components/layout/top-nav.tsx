@@ -13,7 +13,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronsUpDown, ShieldCheck, LogOut, Check, UserCog, Compass, Plus } from "lucide-react";
+import { ChevronsUpDown, ShieldCheck, LogOut, Check, UserCog, Compass, Plus, Sparkles } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationBell } from "@/components/layout/notification-bell";
@@ -21,6 +21,7 @@ import { CommandPalette } from "@/components/layout/command-palette";
 import { KeyboardShortcutsDialog } from "@/components/layout/keyboard-shortcuts-dialog";
 import { CreateOrgDialog } from "@/components/auth/create-org-dialog";
 import { startProductTour } from "@/components/onboarding/product-tour";
+import { openWhatsNew } from "@/components/layout/whats-new-dialog";
 
 type OrgOption = { orgId: string; orgSlug: string; orgName: string; orgLogoUrl: string | null; roleName: string };
 type NotificationItem = {
@@ -183,6 +184,10 @@ export function TopNav({
             <DropdownMenuItem onClick={() => startProductTour()}>
               <Compass className="size-4" />
               Take a tour
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openWhatsNew()}>
+              <Sparkles className="size-4" />
+              What&apos;s new
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <form action={logoutAction} className="w-full">
