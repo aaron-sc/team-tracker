@@ -5,7 +5,22 @@ import { prisma } from "@/lib/db/prisma";
 import { requireSession, requirePermission } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
 import { Permission } from "@/lib/generated/prisma/enums";
+import { listGuildTextChannels, listGuildRoles } from "@/lib/integrations/discord-bot";
 import type { ActionState } from "@/lib/actions/types";
+
+/** For the reminder-channel / role-sync pickers on a team's edit page — empty arrays if the bot
+ *  isn't connected for this org, which the picker UI treats as "nothing to pick from yet". */
+export async function getDiscordGuildOptionsAction(
+  orgId: string,
+): Promise<{ channels: { id: string; name: string }[]; roles: { id: string; name: string }[] }> {
+  await requirePermission(orgId, Permission.team_edit);
+
+  const org = await prisma.organization.findUnique({ where: { id: orgId } });
+  if (!org?.discordGuildId) return { channels: [], roles: [] };
+
+  const [channels, roles] = await Promise.all([listGuildTextChannels(org.discordGuildId), listGuildRoles(org.discordGuildId)]);
+  return { channels, roles };
+}
 
 function normalizeCode(formData: FormData): string {
   return String(formData.get("code") ?? "")

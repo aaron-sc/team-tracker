@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { RoleBadge } from "@/components/ui/role-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, Flame } from "lucide-react";
 
 function initials(name: string) {
   return name
@@ -28,7 +28,11 @@ type RosterMember = {
   teamNames: string[];
   /** % of past practices/scrims attended (late counts as attended). Null if no history yet. */
   attendanceRate: number | null;
+  /** Consecutive most-recent sessions attended, back to the last absence. */
+  attendanceStreak: number;
 };
+
+const STREAK_THRESHOLD = 3;
 
 function attendanceBadgeClass(rate: number): string {
   if (rate >= 85) return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
@@ -85,6 +89,16 @@ export function RosterSearchList({ orgSlug, members }: { orgSlug: string; member
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-1.5">
+                  {m.attendanceStreak >= STREAK_THRESHOLD ? (
+                    <Badge
+                      variant="outline"
+                      className="gap-1 border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-400"
+                      title={`${m.attendanceStreak} sessions attended in a row`}
+                    >
+                      <Flame className="size-3" />
+                      {m.attendanceStreak}
+                    </Badge>
+                  ) : null}
                   {m.attendanceRate !== null ? (
                     <Badge variant="outline" className={attendanceBadgeClass(m.attendanceRate)} title="Attendance rate">
                       {m.attendanceRate}% attendance

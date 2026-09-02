@@ -37,6 +37,8 @@ export async function updateTeamDiscordSettingsAction(
     matchReminderMinutes: formData.get("matchReminderMinutes"),
     practiceReminderMinutes: formData.get("practiceReminderMinutes"),
     scrimReminderMinutes: formData.get("scrimReminderMinutes"),
+    reminderChannelId: formData.get("reminderChannelId") ?? "",
+    roleId: formData.get("roleId") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -52,6 +54,11 @@ export async function updateTeamDiscordSettingsAction(
     return { error: "That doesn't look like a Discord role ID (should be a 17-20 digit number)." };
   }
 
+  // The channel/role pickers use "none" as their empty-selection sentinel (Radix Select
+  // disallows an actual empty string value).
+  const reminderChannelId = parsed.data.reminderChannelId === "none" ? "" : (parsed.data.reminderChannelId ?? "").trim();
+  const roleId = parsed.data.roleId === "none" ? "" : (parsed.data.roleId ?? "").trim();
+
   await prisma.team.update({
     where: { id: teamId },
     data: {
@@ -60,6 +67,8 @@ export async function updateTeamDiscordSettingsAction(
       discordMatchReminderMinutes: parseReminderMinutes(parsed.data.matchReminderMinutes),
       discordPracticeReminderMinutes: parseReminderMinutes(parsed.data.practiceReminderMinutes),
       discordScrimReminderMinutes: parseReminderMinutes(parsed.data.scrimReminderMinutes),
+      discordReminderChannelId: reminderChannelId || null,
+      discordRoleId: roleId || null,
     },
   });
 

@@ -55,6 +55,9 @@ export default async function EditTeamPage({
           matchReminderMinutes={team.discordMatchReminderMinutes}
           practiceReminderMinutes={team.discordPracticeReminderMinutes}
           scrimReminderMinutes={team.discordScrimReminderMinutes}
+          reminderChannelId={team.discordReminderChannelId}
+          roleId={team.discordRoleId}
+          botConnected={org.discordGuildId !== null}
         />
       </div>
 

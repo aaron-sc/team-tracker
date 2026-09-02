@@ -7,8 +7,14 @@ import {
   Routes,
   SlashCommandBuilder,
   PermissionFlagsBits,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   type Client as DiscordClient,
   type ChatInputCommandInteraction,
+  type AutocompleteInteraction,
+  type ButtonInteraction,
+  type SlashCommandStringOption,
 } from "discord.js";
 import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
@@ -16,7 +22,9 @@ import { availabilityRuleGroupSchema } from "@/lib/validations/availability";
 
 // Optional integration: every handler below assumes DISCORD_BOT_TOKEN may simply be unset (self-
 // hosted orgs that don't want a bot), so startDiscordBot() below is the only thing that decides
-// whether any of this runs at all.
+// whether any of this runs at all. Every exported function used from elsewhere in the app
+// (postInteractiveReminder, dmReminderToRoster, syncDiscordRoleForRosterChange) checks
+// `client?.isReady()` first and silently no-ops if the bot isn't connected.
 
 const DAY_CHOICES = [
   { name: "Sunday", value: "0" },
@@ -28,30 +36,38 @@ const DAY_CHOICES = [
   { name: "Saturday", value: "6" },
 ] as const;
 
+function teamOption(opt: SlashCommandStringOption): SlashCommandStringOption {
+  return opt.setName("team").setDescription("Team name").setRequired(true).setAutocomplete(true);
+}
+
 const commandDefinitions = [
   new SlashCommandBuilder().setName("link").setDescription("Connect your Discord account to your Formation account"),
   new SlashCommandBuilder()
     .setName("connect")
     .setDescription("Connect this server to your Formation organization")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+  new SlashCommandBuilder().setName("whoami").setDescription("Show your linked Formation account"),
   new SlashCommandBuilder()
     .setName("available")
     .setDescription("Add a weekly availability rule in Formation")
-    .addStringOption((opt) =>
-      opt
-        .setName("day")
-        .setDescription("Day of the week")
-        .setRequired(true)
-        .addChoices(...DAY_CHOICES),
-    )
+    .addStringOption((opt) => opt.setName("day").setDescription("Day of the week").setRequired(true).addChoices(...DAY_CHOICES))
     .addStringOption((opt) => opt.setName("start").setDescription("Start time, 24h HH:MM (e.g. 18:00)").setRequired(true))
     .addStringOption((opt) => opt.setName("end").setDescription("End time, 24h HH:MM (e.g. 21:00)").setRequired(true))
     .addStringOption((opt) =>
-      opt
-        .setName("timezone")
-        .setDescription("IANA timezone, e.g. America/Chicago — defaults to your Formation timezone")
-        .setRequired(false),
+      opt.setName("timezone").setDescription("IANA timezone, e.g. America/Chicago — defaults to your Formation timezone").setRequired(false),
     ),
+  new SlashCommandBuilder()
+    .setName("roster")
+    .setDescription("Show a team's roster")
+    .addStringOption(teamOption),
+  new SlashCommandBuilder()
+    .setName("schedule")
+    .setDescription("Show a team's upcoming matches and practices")
+    .addStringOption(teamOption),
+  new SlashCommandBuilder()
+    .setName("bench")
+    .setDescription("Show active bench/disciplinary records for a team (leadership only)")
+    .addStringOption(teamOption),
 ].map((c) => c.toJSON());
 
 function generateCode(): string {
@@ -76,6 +92,8 @@ export function startDiscordBot() {
     return;
   }
 
+  // No privileged intents needed: fetching one specific guild member by ID (for role sync) is a
+  // plain REST call, not a gateway subscription, so it works fine on the default Guilds intent.
   client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
   client.once("ready", (c) => {
@@ -88,16 +106,30 @@ export function startDiscordBot() {
   });
 
   client.on("interactionCreate", async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
     try {
+      if (interaction.isAutocomplete()) {
+        await handleTeamAutocomplete(interaction);
+        return;
+      }
+      if (interaction.isButton()) {
+        await handleRsvpButton(interaction);
+        return;
+      }
+      if (!interaction.isChatInputCommand()) return;
       if (interaction.commandName === "link") await handleLink(interaction);
       else if (interaction.commandName === "connect") await handleConnect(interaction);
+      else if (interaction.commandName === "whoami") await handleWhoami(interaction);
       else if (interaction.commandName === "available") await handleAvailable(interaction);
+      else if (interaction.commandName === "roster") await handleRoster(interaction);
+      else if (interaction.commandName === "schedule") await handleSchedule(interaction);
+      else if (interaction.commandName === "bench") await handleBench(interaction);
     } catch (err) {
-      console.error(`[discord-bot] /${interaction.commandName} failed:`, err);
-      const payload = { content: "Something went wrong on Formation's end. Try again in a moment.", ephemeral: true };
-      if (interaction.replied || interaction.deferred) await interaction.followUp(payload).catch(() => {});
-      else await interaction.reply(payload).catch(() => {});
+      console.error(`[discord-bot] interaction failed:`, err);
+      if (interaction.isRepliable()) {
+        const payload = { content: "Something went wrong on Formation's end. Try again in a moment.", ephemeral: true };
+        if (interaction.replied || interaction.deferred) await interaction.followUp(payload).catch(() => {});
+        else await interaction.reply(payload).catch(() => {});
+      }
     }
   });
 
@@ -118,6 +150,35 @@ async function registerGuildCommands(guildId: string) {
 
 async function registerCommandsForAllGuilds(c: DiscordClient<true>) {
   await Promise.all(c.guilds.cache.map((g) => registerGuildCommands(g.id)));
+}
+
+/** Shared resolution for every command that needs "who is this, in which org" — the guild must
+ *  be connected (see /connect) and the invoking Discord user must be linked (see /link). */
+async function resolveOrgAndMembership(guildId: string | null, discordUserId: string) {
+  if (!guildId) return { error: "Run this inside a server, not a DM." } as const;
+  const org = await prisma.organization.findUnique({ where: { discordGuildId: guildId } });
+  if (!org) return { error: "This server isn't connected to a Formation org yet — an admin can connect it with /connect." } as const;
+  const user = await prisma.user.findUnique({ where: { discordUserId } });
+  if (!user) return { error: "Your Discord account isn't linked to Formation yet — run /link first." } as const;
+  const membership = await prisma.membership.findUnique({
+    where: { userId_orgId: { userId: user.id, orgId: org.id } },
+    include: { role: { include: { permissions: true } } },
+  });
+  if (!membership) return { error: "You're not a member of this Formation organization." } as const;
+  return { org, user, membership } as const;
+}
+
+async function handleTeamAutocomplete(interaction: AutocompleteInteraction) {
+  const focused = interaction.options.getFocused(true);
+  if (focused.name !== "team" || !interaction.guildId) return void interaction.respond([]);
+
+  const org = await prisma.organization.findUnique({ where: { discordGuildId: interaction.guildId } });
+  if (!org) return void interaction.respond([]);
+
+  const teams = await prisma.team.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } });
+  const q = String(focused.value).toLowerCase();
+  const matches = teams.filter((t) => t.name.toLowerCase().includes(q)).slice(0, 25);
+  await interaction.respond(matches.map((t) => ({ name: t.name, value: t.id })));
 }
 
 async function handleLink(interaction: ChatInputCommandInteraction) {
@@ -163,35 +224,31 @@ async function handleConnect(interaction: ChatInputCommandInteraction) {
   });
 }
 
-async function handleAvailable(interaction: ChatInputCommandInteraction) {
-  if (!interaction.guildId) {
-    await interaction.reply({ content: "Run this inside a server, not a DM.", ephemeral: true });
-    return;
-  }
-
-  const org = await prisma.organization.findUnique({ where: { discordGuildId: interaction.guildId } });
-  if (!org) {
-    await interaction.reply({
-      content: "This server isn't connected to a Formation org yet — an admin can connect it with /connect.",
-      ephemeral: true,
-    });
-    return;
-  }
-
-  const user = await prisma.user.findUnique({ where: { discordUserId: interaction.user.id } });
-  if (!user) {
-    await interaction.reply({ content: "Your Discord account isn't linked to Formation yet — run /link first.", ephemeral: true });
-    return;
-  }
-
-  const membership = await prisma.membership.findUnique({
-    where: { userId_orgId: { userId: user.id, orgId: org.id } },
-    include: { role: { include: { permissions: true } } },
+async function handleWhoami(interaction: ChatInputCommandInteraction) {
+  const user = await prisma.user.findUnique({
+    where: { discordUserId: interaction.user.id },
+    include: { memberships: { include: { org: true, role: true, teamMemberships: { include: { team: true } } } } },
   });
-  if (!membership) {
-    await interaction.reply({ content: "You're not a member of this Formation organization.", ephemeral: true });
+  if (!user) {
+    await interaction.reply({ content: "Not linked yet — run /link first.", ephemeral: true });
     return;
   }
+  if (user.memberships.length === 0) {
+    await interaction.reply({ content: `Linked as **${user.name}**, but you're not in any Formation organizations yet.`, ephemeral: true });
+    return;
+  }
+  const lines = user.memberships.map((m) => {
+    const teams = m.teamMemberships.map((tm) => tm.team.name).join(", ") || "no teams";
+    return `• **${m.org.name}** — ${m.role.name} (${teams})`;
+  });
+  await interaction.reply({ content: `Linked as **${user.name}**\n${lines.join("\n")}`, ephemeral: true });
+}
+
+async function handleAvailable(interaction: ChatInputCommandInteraction) {
+  const resolved = await resolveOrgAndMembership(interaction.guildId, interaction.user.id);
+  if ("error" in resolved) return void interaction.reply({ content: resolved.error, ephemeral: true });
+  const { org, user, membership } = resolved;
+
   const permissions = membership.role.permissions.map((p) => p.permission);
   if (!permissions.includes(Permission.availability_manage_self)) {
     await interaction.reply({ content: "You don't have permission to manage availability in Formation.", ephemeral: true });
@@ -220,8 +277,248 @@ async function handleAvailable(interaction: ChatInputCommandInteraction) {
   });
 
   const dayLabel = DAY_CHOICES[Number(day)]?.name ?? day;
+  await interaction.reply({ content: `✅ Added: **${dayLabel}s, ${start}–${end}** (${parsed.data.timezone})`, ephemeral: true });
+}
+
+async function resolveTeamOption(interaction: ChatInputCommandInteraction, orgId: string) {
+  const teamId = interaction.options.getString("team", true);
+  const team = await prisma.team.findUnique({ where: { id: teamId } });
+  if (!team || team.orgId !== orgId) {
+    await interaction.reply({ content: "Team not found — pick one from the autocomplete list.", ephemeral: true });
+    return null;
+  }
+  return team;
+}
+
+async function handleRoster(interaction: ChatInputCommandInteraction) {
+  const resolved = await resolveOrgAndMembership(interaction.guildId, interaction.user.id);
+  if ("error" in resolved) return void interaction.reply({ content: resolved.error, ephemeral: true });
+  const team = await resolveTeamOption(interaction, resolved.org.id);
+  if (!team) return;
+
+  const roster = await prisma.teamMembership.findMany({
+    where: { teamId: team.id },
+    include: { membership: { include: { user: true } } },
+    orderBy: { membership: { user: { name: "asc" } } },
+  });
+  if (roster.length === 0) {
+    await interaction.reply({ content: `**${team.name}** has no roster yet.`, ephemeral: true });
+    return;
+  }
+
+  const lines = roster.map((r) => {
+    const parts = [r.membership.user.name];
+    if (r.position) parts.push(`(${r.position})`);
+    if (r.inGameName) parts.push(`— ${r.inGameName}`);
+    return `• ${parts.join(" ")}`;
+  });
+  await interaction.reply({ content: `**${team.name} roster**\n${lines.join("\n")}`, ephemeral: true });
+}
+
+async function handleSchedule(interaction: ChatInputCommandInteraction) {
+  const resolved = await resolveOrgAndMembership(interaction.guildId, interaction.user.id);
+  if ("error" in resolved) return void interaction.reply({ content: resolved.error, ephemeral: true });
+  const team = await resolveTeamOption(interaction, resolved.org.id);
+  if (!team) return;
+
+  const now = new Date();
+  const [matches, sessions] = await Promise.all([
+    prisma.match.findMany({ where: { teamId: team.id, scheduledAt: { gte: now } }, include: { opponent: true }, orderBy: { scheduledAt: "asc" }, take: 5 }),
+    prisma.practiceSession.findMany({
+      where: { teamId: team.id, scheduledAt: { gte: now } },
+      include: { opponent: true },
+      orderBy: { scheduledAt: "asc" },
+      take: 5,
+    }),
+  ]);
+
+  const items = [
+    ...matches.map((m) => ({ at: m.scheduledAt, label: `Match vs ${m.opponent.name}` })),
+    ...sessions.map((s) => ({ at: s.scheduledAt, label: s.type === "SCRIM" ? `Scrim vs ${s.opponent?.name ?? "TBD"}` : "Practice" })),
+  ]
+    .sort((a, b) => a.at.getTime() - b.at.getTime())
+    .slice(0, 5);
+
+  if (items.length === 0) {
+    await interaction.reply({ content: `**${team.name}** has nothing upcoming.`, ephemeral: true });
+    return;
+  }
+  // Discord's <t:UNIX:F> renders in each viewer's own local timezone client-side — no manual
+  // timezone conversion needed here, unlike everywhere else in this app.
+  const lines = items.map((i) => `• ${i.label} — <t:${Math.floor(i.at.getTime() / 1000)}:F>`);
+  await interaction.reply({ content: `**${team.name} — upcoming**\n${lines.join("\n")}`, ephemeral: true });
+}
+
+async function handleBench(interaction: ChatInputCommandInteraction) {
+  const resolved = await resolveOrgAndMembership(interaction.guildId, interaction.user.id);
+  if ("error" in resolved) return void interaction.reply({ content: resolved.error, ephemeral: true });
+  const permissions = resolved.membership.role.permissions.map((p) => p.permission);
+  if (!permissions.includes(Permission.player_actions_manage)) {
+    await interaction.reply({ content: "You don't have permission to view player conduct records.", ephemeral: true });
+    return;
+  }
+  const team = await resolveTeamOption(interaction, resolved.org.id);
+  if (!team) return;
+
+  const now = new Date();
+  const actions = await prisma.playerAction.findMany({
+    where: { teamMembership: { teamId: team.id }, type: "BENCHED", OR: [{ endDate: null }, { endDate: { gte: now } }] },
+    include: { teamMembership: { include: { membership: { include: { user: true } } } } },
+  });
+  if (actions.length === 0) {
+    await interaction.reply({ content: `No one on **${team.name}** is currently benched.`, ephemeral: true });
+    return;
+  }
+  const lines = actions.map((a) => `• ${a.teamMembership.membership.user.name} — ${a.reason}`);
+  await interaction.reply({ content: `**${team.name} — active bench records**\n${lines.join("\n")}`, ephemeral: true });
+}
+
+async function handleRsvpButton(interaction: ButtonInteraction) {
+  const [prefix, kind, eventId, status] = interaction.customId.split(":");
+  if (prefix !== "rsvp" || (kind !== "MATCH" && kind !== "PRACTICE") || (status !== "CONFIRMED" && status !== "DECLINED")) return;
+
+  const user = await prisma.user.findUnique({ where: { discordUserId: interaction.user.id } });
+  if (!user) {
+    await interaction.reply({ content: "Link your Discord account first — run /link.", ephemeral: true });
+    return;
+  }
+
+  if (kind === "MATCH") {
+    const match = await prisma.match.findUnique({ where: { id: eventId }, include: { team: true } });
+    if (!match) return void interaction.reply({ content: "This match no longer exists.", ephemeral: true });
+    const membership = await prisma.membership.findUnique({ where: { userId_orgId: { userId: user.id, orgId: match.team.orgId } } });
+    if (!membership) return void interaction.reply({ content: "You're not in this Formation organization.", ephemeral: true });
+    await prisma.matchAttendance.upsert({
+      where: { matchId_membershipId: { matchId: eventId, membershipId: membership.id } },
+      create: { matchId: eventId, membershipId: membership.id, status, respondedAt: new Date() },
+      update: { status, respondedAt: new Date() },
+    });
+  } else {
+    const session = await prisma.practiceSession.findUnique({ where: { id: eventId }, include: { team: true } });
+    if (!session) return void interaction.reply({ content: "This session no longer exists.", ephemeral: true });
+    const membership = await prisma.membership.findUnique({ where: { userId_orgId: { userId: user.id, orgId: session.team.orgId } } });
+    if (!membership) return void interaction.reply({ content: "You're not in this Formation organization.", ephemeral: true });
+    await prisma.sessionAttendance.upsert({
+      where: { sessionId_membershipId: { sessionId: eventId, membershipId: membership.id } },
+      create: { sessionId: eventId, membershipId: membership.id, status, respondedAt: new Date() },
+      update: { status, respondedAt: new Date() },
+    });
+  }
+
   await interaction.reply({
-    content: `✅ Added: **${dayLabel}s, ${start}–${end}** (${parsed.data.timezone})`,
+    content: status === "CONFIRMED" ? "✅ You're marked as attending." : "❌ You're marked as not attending.",
     ephemeral: true,
   });
+}
+
+/** Posts a reminder with RSVP buttons to a team's configured channel (Team.discordReminderChannelId).
+ *  No-ops if the bot isn't connected or the team hasn't set a channel. */
+export async function postInteractiveReminder(
+  channelId: string,
+  kind: "MATCH" | "PRACTICE",
+  eventId: string,
+  title: string,
+  description: string,
+): Promise<void> {
+  if (!client?.isReady()) return;
+  try {
+    const channel = await client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || !("send" in channel)) return;
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`rsvp:${kind}:${eventId}:CONFIRMED`).setLabel("I'm in").setStyle(ButtonStyle.Success).setEmoji("✅"),
+      new ButtonBuilder().setCustomId(`rsvp:${kind}:${eventId}:DECLINED`).setLabel("Can't make it").setStyle(ButtonStyle.Danger).setEmoji("❌"),
+    );
+    await channel.send({ content: `**${title}**\n${description}`, components: [row] });
+  } catch (err) {
+    console.error("[discord-bot] Failed to post interactive reminder:", err);
+  }
+}
+
+/** DMs every roster member who's linked their Discord and opted into DM reminders. Best-effort —
+ *  a closed DM or missing shared guild for one person doesn't affect anyone else. */
+export async function dmReminderToRoster(teamId: string, title: string, body: string, linkUrl: string | undefined): Promise<void> {
+  if (!client?.isReady()) return;
+  const c = client;
+
+  const roster = await prisma.teamMembership.findMany({
+    where: { teamId },
+    select: { membership: { select: { user: { select: { discordUserId: true, discordDmReminders: true } } } } },
+  });
+  const targets = roster.map((r) => r.membership.user).filter((u) => u.discordUserId && u.discordDmReminders);
+
+  await Promise.all(
+    targets.map(async (u) => {
+      try {
+        const discordUser = await c.users.fetch(u.discordUserId!);
+        await discordUser.send(`**${title}**\n${body}${linkUrl ? `\n${linkUrl}` : ""}`);
+      } catch {
+        // Closed DMs, no shared guild, etc. — not worth surfacing per-user.
+      }
+    }),
+  );
+}
+
+/** Adds or removes a team's synced Discord role for one member — called after a roster add/remove.
+ *  No-ops unless the bot is connected, the team has a role configured, and the member is linked.
+ *  Requires the bot to have Manage Roles and to sit above the target role in the guild's role list
+ *  — a Discord-side hierarchy rule this can't check or fix from here. */
+export async function syncDiscordRoleForRosterChange(teamId: string, membershipId: string, action: "add" | "remove"): Promise<void> {
+  if (!client?.isReady()) return;
+  const c = client;
+  try {
+    const team = await prisma.team.findUnique({ where: { id: teamId }, include: { org: true } });
+    if (!team?.discordRoleId || !team.org.discordGuildId) return;
+
+    const membership = await prisma.membership.findUnique({ where: { id: membershipId }, include: { user: true } });
+    if (!membership?.user.discordUserId) return;
+
+    const guild = await c.guilds.fetch(team.org.discordGuildId);
+    const member = await guild.members.fetch(membership.user.discordUserId);
+    if (action === "add") await member.roles.add(team.discordRoleId);
+    else await member.roles.remove(team.discordRoleId);
+  } catch (err) {
+    console.error("[discord-bot] Role sync failed:", err);
+  }
+}
+
+/** Whether a channel picker / role picker can be shown to org admins — i.e. whether the bot is
+ *  actually connected right now, not just configured. */
+export function isDiscordBotConnected(): boolean {
+  return !!client?.isReady();
+}
+
+/** Lists text channels in a guild (for the reminder-channel picker) — empty if the bot can't see it. */
+export async function listGuildTextChannels(guildId: string): Promise<{ id: string; name: string }[]> {
+  if (!client?.isReady()) return [];
+  try {
+    const guild = await client.guilds.fetch(guildId);
+    const channels = await guild.channels.fetch();
+    const result: { id: string; name: string }[] = [];
+    for (const channel of channels.values()) {
+      if (channel && channel.isTextBased() && !channel.isThread()) {
+        result.push({ id: channel.id, name: channel.name });
+      }
+    }
+    return result.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (err) {
+    console.error(`[discord-bot] Failed to list channels for guild ${guildId}:`, err);
+    return [];
+  }
+}
+
+/** Lists roles in a guild (for the team role-sync picker) — empty if the bot can't see it. */
+export async function listGuildRoles(guildId: string): Promise<{ id: string; name: string }[]> {
+  if (!client?.isReady()) return [];
+  try {
+    const guild = await client.guilds.fetch(guildId);
+    const roles = await guild.roles.fetch();
+    const result: { id: string; name: string }[] = [];
+    for (const role of roles.values()) {
+      if (role.name !== "@everyone" && !role.managed) result.push({ id: role.id, name: role.name });
+    }
+    return result.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (err) {
+    console.error(`[discord-bot] Failed to list roles for guild ${guildId}:`, err);
+    return [];
+  }
 }

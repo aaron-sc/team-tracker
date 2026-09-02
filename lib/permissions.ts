@@ -69,6 +69,18 @@ export const PERMISSION_GROUPS: { label: string; permissions: Permission[] }[] =
     label: "Player conduct",
     permissions: [Permission.player_actions_manage],
   },
+  {
+    label: "Analytics",
+    permissions: [Permission.analytics_view],
+  },
+  {
+    label: "Team communication",
+    permissions: [Permission.poll_manage, Permission.team_resources_manage],
+  },
+  {
+    label: "Admin tools",
+    permissions: [Permission.gear_manage, Permission.expense_manage],
+  },
 ];
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
@@ -107,6 +119,11 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   notification_send_broadcast: "Send broadcast notifications",
   onboarding_manage: "Manage onboarding tasks (create/edit/delete, required for new members)",
   player_actions_manage: "View and record player benching & disciplinary actions",
+  analytics_view: "View team & org performance analytics",
+  poll_manage: "Create and close team polls",
+  team_resources_manage: "Manage a team's pinned resource links",
+  gear_manage: "Manage equipment/gear inventory",
+  expense_manage: "Manage the expense ledger",
 };
 
 /** Default permission grants for system-seeded roles, applied at org creation time. */
@@ -136,6 +153,9 @@ export const ROLE_PRESETS: Record<string, { description: string; color: string; 
       Permission.recruitment_manage,
       Permission.announcement_create,
       Permission.player_actions_manage,
+      Permission.analytics_view,
+      Permission.poll_manage,
+      Permission.team_resources_manage,
     ],
   },
   Manager: {
@@ -155,6 +175,11 @@ export const ROLE_PRESETS: Record<string, { description: string; color: string; 
       Permission.announcement_delete,
       Permission.audit_log_view,
       Permission.player_actions_manage,
+      Permission.analytics_view,
+      Permission.poll_manage,
+      Permission.team_resources_manage,
+      Permission.gear_manage,
+      Permission.expense_manage,
     ],
   },
   Captain: {
@@ -167,6 +192,7 @@ export const ROLE_PRESETS: Record<string, { description: string; color: string; 
       Permission.attendance_manage,
       Permission.availability_manage_self,
       Permission.team_members_invite,
+      Permission.poll_manage,
     ],
   },
   Player: {

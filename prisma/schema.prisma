@@ -126,6 +126,12 @@ enum Permission {
 
   notification_send_broadcast
 
+  analytics_view
+  poll_manage
+  team_resources_manage
+  gear_manage
+  expense_manage
+
   onboarding_manage
 
   player_actions_manage
@@ -169,6 +175,9 @@ model Organization {
   teamInviteLinks TeamInviteLink[]
   onboardingTasks OnboardingTask[]
   playerActions   PlayerAction[]
+  polls           Poll[]
+  gearItems       GearItem[]
+  expenses        Expense[]
 }
 
 model Team {
@@ -187,6 +196,12 @@ model Team {
   discordMatchReminderMinutes     Int?
   discordPracticeReminderMinutes  Int?
   discordScrimReminderMinutes     Int?
+  // Bot-posted reminders (interactive RSVP buttons) go to this channel instead of/alongside the
+  // plain webhook above — set once the org has connected the bot (Organization.discordGuildId).
+  discordReminderChannelId        String?
+  // Synced onto a member's Discord account when they join this team's roster (and removed when
+  // they leave), if the org's Discord account is linked and the member has run /link.
+  discordRoleId                   String?
 
   // Public, unauthenticated roster embed (for the org's own website). Off by default; the token
   // is only generated (and only meaningful) once enabled, and is unguessable/unrelated to the
@@ -200,6 +215,10 @@ model Team {
   prospects        RecruitmentProspect[]
   announcements    Announcement[]
   inviteLinks      TeamInviteLink[]
+  resourceLinks    TeamResourceLink[]
+  polls            Poll[]
+  gearItems        GearItem[]
+  expenses         Expense[]
 
   @@unique([orgId, slug])
 }
@@ -216,6 +235,9 @@ model User {
   // Discord snowflake, so slash-command interactions can be attributed to this user. Distinct
   // from discordHandle above, which is just a free-text display field.
   discordUserId   String?  @unique
+  // Whether reminders also arrive as a Discord DM (only relevant once discordUserId is set) —
+  // on by default once linked, since /link is itself an opt-in action.
+  discordDmReminders Boolean @default(true)
   timezone        String?
   timeFormat      String    @default("12h") // "12h" | "24h"
   emailVerifiedAt DateTime?
@@ -310,6 +332,13 @@ model Membership {
   createdOnboardingTasks OnboardingTask[]
   onboardingCompletions  OnboardingCompletion[]
   createdPlayerActions   PlayerAction[]
+  matchAttendances       MatchAttendance[]
+  announcementReads      AnnouncementRead[]
+  addedTeamResourceLinks TeamResourceLink[]
+  pollsCreated           Poll[]
+  pollVotes              PollVote[]
+  assignedGearItems      GearItem[]
+  createdExpenses        Expense[]
 
   @@unique([userId, orgId])
 }
@@ -332,6 +361,10 @@ model TeamMembership {
   isStarter    Boolean    @default(false)
   joinedTeamAt DateTime   @default(now())
   leftTeamAt   DateTime?
+  // Cached result of the last game-stats sync (rank, recent record, etc. — shape depends on the
+  // provider) — fetched on demand, not live, to stay within external API rate limits.
+  gameStatsCache     Json?
+  gameStatsUpdatedAt DateTime?
 
   playerActions PlayerAction[]
 
@@ -415,6 +448,8 @@ model Match {
   createdById    String
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+
+  attendances MatchAttendance[]
 }
 
 model AvailabilityRule {
@@ -477,6 +512,22 @@ model SessionAttendance {
   note         String?
 
   @@unique([sessionId, membershipId])
+}
+
+// Same shape as SessionAttendance, for matches — kept as a separate model since a match's
+// "attendance" is really an RSVP (see the Discord bot's interactive reminder buttons) rather
+// than post-hoc attendance-taking.
+model MatchAttendance {
+  id           String           @id @default(cuid())
+  matchId      String
+  match        Match            @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  membershipId String
+  membership   Membership       @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  status       AttendanceStatus @default(INVITED)
+  respondedAt  DateTime?
+  note         String?
+
+  @@unique([matchId, membershipId])
 }
 
 model Venue {
@@ -575,6 +626,117 @@ model Announcement {
   published Boolean      @default(true)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
+
+  reads AnnouncementRead[]
+}
+
+// One row per member who has opened an announcement — lets the author see who's actually seen it
+// instead of just posting into the void.
+model AnnouncementRead {
+  id             String       @id @default(cuid())
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  membershipId   String
+  membership     Membership   @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  readAt         DateTime     @default(now())
+
+  @@unique([announcementId, membershipId])
+}
+
+// A pinned link on a team's page — VOD reviews, strat docs, a Discord invite, anything the
+// roster needs to find quickly without digging through chat history.
+model TeamResourceLink {
+  id        String      @id @default(cuid())
+  teamId    String
+  team      Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  title     String
+  url       String
+  addedById String?
+  addedBy   Membership? @relation(fields: [addedById], references: [id], onDelete: SetNull)
+  createdAt DateTime    @default(now())
+}
+
+// Single-choice team poll — "which day works for scrim?" — with live vote counts.
+model Poll {
+  id          String       @id @default(cuid())
+  orgId       String
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  teamId      String?
+  team        Team?        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  question    String
+  createdById String?
+  createdBy   Membership?  @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  closesAt    DateTime?
+  createdAt   DateTime     @default(now())
+
+  options PollOption[]
+  votes   PollVote[]
+}
+
+model PollOption {
+  id     String @id @default(cuid())
+  pollId String
+  poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  label  String
+  order  Int    @default(0)
+
+  votes PollVote[]
+}
+
+model PollVote {
+  id           String     @id @default(cuid())
+  pollId       String
+  poll         Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  pollOptionId String
+  pollOption   PollOption @relation(fields: [pollOptionId], references: [id], onDelete: Cascade)
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([pollId, membershipId])
+}
+
+enum GearStatus {
+  AVAILABLE
+  ASSIGNED
+  MAINTENANCE
+  LOST
+  RETIRED
+}
+
+// Org-owned equipment — peripherals, jerseys, loaner laptops — optionally assigned to a person
+// or a whole team.
+model GearItem {
+  id                      String       @id @default(cuid())
+  orgId                   String
+  org                     Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name                    String
+  category                String?
+  serialNumber            String?
+  status                  GearStatus   @default(AVAILABLE)
+  assignedToMembershipId  String?
+  assignedToMembership    Membership?  @relation(fields: [assignedToMembershipId], references: [id], onDelete: SetNull)
+  assignedToTeamId        String?
+  assignedToTeam          Team?        @relation(fields: [assignedToTeamId], references: [id], onDelete: SetNull)
+  notes                   String?
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+}
+
+// A lightweight expense ledger — not full accounting, just "what did we spend, on what, when."
+model Expense {
+  id          String       @id @default(cuid())
+  orgId       String
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  teamId      String?
+  team        Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  category    String
+  description String
+  amountCents Int
+  incurredAt  DateTime
+  createdById String?
+  createdBy   Membership?  @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
 }
 
 model AuditLog {

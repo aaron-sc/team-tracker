@@ -12,6 +12,8 @@ export const teamDiscordSettingsSchema = z.object({
   matchReminderMinutes: z.enum(REMINDER_MINUTES_VALUES),
   practiceReminderMinutes: z.enum(REMINDER_MINUTES_VALUES),
   scrimReminderMinutes: z.enum(REMINDER_MINUTES_VALUES),
+  reminderChannelId: z.string().trim().max(30).optional().or(z.literal("")),
+  roleId: z.string().trim().max(30).optional().or(z.literal("")),
 });
 
 const trackerUrl = z.string().trim().url("Enter a valid URL.").max(300).optional().or(z.literal(""));

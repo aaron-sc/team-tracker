@@ -9,6 +9,7 @@ import { teamSchema, rosterEntrySchema, updateRosterEntrySchema } from "@/lib/va
 import { Permission } from "@/lib/generated/prisma/enums";
 import { isReservedSlug, slugify } from "@/lib/utils/slug";
 import { saveUploadedImage, deleteUploadedFile, UploadError } from "@/lib/storage/local";
+import { syncDiscordRoleForRosterChange } from "@/lib/integrations/discord-bot";
 import type { ActionState } from "@/lib/actions/types";
 
 async function generateUniqueTeamSlug(orgId: string, name: string): Promise<string> {
@@ -232,6 +233,9 @@ export async function addToRosterAction(
     metadata: { membershipId: parsed.data.membershipId },
   });
 
+  // Best-effort — a Discord hiccup shouldn't fail the roster change itself.
+  syncDiscordRoleForRosterChange(teamId, parsed.data.membershipId, "add").catch(() => {});
+
   revalidatePath(`/${orgSlug}/teams`);
 }
 
@@ -315,6 +319,8 @@ export async function removeFromRosterAction(orgSlug: string, orgId: string, tea
     targetId: entry.teamId,
     metadata: { membershipId: entry.membershipId },
   });
+
+  syncDiscordRoleForRosterChange(entry.teamId, entry.membershipId, "remove").catch(() => {});
 
   revalidatePath(`/${orgSlug}/teams`);
 }

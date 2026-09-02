@@ -12,6 +12,8 @@ import { AddRosterForm } from "@/components/teams/add-roster-form";
 import { RemoveRosterButton } from "@/components/teams/remove-roster-button";
 import { EditRosterEntryDialog } from "@/components/teams/edit-roster-entry-dialog";
 import { TeamInviteLinkPanel } from "@/components/teams/team-invite-link-panel";
+import { TeamResourcesPanel } from "@/components/teams/team-resources-panel";
+import { TeamPollsPanel } from "@/components/teams/team-polls-panel";
 import { addToRosterAction } from "@/lib/actions/teams";
 import { Pencil, Star, Calendar, Swords, ExternalLink } from "lucide-react";
 import { formatDateTimeShort } from "@/lib/utils/format-time";
@@ -31,6 +33,8 @@ export default async function TeamDetailPage({
 
   const canManageRoster = membership.permissions.includes(Permission.roster_manage);
   const canEditTeam = membership.permissions.includes(Permission.team_edit);
+  const canManageResources = membership.permissions.includes(Permission.team_resources_manage);
+  const canManagePolls = membership.permissions.includes(Permission.poll_manage);
   const canInviteToTeam =
     membership.permissions.includes(Permission.org_members_invite) ||
     (membership.permissions.includes(Permission.team_members_invite) && membership.teamIds.includes(team.id));
@@ -67,6 +71,55 @@ export default async function TeamDetailPage({
       take: 5,
     }),
   ]);
+
+  const [resourceLinks, polls] = await Promise.all([
+    prisma.teamResourceLink.findMany({ where: { teamId: team.id }, orderBy: { createdAt: "desc" } }),
+    prisma.poll.findMany({
+      where: { teamId: team.id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      include: { options: { orderBy: { order: "asc" }, include: { votes: true } } },
+    }),
+  ]);
+  const pollItems = polls.map((p) => {
+    const totalVotes = p.options.reduce((sum, o) => sum + o.votes.length, 0);
+    const myVote = p.options.find((o) => o.votes.some((v) => v.membershipId === membership.membershipId));
+    return {
+      id: p.id,
+      question: p.question,
+      closesAt: p.closesAt ? p.closesAt.toISOString() : null,
+      totalVotes,
+      myVoteOptionId: myVote?.id ?? null,
+      options: p.options.map((o) => ({ id: o.id, label: o.label, voteCount: o.votes.length })),
+    };
+  });
+
+  // Leaderboard: attendance rate for this team's own sessions specifically (not the org-wide
+  // figure shown on the roster page), ranked, minimum 1 recorded session to qualify.
+  const teamAttendanceRows = await prisma.sessionAttendance.findMany({
+    where: { session: { teamId: team.id }, status: { in: ["ATTENDED", "ABSENT", "LATE"] } },
+    select: { membershipId: true, status: true },
+  });
+  const teamAttendanceByMember = new Map<string, { attended: number; total: number }>();
+  for (const row of teamAttendanceRows) {
+    const entry = teamAttendanceByMember.get(row.membershipId) ?? { attended: 0, total: 0 };
+    entry.total += 1;
+    if (row.status === "ATTENDED" || row.status === "LATE") entry.attended += 1;
+    teamAttendanceByMember.set(row.membershipId, entry);
+  }
+  const leaderboard = roster
+    .map((r) => {
+      const entry = teamAttendanceByMember.get(r.membershipId);
+      return {
+        membershipId: r.membershipId,
+        name: r.membership.user.name,
+        rate: entry && entry.total > 0 ? Math.round((entry.attended / entry.total) * 100) : null,
+        total: entry?.total ?? 0,
+      };
+    })
+    .filter((r) => r.rate !== null)
+    .sort((a, b) => (b.rate ?? 0) - (a.rate ?? 0))
+    .slice(0, 5);
 
   const upcoming = [
     ...upcomingMatches.map((m) => ({
@@ -257,6 +310,52 @@ export default async function TeamDetailPage({
               ) : null}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      {leaderboard.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Attendance leaderboard</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5">
+            {leaderboard.map((row, i) => (
+              <div key={row.membershipId} className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2">
+                  <span className="w-4 text-muted-foreground">{i + 1}</span>
+                  {row.name}
+                </span>
+                <span className="text-muted-foreground">
+                  {row.rate}% <span className="text-xs">({row.total} sessions)</span>
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Resources</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TeamResourcesPanel
+            orgSlug={orgSlug}
+            orgId={org.id}
+            teamId={team.id}
+            teamSlug={team.slug}
+            links={resourceLinks.map((l) => ({ id: l.id, title: l.title, url: l.url }))}
+            canManage={canManageResources}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Polls</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TeamPollsPanel orgSlug={orgSlug} orgId={org.id} teamId={team.id} polls={pollItems} canManage={canManagePolls} />
         </CardContent>
       </Card>
 

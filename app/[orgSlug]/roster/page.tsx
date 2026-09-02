@@ -34,6 +34,29 @@ export default async function RosterPage({ params }: { params: Promise<{ orgSlug
     attendanceByMember.set(row.membershipId, entry);
   }
 
+  // Current streak: consecutive most-recent sessions attended (late counts), stopping at the
+  // first absence — a small engagement nudge, not a formal metric.
+  const attendanceHistory = await prisma.sessionAttendance.findMany({
+    where: { membershipId: { in: members.map((m) => m.id) }, status: { in: ["ATTENDED", "ABSENT", "LATE"] } },
+    select: { membershipId: true, status: true },
+    orderBy: { session: { scheduledAt: "desc" } },
+  });
+  const historyByMember = new Map<string, string[]>();
+  for (const row of attendanceHistory) {
+    const arr = historyByMember.get(row.membershipId) ?? [];
+    arr.push(row.status);
+    historyByMember.set(row.membershipId, arr);
+  }
+  const streakByMember = new Map<string, number>();
+  for (const [membershipId, statuses] of historyByMember) {
+    let streak = 0;
+    for (const s of statuses) {
+      if (s === "ATTENDED" || s === "LATE") streak++;
+      else break;
+    }
+    streakByMember.set(membershipId, streak);
+  }
+
   const mailtoHref = `mailto:?bcc=${members.map((m) => encodeURIComponent(m.user.email)).join(",")}`;
 
   return (
@@ -74,6 +97,7 @@ export default async function RosterPage({ params }: { params: Promise<{ orgSlug
             const entry = attendanceByMember.get(m.id);
             return entry && entry.total > 0 ? Math.round((entry.attended / entry.total) * 100) : null;
           })(),
+          attendanceStreak: streakByMember.get(m.id) ?? 0,
         }))}
       />
     </div>

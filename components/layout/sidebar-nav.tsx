@@ -16,6 +16,9 @@ import {
   MessageCircle,
   Settings,
   GraduationCap,
+  BarChart3,
+  Package,
+  Receipt,
 } from "lucide-react";
 
 const SETTINGS_PERMISSIONS: Permission[] = [
@@ -40,6 +43,13 @@ export function SidebarNav({ orgSlug, permissions }: { orgSlug: string; permissi
     { href: `${base}/teams`, label: "Teams", icon: Shield, show: true, tour: "nav-teams" },
     { href: `${base}/schedule`, label: "Schedule", icon: CalendarClock, show: true, tour: "nav-schedule" },
     { href: `${base}/availability`, label: "Availability", icon: ClipboardList, show: true, tour: undefined },
+    {
+      href: `${base}/analytics`,
+      label: "Analytics",
+      icon: BarChart3,
+      show: has(Permission.analytics_view),
+      tour: undefined,
+    },
     { href: `${base}/venues`, label: "Venues", icon: MapPinned, show: true, tour: undefined },
     {
       href: `${base}/recruitment`,
@@ -51,6 +61,14 @@ export function SidebarNav({ orgSlug, permissions }: { orgSlug: string; permissi
     { href: `${base}/announcements`, label: "Announcements", icon: Megaphone, show: true, tour: undefined },
     { href: `${base}/messages`, label: "Messages", icon: MessageCircle, show: true, tour: "nav-messages" },
     { href: `${base}/onboarding`, label: "Onboarding", icon: GraduationCap, show: true, tour: undefined },
+    { href: `${base}/gear`, label: "Gear", icon: Package, show: has(Permission.gear_manage), tour: undefined },
+    {
+      href: `${base}/expenses`,
+      label: "Expenses",
+      icon: Receipt,
+      show: has(Permission.expense_manage),
+      tour: undefined,
+    },
     {
       href: `${base}/settings`,
       label: "Settings",

@@ -5,6 +5,7 @@ import { formatDateTime } from "@/lib/utils/format-time";
 import { getBackgroundBaseUrl } from "@/lib/utils/base-url";
 import { sweepScheduledAnnouncements } from "@/lib/scheduler/scheduled-announcements";
 import { sendPushToUser } from "@/lib/notifications/push";
+import { postInteractiveReminder, dmReminderToRoster } from "@/lib/integrations/discord-bot";
 
 /** Pushes a reminder to every roster member's opted-in devices — independent of whether the team
  *  also has a Discord webhook configured, so push works for teams that never set that up. */
@@ -80,12 +81,14 @@ async function sweepMatches() {
       ],
     });
 
-    await pushReminderToRoster(
-      match.teamId,
-      `${match.team.name} — Match in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}!`,
-      `vs ${match.opponent.name} · ${location}`,
-      eventUrl,
-    );
+    const title = `${match.team.name} — Match in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}!`;
+    const body = `vs ${match.opponent.name} · ${location}`;
+
+    await pushReminderToRoster(match.teamId, title, body, eventUrl);
+    await dmReminderToRoster(match.teamId, title, body, eventUrl).catch(() => {});
+    if (match.team.discordReminderChannelId) {
+      await postInteractiveReminder(match.team.discordReminderChannelId, "MATCH", match.id, title, body).catch(() => {});
+    }
   }
 }
 
@@ -132,11 +135,12 @@ async function sweepPracticeSessions() {
       ],
     });
 
-    await pushReminderToRoster(
-      session.teamId,
-      `${session.team.name} — ${label} in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}!`,
-      location,
-      eventUrl,
-    );
+    const title = `${session.team.name} — ${label} in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}!`;
+
+    await pushReminderToRoster(session.teamId, title, location, eventUrl);
+    await dmReminderToRoster(session.teamId, title, location, eventUrl).catch(() => {});
+    if (session.team.discordReminderChannelId) {
+      await postInteractiveReminder(session.team.discordReminderChannelId, "PRACTICE", session.id, title, location).catch(() => {});
+    }
   }
 }

@@ -12,6 +12,7 @@ import { EditMyProfileDialog } from "@/components/roster/edit-my-profile-dialog"
 import { Badge } from "@/components/ui/badge";
 import { PlayerActionDialog } from "@/components/roster/player-action-dialog";
 import { DeletePlayerActionButton } from "@/components/roster/delete-player-action-button";
+import { GameStatsPanel } from "@/components/roster/game-stats-panel";
 
 const NAMED_TRACKERS: { key: "trackerValorant" | "trackerLeagueOfLegends" | "trackerRocketLeague" | "trackerSmash"; label: string }[] = [
   { key: "trackerValorant", label: "Valorant" },
@@ -162,6 +163,16 @@ export default async function MemberProfilePage({
                           </a>
                         ))}
                       </div>
+                    ) : null}
+                    {tm.inGameName && isOwnProfile ? (
+                      <GameStatsPanel
+                        orgSlug={orgSlug}
+                        orgId={org.id}
+                        teamMembershipId={tm.id}
+                        membershipPageId={membership.id}
+                        stats={tm.gameStatsCache as Parameters<typeof GameStatsPanel>[0]["stats"]}
+                        updatedAt={tm.gameStatsUpdatedAt ? tm.gameStatsUpdatedAt.toISOString() : null}
+                      />
                     ) : null}
                     {isOwnProfile ? (
                       <EditMyProfileDialog

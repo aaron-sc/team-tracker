@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteAnnouncementButton } from "@/components/announcements/delete-announcement-button";
+import { AnnouncementReadTracker } from "@/components/announcements/announcement-read-tracker";
 import { BroadcastDialog } from "@/components/notifications/broadcast-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Plus, Pin, Megaphone, Clock } from "lucide-react";
@@ -25,12 +26,23 @@ export default async function AnnouncementsPage({ params }: { params: Promise<{ 
     // Members who can create announcements also get to see scheduled-but-not-yet-published ones
     // (so they know what's queued up); everyone else only sees what's actually gone out.
     where: canCreate ? { orgId: org.id } : { orgId: org.id, published: true },
-    include: { author: { include: { user: true } }, team: true },
+    include: { author: { include: { user: true } }, team: true, _count: { select: { reads: true } } },
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
   });
 
   const canDelete = membership.permissions.includes(Permission.announcement_delete);
   const canBroadcast = membership.permissions.includes(Permission.notification_send_broadcast);
+  // Read counts are only useful to whoever can post/manage announcements — nobody else needs to
+  // see who has and hasn't opened one.
+  const showReadCounts = canCreate || canDelete;
+
+  const [orgMemberCount, teamRosterSizes] = showReadCounts
+    ? await Promise.all([
+        prisma.membership.count({ where: { orgId: org.id } }),
+        prisma.teamMembership.groupBy({ by: ["teamId"], _count: { _all: true } }),
+      ])
+    : [0, []];
+  const rosterSizeByTeam = new Map(teamRosterSizes.map((t) => [t.teamId, t._count._all]));
 
   return (
     <div className="max-w-2xl">
@@ -88,7 +100,16 @@ export default async function AnnouncementsPage({ params }: { params: Promise<{ 
                     )}
                   </p>
                 </div>
-                {canDelete ? <DeleteAnnouncementButton orgSlug={orgSlug} orgId={org.id} announcementId={a.id} /> : null}
+                <div className="flex items-center gap-2">
+                  <AnnouncementReadTracker
+                    orgId={org.id}
+                    announcementId={a.id}
+                    readCount={a._count.reads}
+                    audienceSize={a.teamId ? (rosterSizeByTeam.get(a.teamId) ?? 0) : orgMemberCount}
+                    showCount={showReadCounts}
+                  />
+                  {canDelete ? <DeleteAnnouncementButton orgSlug={orgSlug} orgId={org.id} announcementId={a.id} /> : null}
+                </div>
               </CardHeader>
               <CardContent>
                 <p className="whitespace-pre-wrap text-sm text-muted-foreground">{a.body}</p>

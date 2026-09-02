@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useEffect, useState, useActionState, useTransition } from "react";
 import { updateTeamDiscordSettingsAction, testTeamDiscordWebhookAction } from "@/lib/actions/team-discord";
+import { getDiscordGuildOptionsAction } from "@/lib/actions/discord-bot";
 import type { ActionState } from "@/lib/actions/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +44,9 @@ export function TeamDiscordPanel({
   matchReminderMinutes,
   practiceReminderMinutes,
   scrimReminderMinutes,
+  reminderChannelId,
+  roleId,
+  botConnected,
 }: {
   orgSlug: string;
   orgId: string;
@@ -52,10 +56,25 @@ export function TeamDiscordPanel({
   matchReminderMinutes: number | null;
   practiceReminderMinutes: number | null;
   scrimReminderMinutes: number | null;
+  reminderChannelId: string | null;
+  roleId: string | null;
+  botConnected: boolean;
 }) {
   const action = updateTeamDiscordSettingsAction.bind(null, orgSlug, orgId, teamId);
   const [state, formAction] = useActionState<ActionState, FormData>(action, undefined);
   const [testing, startTest] = useTransition();
+  const [guildChannels, setGuildChannels] = useState<{ id: string; name: string }[]>([]);
+  const [guildRoles, setGuildRoles] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (!botConnected) return;
+    getDiscordGuildOptionsAction(orgId)
+      .then((result) => {
+        setGuildChannels(result.channels);
+        setGuildRoles(result.roles);
+      })
+      .catch(() => {});
+  }, [orgId, botConnected]);
 
   return (
     <div className="space-y-3">
@@ -94,6 +113,50 @@ export function TeamDiscordPanel({
             Roles and Copy Role ID. Leave blank to post without a ping.
           </p>
         </div>
+
+        {botConnected ? (
+          <div className="grid gap-4 sm:grid-cols-2 rounded-md border p-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="reminderChannelId">Bot reminder channel</Label>
+              <Select key={reminderChannelId ?? ""} name="reminderChannelId" defaultValue={reminderChannelId ?? "none"}>
+                <SelectTrigger id="reminderChannelId" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Off (webhook only)</SelectItem>
+                  {guildChannels.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      #{c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Posts reminders here with interactive ✅/❌ RSVP buttons, in addition to the webhook above.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="roleId">Synced Discord role</Label>
+              <Select key={roleId ?? ""} name="roleId" defaultValue={roleId ?? "none"}>
+                <SelectTrigger id="roleId" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {guildRoles.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      @{r.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Auto-assigned to a player&apos;s Discord account when they join this roster (needs Manage Roles, and
+                the bot&apos;s own role positioned above this one).
+              </p>
+            </div>
+          </div>
+        ) : null}
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
