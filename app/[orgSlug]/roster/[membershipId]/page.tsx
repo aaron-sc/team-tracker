@@ -4,10 +4,13 @@ import { prisma } from "@/lib/db/prisma";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { RoleBadge } from "@/components/ui/role-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, Phone, MessageSquare, Calendar, ExternalLink } from "lucide-react";
+import { Mail, Phone, MessageSquare, Calendar, ExternalLink, ShieldAlert } from "lucide-react";
 import { formatDate } from "@/lib/utils/format-time";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { EditMyProfileDialog } from "@/components/roster/edit-my-profile-dialog";
+import { Badge } from "@/components/ui/badge";
+import { PlayerActionDialog } from "@/components/roster/player-action-dialog";
+import { DeletePlayerActionButton } from "@/components/roster/delete-player-action-button";
 
 const NAMED_TRACKERS: { key: "trackerValorant" | "trackerLeagueOfLegends" | "trackerRocketLeague" | "trackerSmash"; label: string }[] = [
   { key: "trackerValorant", label: "Valorant" },
@@ -44,6 +47,26 @@ export default async function MemberProfilePage({
     viewerMembership.membershipId === membership.id ||
     viewerMembership.permissions.includes(Permission.org_members_contact_view);
   const isOwnProfile = viewerMembership.membershipId === membership.id;
+  const canViewPlayerActions = viewerMembership.permissions.includes(Permission.player_actions_manage);
+
+  const playerActions = canViewPlayerActions
+    ? await prisma.playerAction.findMany({
+        where: { teamMembership: { membershipId: membership.id } },
+        include: { teamMembership: { include: { team: true } }, createdBy: { include: { user: true } } },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
+  const now = new Date();
+  const activeBenchTeamIds = new Set(
+    playerActions
+      .filter(
+        (a) =>
+          a.type === "BENCHED" &&
+          (!a.startDate || a.startDate <= now) &&
+          (!a.endDate || a.endDate >= now),
+      )
+      .map((a) => a.teamMembership.teamId),
+  );
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -109,7 +132,12 @@ export default async function MemberProfilePage({
                 return (
                   <div key={tm.id} className="space-y-2 border-b pb-3 last:border-0 last:pb-0">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{tm.team.name}</span>
+                      <span className="flex items-center gap-1.5 font-medium">
+                        {tm.team.name}
+                        {canViewPlayerActions && activeBenchTeamIds.has(tm.teamId) ? (
+                          <Badge variant="destructive">Benched</Badge>
+                        ) : null}
+                      </span>
                       <span className="flex items-center gap-2 text-muted-foreground">
                         {tm.inGameName ? `"${tm.inGameName}" · ` : ""}
                         {tm.position ?? "—"} {tm.jerseyNumber ? `#${tm.jerseyNumber}` : ""} {tm.isStarter ? "· Starter" : ""}
@@ -148,6 +176,15 @@ export default async function MemberProfilePage({
                         }}
                       />
                     ) : null}
+                    {canViewPlayerActions ? (
+                      <PlayerActionDialog
+                        orgSlug={orgSlug}
+                        orgId={org.id}
+                        teamMembershipId={tm.id}
+                        membershipId={membership.id}
+                        teamName={tm.team.name}
+                      />
+                    ) : null}
                   </div>
                 );
               })}
@@ -155,6 +192,50 @@ export default async function MemberProfilePage({
           )}
         </CardContent>
       </Card>
+
+      {canViewPlayerActions ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShieldAlert className="size-4" />
+              Player conduct
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {playerActions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No bench or disciplinary records.</p>
+            ) : (
+              <div className="space-y-3">
+                {playerActions.map((a) => (
+                  <div key={a.id} className="flex items-start justify-between gap-3 rounded-md border p-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-2 font-medium">
+                        <Badge variant={a.type === "DISCIPLINARY" ? "destructive" : "secondary"}>
+                          {a.type === "DISCIPLINARY" ? "Disciplinary" : "Benched"}
+                        </Badge>
+                        {a.teamMembership.team.name}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{a.reason}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {a.startDate ? `From ${formatDate(a.startDate, viewerTz)}` : ""}
+                        {a.endDate ? ` to ${formatDate(a.endDate, viewerTz)}` : a.startDate ? " (open-ended)" : ""}
+                        {a.createdBy ? ` · Recorded by ${a.createdBy.user.name}` : ""}
+                        {` · ${formatDate(a.createdAt, viewerTz)}`}
+                      </p>
+                    </div>
+                    <DeletePlayerActionButton
+                      orgSlug={orgSlug}
+                      orgId={org.id}
+                      playerActionId={a.id}
+                      membershipId={membership.id}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

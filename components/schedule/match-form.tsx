@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubmitButton } from "@/components/auth/submit-button";
+import { SuggestedTimesPanel } from "@/components/schedule/suggested-times-panel";
 
 const FORMATS = ["BO1", "BO3", "BO5", "BO7", "OTHER"] as const;
 
@@ -40,6 +41,7 @@ export function MatchForm({
   };
 }) {
   const [state, formAction] = useActionState<ActionState, FormData>(action, undefined);
+  const [teamId, setTeamId] = useState(defaultValues?.teamId ?? teams[0]?.id ?? "");
   const [locationType, setLocationType] = useState(defaultValues?.locationType ?? "ONLINE");
   const [isStreamed, setIsStreamed] = useState(defaultValues?.isStreamed ?? false);
   const [useNewOpponent, setUseNewOpponent] = useState(opponents.length === 0);
@@ -48,7 +50,7 @@ export function MatchForm({
     <form action={formAction} className="max-w-xl space-y-4">
       <div className="space-y-1.5">
         <Label htmlFor="teamId">Team</Label>
-        <Select name="teamId" defaultValue={defaultValues?.teamId ?? teams[0]?.id} disabled={lockTeam}>
+        <Select name="teamId" value={teamId} onValueChange={setTeamId} disabled={lockTeam}>
           <SelectTrigger id="teamId" className="w-full">
             <SelectValue />
           </SelectTrigger>
@@ -101,6 +103,8 @@ export function MatchForm({
           </div>
         )}
       </div>
+
+      {teamId ? <SuggestedTimesPanel key={teamId} teamId={teamId} scheduledAtInputId="scheduledAt" /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">

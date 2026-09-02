@@ -65,6 +65,10 @@ export const PERMISSION_GROUPS: { label: string; permissions: Permission[] }[] =
     label: "Onboarding",
     permissions: [Permission.onboarding_manage],
   },
+  {
+    label: "Player conduct",
+    permissions: [Permission.player_actions_manage],
+  },
 ];
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
@@ -102,6 +106,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   announcement_delete: "Delete announcements",
   notification_send_broadcast: "Send broadcast notifications",
   onboarding_manage: "Manage onboarding tasks (create/edit/delete, required for new members)",
+  player_actions_manage: "View and record player benching & disciplinary actions",
 };
 
 /** Default permission grants for system-seeded roles, applied at org creation time. */
@@ -130,6 +135,7 @@ export const ROLE_PRESETS: Record<string, { description: string; color: string; 
       Permission.recruitment_view,
       Permission.recruitment_manage,
       Permission.announcement_create,
+      Permission.player_actions_manage,
     ],
   },
   Manager: {
@@ -148,6 +154,7 @@ export const ROLE_PRESETS: Record<string, { description: string; color: string; 
       Permission.announcement_pin,
       Permission.announcement_delete,
       Permission.audit_log_view,
+      Permission.player_actions_manage,
     ],
   },
   Captain: {

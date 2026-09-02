@@ -18,6 +18,9 @@ const ACTION_LABELS: Record<string, string> = {
   "org.data_reset": "Organization data reset",
   "announcement.created": "Announcement posted",
   "announcement.deleted": "Announcement deleted",
+  "player_action.benched": "Player benched",
+  "player_action.disciplinary_recorded": "Disciplinary action recorded",
+  "player_action.deleted": "Player conduct record removed",
 };
 
 export default async function AuditLogPage({ params }: { params: Promise<{ orgSlug: string }> }) {

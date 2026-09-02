@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireMembership, requirePermission } from "@/lib/auth/authorize";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
+import { createNotification } from "@/lib/notifications/create";
 
 export async function markNotificationReadAction(orgId: string, notificationId: string): Promise<ActionState> {
   const { membership } = await requireMembership(orgId);
@@ -50,14 +51,19 @@ export async function sendBroadcastNotificationAction(
     select: { id: true },
   });
 
-  await prisma.notification.createMany({
-    data: recipients.map((r) => ({
-      membershipId: r.id,
-      type: "broadcast",
-      title: title.trim(),
-      body: typeof body === "string" && body.trim() ? body.trim() : undefined,
-    })),
-  });
+  // Routed through createNotification (rather than a bulk createMany) specifically so each
+  // recipient also gets a push notification if they've enabled one — broadcasts are exactly the
+  // kind of thing push exists for.
+  await Promise.all(
+    recipients.map((r) =>
+      createNotification({
+        membershipId: r.id,
+        type: "broadcast",
+        title: title.trim(),
+        body: typeof body === "string" && body.trim() ? body.trim() : undefined,
+      }),
+    ),
+  );
 
   revalidatePath(`/${orgSlug}`, "layout");
   return { success: `Sent to ${recipients.length} member${recipients.length === 1 ? "" : "s"}.` };

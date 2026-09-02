@@ -4,6 +4,17 @@ import { notifyDiscord, FORMATION_EMBED_COLOR, roleMentionPrefix } from "@/lib/i
 import { formatDateTime } from "@/lib/utils/format-time";
 import { getBackgroundBaseUrl } from "@/lib/utils/base-url";
 import { sweepScheduledAnnouncements } from "@/lib/scheduler/scheduled-announcements";
+import { sendPushToUser } from "@/lib/notifications/push";
+
+/** Pushes a reminder to every roster member's opted-in devices — independent of whether the team
+ *  also has a Discord webhook configured, so push works for teams that never set that up. */
+async function pushReminderToRoster(teamId: string, title: string, body: string, linkUrl: string | undefined) {
+  const roster = await prisma.teamMembership.findMany({
+    where: { teamId },
+    select: { membership: { select: { userId: true } } },
+  });
+  await Promise.all(roster.map((r) => sendPushToUser(r.membership.userId, { title, body, linkUrl }).catch(() => {})));
+}
 
 const POLL_INTERVAL_MS = 60_000;
 // Don't fire a reminder for an event whose start time has already passed by more than this —
@@ -35,7 +46,7 @@ async function sweepMatches() {
       status: "SCHEDULED",
       reminderSentAt: null,
       scheduledAt: { gte: new Date(now.getTime() - MAX_STALE_MINUTES * 60_000) },
-      team: { discordWebhookUrl: { not: null }, discordMatchReminderMinutes: { not: null } },
+      team: { discordMatchReminderMinutes: { not: null } },
     },
     include: { team: { include: { org: true } }, opponent: true, venue: true },
   });
@@ -68,6 +79,13 @@ async function sweepMatches() {
         },
       ],
     });
+
+    await pushReminderToRoster(
+      match.teamId,
+      `${match.team.name} — Match in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}!`,
+      `vs ${match.opponent.name} · ${location}`,
+      eventUrl,
+    );
   }
 }
 
@@ -78,7 +96,9 @@ async function sweepPracticeSessions() {
     where: {
       reminderSentAt: null,
       scheduledAt: { gte: new Date(now.getTime() - MAX_STALE_MINUTES * 60_000) },
-      team: { discordWebhookUrl: { not: null } },
+      team: {
+        OR: [{ discordPracticeReminderMinutes: { not: null } }, { discordScrimReminderMinutes: { not: null } }],
+      },
     },
     include: { team: { include: { org: true } }, opponent: true, venue: true },
   });
@@ -111,5 +131,12 @@ async function sweepPracticeSessions() {
         },
       ],
     });
+
+    await pushReminderToRoster(
+      session.teamId,
+      `${session.team.name} — ${label} in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}!`,
+      location,
+      eventUrl,
+    );
   }
 }

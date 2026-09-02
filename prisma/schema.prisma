@@ -127,6 +127,13 @@ enum Permission {
   notification_send_broadcast
 
   onboarding_manage
+
+  player_actions_manage
+}
+
+enum PlayerActionType {
+  BENCHED
+  DISCIPLINARY
 }
 
 // ---------- Core tenancy ----------
@@ -157,6 +164,7 @@ model Organization {
   conversations Conversation[]
   teamInviteLinks TeamInviteLink[]
   onboardingTasks OnboardingTask[]
+  playerActions   PlayerAction[]
 }
 
 model Team {
@@ -211,6 +219,7 @@ model User {
   invitesSent             Invite[]             @relation("InvitedBy")
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
+  pushSubscriptions       PushSubscription[]
 }
 
 model PasswordResetToken {
@@ -288,6 +297,7 @@ model Membership {
   createdTeamInviteLinks TeamInviteLink[]
   createdOnboardingTasks OnboardingTask[]
   onboardingCompletions  OnboardingCompletion[]
+  createdPlayerActions   PlayerAction[]
 
   @@unique([userId, orgId])
 }
@@ -310,6 +320,8 @@ model TeamMembership {
   isStarter    Boolean    @default(false)
   joinedTeamAt DateTime   @default(now())
   leftTeamAt   DateTime?
+
+  playerActions PlayerAction[]
 
   @@unique([membershipId, teamId])
 }
@@ -651,4 +663,39 @@ model OnboardingCompletion {
   signedFileName  String?
 
   @@unique([taskId, membershipId])
+}
+
+// One row per browser/device a user has enabled push notifications on — a user with two
+// browsers subscribed gets two rows, and both receive every push. Deleted when the user disables
+// notifications on that device, or automatically when the push service reports the subscription
+// as expired/revoked (see lib/notifications/push.ts).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}
+
+// ---------- Player conduct ----------
+
+// A bench or disciplinary record against one person's assignment to one specific team — visible
+// only to holders of player_actions_manage (coaches/managers/owners by default), never to the
+// player themselves or teammates.
+model PlayerAction {
+  id               String           @id @default(cuid())
+  orgId            String
+  org              Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  teamMembershipId String
+  teamMembership   TeamMembership   @relation(fields: [teamMembershipId], references: [id], onDelete: Cascade)
+  type             PlayerActionType
+  reason           String
+  startDate        DateTime?
+  endDate          DateTime?
+  createdById      String?
+  createdBy        Membership?      @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 }

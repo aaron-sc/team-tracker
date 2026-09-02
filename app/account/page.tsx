@@ -8,6 +8,7 @@ import { ChangePasswordForm } from "@/components/account/change-password-form";
 import { UpdateNameForm } from "@/components/account/update-name-form";
 import { UpdateTimezoneForm } from "@/components/account/update-timezone-form";
 import { UpdateTimeFormatForm } from "@/components/account/update-time-format-form";
+import { PushNotificationsToggle } from "@/components/account/push-notifications-toggle";
 import { UpdateProfileDetailsForm } from "@/components/account/update-profile-details-form";
 import { AvatarUploadForm } from "@/components/account/avatar-upload-form";
 import { LeaveOrgButton } from "@/components/account/leave-org-button";
@@ -87,6 +88,15 @@ export default async function AccountPage() {
           </CardHeader>
           <CardContent>
             <UpdateTimeFormatForm currentTimeFormat={user.timeFormat === "24h" ? "24h" : "12h"} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Push notifications</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PushNotificationsToggle />
           </CardContent>
         </Card>
 

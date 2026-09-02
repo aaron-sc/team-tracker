@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubmitButton } from "@/components/auth/submit-button";
+import { SuggestedTimesPanel } from "@/components/schedule/suggested-times-panel";
 
 export function PracticeForm({
   action,
@@ -35,6 +36,7 @@ export function PracticeForm({
   };
 }) {
   const [state, formAction] = useActionState<ActionState, FormData>(action, undefined);
+  const [teamId, setTeamId] = useState(defaultValues?.teamId ?? teams[0]?.id ?? "");
   const [type, setType] = useState(defaultValues?.type ?? "PRACTICE");
   const [locationType, setLocationType] = useState(defaultValues?.locationType ?? "ONLINE");
   const [useNewOpponent, setUseNewOpponent] = useState(opponents.length === 0);
@@ -44,7 +46,7 @@ export function PracticeForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="teamId">Team</Label>
-          <Select name="teamId" defaultValue={defaultValues?.teamId ?? teams[0]?.id} disabled={lockTeam}>
+          <Select name="teamId" value={teamId} onValueChange={setTeamId} disabled={lockTeam}>
             <SelectTrigger id="teamId" className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -112,6 +114,8 @@ export function PracticeForm({
           )}
         </div>
       ) : null}
+
+      {teamId ? <SuggestedTimesPanel key={teamId} teamId={teamId} scheduledAtInputId="scheduledAt" /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">

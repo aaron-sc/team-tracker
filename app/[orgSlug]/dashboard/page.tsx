@@ -48,6 +48,9 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   "team.public_roster_enabled": "enabled a public roster embed",
   "team.public_roster_disabled": "disabled a public roster embed",
   "team.public_roster_token_rotated": "rotated a public roster embed link",
+  "player_action.benched": "benched a player",
+  "player_action.disciplinary_recorded": "recorded a disciplinary action",
+  "player_action.deleted": "removed a player conduct record",
 };
 
 const STAGE_LABELS: Record<string, string> = {
