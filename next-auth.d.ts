@@ -7,6 +7,7 @@ declare module "next-auth" {
       id: string;
       hasVerifiedEmail: boolean;
       timezone: string | null;
+      timeFormat: "12h" | "24h";
     } & DefaultSession["user"];
     memberships: SessionMembership[];
   }

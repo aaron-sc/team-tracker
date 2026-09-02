@@ -24,6 +24,7 @@ export default async function PracticeSessionDetailPage({
   const { orgSlug, sessionId } = await params;
   const { session: authSession, org, membership } = await getOrgContext(orgSlug);
   const viewerTz = authSession.user.timezone ?? org.timezone;
+  const viewerHour12 = authSession.user.timeFormat !== "24h";
 
   const session = await prisma.practiceSession.findUnique({
     where: { id: sessionId },
@@ -59,7 +60,7 @@ export default async function PracticeSessionDetailPage({
         <CardContent className="space-y-3 pt-6 text-sm">
           <div className="flex items-center gap-2">
             <Calendar className="size-4 text-muted-foreground" />
-            {formatDateTimeLong(session.scheduledAt, viewerTz)}
+            {formatDateTimeLong(session.scheduledAt, viewerTz, viewerHour12)}
           </div>
           <div className="flex items-center gap-2">
             <Clock className="size-4 text-muted-foreground" />

@@ -26,7 +26,15 @@ type RosterMember = {
   roleName: string;
   roleColor: string | null;
   teamNames: string[];
+  /** % of past practices/scrims attended (late counts as attended). Null if no history yet. */
+  attendanceRate: number | null;
 };
+
+function attendanceBadgeClass(rate: number): string {
+  if (rate >= 85) return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+  if (rate >= 60) return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400";
+  return "border-destructive/30 bg-destructive/10 text-destructive";
+}
 
 export function RosterSearchList({ orgSlug, members }: { orgSlug: string; members: RosterMember[] }) {
   const [query, setQuery] = useState("");
@@ -75,6 +83,11 @@ export function RosterSearchList({ orgSlug, members }: { orgSlug: string; member
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-1.5">
+                  {m.attendanceRate !== null ? (
+                    <Badge variant="outline" className={attendanceBadgeClass(m.attendanceRate)} title="Attendance rate">
+                      {m.attendanceRate}% attendance
+                    </Badge>
+                  ) : null}
                   <RoleBadge name={m.roleName} color={m.roleColor} />
                   {m.teamNames.map((name) => (
                     <Badge key={name} variant="outline">

@@ -11,11 +11,13 @@ export function MonthGrid({
   events,
   today,
   timeZone,
+  hour12 = true,
 }: {
   month: Date;
   events: CalendarEvent[];
   today: Date;
   timeZone: string;
+  hour12?: boolean;
 }) {
   const start = startOfWeek(startOfMonth(month));
   const end = endOfWeek(endOfMonth(month));
@@ -55,7 +57,7 @@ export function MonthGrid({
                 {format(day, "d")}
               </div>
               {visible.map((event) => (
-                <EventChip key={event.id} event={event} timeZone={timeZone} />
+                <EventChip key={event.id} event={event} timeZone={timeZone} hour12={hour12} />
               ))}
               {overflow > 0 ? <p className="px-1.5 text-xs text-muted-foreground">+{overflow} more</p> : null}
             </div>

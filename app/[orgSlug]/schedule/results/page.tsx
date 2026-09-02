@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Radio, Trophy } from "lucide-react";
+import { ArrowLeft, Radio, Trophy, Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDate } from "@/lib/utils/format-time";
@@ -65,22 +65,30 @@ export default async function MatchResultsPage({
           </div>
         </div>
 
-        <div className="flex overflow-hidden rounded-md border text-sm">
-          <Link
-            href={`/${orgSlug}/schedule/results`}
-            className={cn("px-3 py-1.5", !team ? "bg-primary text-primary-foreground" : "hover:bg-accent")}
-          >
-            All teams
-          </Link>
-          {teams.map((t) => (
+        <div className="flex items-center gap-2">
+          <div className="flex overflow-hidden rounded-md border text-sm">
             <Link
-              key={t.id}
-              href={`/${orgSlug}/schedule/results?team=${t.id}`}
-              className={cn("px-3 py-1.5", team === t.id ? "bg-primary text-primary-foreground" : "hover:bg-accent")}
+              href={`/${orgSlug}/schedule/results`}
+              className={cn("px-3 py-1.5", !team ? "bg-primary text-primary-foreground" : "hover:bg-accent")}
             >
-              {t.name}
+              All teams
             </Link>
-          ))}
+            {teams.map((t) => (
+              <Link
+                key={t.id}
+                href={`/${orgSlug}/schedule/results?team=${t.id}`}
+                className={cn("px-3 py-1.5", team === t.id ? "bg-primary text-primary-foreground" : "hover:bg-accent")}
+              >
+                {t.name}
+              </Link>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/${orgSlug}/schedule/results/opponents${team ? `?team=${team}` : ""}`}>
+              <Swords className="size-4" />
+              By opponent
+            </Link>
+          </Button>
         </div>
       </div>
 

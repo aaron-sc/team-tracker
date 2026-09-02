@@ -140,6 +140,7 @@ model Organization {
   themeColor  String   @default("#6366f1")
   apiKey      String?  @unique
   discordWebhookUrl String?
+  websiteUrl  String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -175,6 +176,12 @@ model Team {
   discordPracticeReminderMinutes  Int?
   discordScrimReminderMinutes     Int?
 
+  // Public, unauthenticated roster embed (for the org's own website). Off by default; the token
+  // is only generated (and only meaningful) once enabled, and is unguessable/unrelated to the
+  // team/org slugs so a leaked link can be rotated without renaming anything.
+  publicRosterEnabled Boolean @default(false)
+  publicRosterToken   String? @unique
+
   teamMemberships  TeamMembership[]
   matches          Match[]
   practiceSessions PracticeSession[]
@@ -194,6 +201,7 @@ model User {
   phone           String?
   discordHandle   String?
   timezone        String?
+  timeFormat      String    @default("12h") // "12h" | "24h"
   emailVerifiedAt DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -293,7 +301,12 @@ model TeamMembership {
   jerseyNumber String?
   position     String?
   inGameName   String?
-  trackerLink  String?
+  trackerLink  String?    // general/"other game" tracker, kept for whatever isn't one of the named ones below
+  bio          String?
+  trackerValorant        String?
+  trackerRocketLeague    String?
+  trackerSmash           String?
+  trackerLeagueOfLegends String?
   isStarter    Boolean    @default(false)
   joinedTeamAt DateTime   @default(now())
   leftTeamAt   DateTime?
@@ -534,6 +547,8 @@ model Announcement {
   title     String
   body      String
   pinned    Boolean      @default(false)
+  publishAt DateTime?    // null = published immediately; set = held back until the background sweep publishes it
+  published Boolean      @default(true)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 }

@@ -4,7 +4,17 @@ import { EventChip } from "@/components/calendar/event-chip";
 import { isSameDayInTz } from "@/lib/utils/format-time";
 import type { CalendarEvent } from "@/lib/calendar/types";
 
-export function WeekAgenda({ week, events, timeZone }: { week: Date; events: CalendarEvent[]; timeZone: string }) {
+export function WeekAgenda({
+  week,
+  events,
+  timeZone,
+  hour12 = true,
+}: {
+  week: Date;
+  events: CalendarEvent[];
+  timeZone: string;
+  hour12?: boolean;
+}) {
   const days = eachDayOfInterval({ start: startOfWeek(week), end: endOfWeek(week) });
   const today = new Date();
 
@@ -27,7 +37,7 @@ export function WeekAgenda({ week, events, timeZone }: { week: Date; events: Cal
             </div>
             <div className="space-y-1">
               {dayEvents.map((event) => (
-                <EventChip key={event.id} event={event} timeZone={timeZone} className="block whitespace-normal" />
+                <EventChip key={event.id} event={event} timeZone={timeZone} hour12={hour12} className="block whitespace-normal" />
               ))}
               {dayEvents.length === 0 ? <p className="text-xs text-muted-foreground">—</p> : null}
             </div>

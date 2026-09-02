@@ -15,12 +15,14 @@ export function MessageThread({
   conversationId,
   currentMembershipId,
   initialMessages,
+  hour12 = true,
 }: {
   orgSlug: string;
   orgId: string;
   conversationId: string;
   currentMembershipId: string;
   initialMessages: Msg[];
+  hour12?: boolean;
 }) {
   const [messages, setMessages] = useState(initialMessages);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -81,7 +83,7 @@ export function MessageThread({
               >
                 <p className="whitespace-pre-wrap break-words">{m.body}</p>
                 <p className={cn("mt-1 text-[10px]", mine ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                  {new Date(m.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                  {new Date(m.createdAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12 })}
                 </p>
               </div>
             </div>

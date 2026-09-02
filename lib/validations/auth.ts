@@ -46,6 +46,10 @@ export const updateTimezoneSchema = z.object({
   timezone: z.string().trim().min(1, "Choose a timezone."),
 });
 
+export const updateTimeFormatSchema = z.object({
+  timeFormat: z.enum(["12h", "24h"]),
+});
+
 export const updateProfileDetailsSchema = z.object({
   discordHandle: z.string().trim().max(40).optional().or(z.literal("")),
   phone: z.string().trim().max(30).optional().or(z.literal("")),

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { notifyDiscord, FORMATION_EMBED_COLOR, roleMentionPrefix } from "@/lib/integrations/discord";
 import { formatDateTime } from "@/lib/utils/format-time";
 import { getBackgroundBaseUrl } from "@/lib/utils/base-url";
+import { sweepScheduledAnnouncements } from "@/lib/scheduler/scheduled-announcements";
 
 const POLL_INTERVAL_MS = 60_000;
 // Don't fire a reminder for an event whose start time has already passed by more than this —
@@ -20,7 +21,7 @@ export function startDiscordReminderScheduler() {
 
 async function runSweep() {
   try {
-    await Promise.all([sweepMatches(), sweepPracticeSessions()]);
+    await Promise.all([sweepMatches(), sweepPracticeSessions(), sweepScheduledAnnouncements()]);
   } catch (err) {
     console.error("[discord-reminders] sweep failed:", err);
   }

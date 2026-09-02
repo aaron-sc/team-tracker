@@ -43,6 +43,11 @@ const AUDIT_ACTION_LABELS: Record<string, string> = {
   "member.removed": "removed a member",
   "member.left": "left the organization",
   "team_invite_link.created": "created a team invite link",
+  "announcement.created": "posted an announcement",
+  "announcement.deleted": "deleted an announcement",
+  "team.public_roster_enabled": "enabled a public roster embed",
+  "team.public_roster_disabled": "disabled a public roster embed",
+  "team.public_roster_token_rotated": "rotated a public roster embed link",
 };
 
 const STAGE_LABELS: Record<string, string> = {
@@ -59,6 +64,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
   const { session, org, membership, teams } = await getOrgContext(orgSlug);
   await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
   const viewerTz = session.user.timezone ?? org.timezone;
+  const viewerHour12 = session.user.timeFormat !== "24h";
 
   const now = new Date();
   const canViewRecruitment = membership.permissions.includes(Permission.recruitment_view);
@@ -89,7 +95,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
       take: 5,
     }),
     prisma.announcement.findMany({
-      where: { orgId: org.id },
+      where: { orgId: org.id, published: true },
       include: { author: { include: { user: true } } },
       orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
       take: 4,
@@ -197,7 +203,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
                     {a.session.type === "SCRIM" ? `scrim vs ${a.session.opponent?.name ?? "TBD"}` : "practice"}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDateTime(a.session.scheduledAt, viewerTz)}
+                    {formatDateTime(a.session.scheduledAt, viewerTz, viewerHour12)}
                   </p>
                 </div>
                 <RsvpQuickActions orgSlug={orgSlug} orgId={org.id} attendanceId={a.id} />
@@ -227,7 +233,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
                       {m.team.name} vs {m.opponent.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDateTime(m.scheduledAt, viewerTz)}
+                      {formatDateTime(m.scheduledAt, viewerTz, viewerHour12)}
                     </p>
                   </div>
                   {m.isStreamed ? (
@@ -261,7 +267,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
                       {s.team.name} {s.type === "SCRIM" ? `vs ${s.opponent?.name ?? "TBD"}` : "practice"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDateTime(s.scheduledAt, viewerTz)}
+                      {formatDateTime(s.scheduledAt, viewerTz, viewerHour12)}
                     </p>
                   </div>
                   <Badge variant="outline">{s.type}</Badge>
@@ -391,7 +397,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
                     {AUDIT_ACTION_LABELS[entry.action] ?? entry.action}
                   </span>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {formatDateTime(entry.createdAt, viewerTz)}
+                    {formatDateTime(entry.createdAt, viewerTz, viewerHour12)}
                   </span>
                 </div>
               ))

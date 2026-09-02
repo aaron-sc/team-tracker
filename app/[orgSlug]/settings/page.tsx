@@ -38,6 +38,7 @@ export default async function OrgSettingsPage({ params }: { params: Promise<{ or
           timezone={org.timezone}
           timezones={getTimezones()}
           themeColor={org.themeColor}
+          websiteUrl={org.websiteUrl}
         />
       </div>
 

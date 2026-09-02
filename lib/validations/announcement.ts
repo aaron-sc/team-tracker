@@ -5,4 +5,5 @@ export const announcementSchema = z.object({
   body: z.string().trim().min(1, "Body is required.").max(5000),
   teamId: z.string().optional().or(z.literal("")),
   pinned: z.coerce.boolean().default(false),
+  publishAt: z.string().optional().or(z.literal("")),
 });

@@ -8,6 +8,7 @@ import { onboardingTaskSchema, completeTaskSchema } from "@/lib/validations/onbo
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
 import { saveUploadedDocument, deleteUploadedFile, copyUploadedFile, UploadError } from "@/lib/storage/local";
+import { notifyDiscord, FORMATION_EMBED_COLOR } from "@/lib/integrations/discord";
 
 function parseTaskForm(formData: FormData) {
   return onboardingTaskSchema.safeParse({
@@ -211,7 +212,7 @@ export async function completeOnboardingTaskAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const { membership } = await requireMembership(orgId);
+  const { session, membership } = await requireMembership(orgId);
 
   const task = await prisma.onboardingTask.findUnique({ where: { id: taskId } });
   if (!task || task.orgId !== orgId || !task.active) return { error: "Task not found." };
@@ -240,6 +241,25 @@ export async function completeOnboardingTaskAction(
     },
     update: {},
   });
+
+  if (task.required) {
+    const stillIncomplete = await prisma.onboardingTask.count({
+      where: { orgId, active: true, required: true, completions: { none: { membershipId: membership.membershipId } } },
+    });
+    if (stillIncomplete === 0) {
+      const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { discordWebhookUrl: true } });
+      await notifyDiscord(org?.discordWebhookUrl, {
+        embeds: [
+          {
+            title: "Onboarding complete",
+            description: `**${session.user.name ?? "A member"}** finished every required onboarding task and now has full access to the org.`,
+            color: FORMATION_EMBED_COLOR,
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      });
+    }
+  }
 
   revalidatePath(`/${orgSlug}/onboarding`);
   revalidatePath(`/${orgSlug}`, "layout");

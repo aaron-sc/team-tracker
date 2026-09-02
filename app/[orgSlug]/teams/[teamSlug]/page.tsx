@@ -14,7 +14,7 @@ import { EditRosterEntryDialog } from "@/components/teams/edit-roster-entry-dial
 import { TeamInviteLinkPanel } from "@/components/teams/team-invite-link-panel";
 import { addToRosterAction } from "@/lib/actions/teams";
 import { Pencil, Star, Calendar, Swords, ExternalLink } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateTimeShort } from "@/lib/utils/format-time";
 
 export default async function TeamDetailPage({
   params,
@@ -22,7 +22,9 @@ export default async function TeamDetailPage({
   params: Promise<{ orgSlug: string; teamSlug: string }>;
 }) {
   const { orgSlug, teamSlug } = await params;
-  const { org, membership } = await getOrgContext(orgSlug);
+  const { session, org, membership } = await getOrgContext(orgSlug);
+  const viewerTz = session.user.timezone ?? org.timezone;
+  const viewerHour12 = session.user.timeFormat !== "24h";
 
   const team = await prisma.team.findUnique({ where: { orgId_slug: { orgId: org.id, slug: teamSlug } } });
   if (!team) notFound();
@@ -151,7 +153,7 @@ export default async function TeamDetailPage({
                     <p className="text-xs text-muted-foreground">{item.subtitle}</p>
                   </div>
                   <p className="shrink-0 text-xs text-muted-foreground">
-                    {format(item.scheduledAt, "MMM d, h:mm a")}
+                    {formatDateTimeShort(item.scheduledAt, viewerTz, viewerHour12)}
                   </p>
                 </Link>
               ))}
@@ -197,19 +199,27 @@ export default async function TeamDetailPage({
                   <TableCell className="text-muted-foreground">{entry.position ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{entry.inGameName ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {entry.trackerLink ? (
-                      <a
-                        href={entry.trackerLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1 text-primary underline underline-offset-4"
-                      >
-                        <ExternalLink className="size-3.5" />
-                        Stats
-                      </a>
-                    ) : (
-                      "—"
-                    )}
+                    {(() => {
+                      const primaryTracker =
+                        entry.trackerValorant ||
+                        entry.trackerLeagueOfLegends ||
+                        entry.trackerRocketLeague ||
+                        entry.trackerSmash ||
+                        entry.trackerLink;
+                      return primaryTracker ? (
+                        <a
+                          href={primaryTracker}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1 text-primary underline underline-offset-4"
+                        >
+                          <ExternalLink className="size-3.5" />
+                          Stats
+                        </a>
+                      ) : (
+                        "—"
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{entry.jerseyNumber ?? "—"}</TableCell>
                   <TableCell>{entry.isStarter ? <Star className="size-4 fill-primary text-primary" /> : null}</TableCell>
@@ -224,7 +234,12 @@ export default async function TeamDetailPage({
                           position: entry.position ?? "",
                           jerseyNumber: entry.jerseyNumber ?? "",
                           inGameName: entry.inGameName ?? "",
+                          bio: entry.bio ?? "",
                           trackerLink: entry.trackerLink ?? "",
+                          trackerValorant: entry.trackerValorant ?? "",
+                          trackerRocketLeague: entry.trackerRocketLeague ?? "",
+                          trackerSmash: entry.trackerSmash ?? "",
+                          trackerLeagueOfLegends: entry.trackerLeagueOfLegends ?? "",
                           isStarter: entry.isStarter,
                         }}
                       />

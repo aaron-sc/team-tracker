@@ -19,6 +19,7 @@ export default async function OnboardingRecordsPage({ params }: { params: Promis
   const { orgSlug } = await params;
   const { session, org, membership } = await getOrgContext(orgSlug);
   const viewerTz = session.user.timezone ?? org.timezone;
+  const viewerHour12 = session.user.timeFormat !== "24h";
   requirePagePermission(orgSlug, membership, Permission.onboarding_manage);
 
   const completions = await prisma.onboardingCompletion.findMany({
@@ -55,7 +56,7 @@ export default async function OnboardingRecordsPage({ params }: { params: Promis
                 <Badge variant="outline">{TYPE_LABEL[c.task.type] ?? c.task.type}</Badge>
               </TableCell>
               <TableCell className="whitespace-nowrap text-muted-foreground">
-                {formatDateTime(c.completedAt, viewerTz)}
+                {formatDateTime(c.completedAt, viewerTz, viewerHour12)}
               </TableCell>
               <TableCell className="italic" style={{ fontFamily: c.signatureName ? "'Brush Script MT', cursive" : undefined }}>
                 {c.signatureName ?? "—"}

@@ -21,6 +21,7 @@ export function PracticeForm({
   teams: { id: string; name: string }[];
   opponents: { id: string; name: string }[];
   venues: { id: string; name: string }[];
+  /** Also controls whether the "repeat weekly" option shows — only offered when creating, not editing. */
   lockTeam?: boolean;
   defaultValues?: {
     teamId?: string;
@@ -167,6 +168,26 @@ export function PracticeForm({
         <Label htmlFor="notes">Notes</Label>
         <Textarea id="notes" name="notes" rows={3} defaultValue={defaultValues?.notes} />
       </div>
+
+      {!lockTeam ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="repeatWeeks">Repeat</Label>
+          <Select name="repeatWeeks" defaultValue="1">
+            <SelectTrigger id="repeatWeeks" className="w-full sm:w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Just this once</SelectItem>
+              <SelectItem value="4">Weekly for 4 weeks</SelectItem>
+              <SelectItem value="8">Weekly for 8 weeks</SelectItem>
+              <SelectItem value="12">Weekly for 12 weeks</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Creates separate sessions on the same day/time each week — each can be edited or cancelled individually.
+          </p>
+        </div>
+      ) : null}
 
       {state?.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
       <SubmitButton>Save session</SubmitButton>

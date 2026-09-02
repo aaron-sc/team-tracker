@@ -27,6 +27,7 @@ export function OrgProfileForm({
   timezone,
   timezones,
   themeColor,
+  websiteUrl,
 }: {
   orgSlug: string;
   orgId: string;
@@ -34,6 +35,7 @@ export function OrgProfileForm({
   timezone: string;
   timezones: string[];
   themeColor: string;
+  websiteUrl: string | null;
 }) {
   const action = updateOrgProfileAction.bind(null, orgSlug, orgId);
   const [state, formAction] = useActionState<ActionState, FormData>(action, undefined);
@@ -44,6 +46,11 @@ export function OrgProfileForm({
       <div className="space-y-1.5">
         <Label htmlFor="name">Organization name</Label>
         <Input id="name" name="name" defaultValue={name} required />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="websiteUrl">Official website (optional)</Label>
+        <Input id="websiteUrl" name="websiteUrl" type="url" placeholder="https://example.com" defaultValue={websiteUrl ?? ""} />
+        <p className="text-xs text-muted-foreground">Your logo links here wherever it&apos;s shown in the app.</p>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="timezone">Timezone</Label>

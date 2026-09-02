@@ -16,12 +16,15 @@ const ACTION_LABELS: Record<string, string> = {
   "member.left": "Member left",
   "org.settings_updated": "Organization settings updated",
   "org.data_reset": "Organization data reset",
+  "announcement.created": "Announcement posted",
+  "announcement.deleted": "Announcement deleted",
 };
 
 export default async function AuditLogPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { session, org, membership } = await getOrgContext(orgSlug);
   const viewerTz = session.user.timezone ?? org.timezone;
+  const viewerHour12 = session.user.timeFormat !== "24h";
   requirePagePermission(orgSlug, membership, Permission.audit_log_view);
 
   const entries = await prisma.auditLog.findMany({
@@ -45,7 +48,7 @@ export default async function AuditLogPage({ params }: { params: Promise<{ orgSl
         {entries.map((entry) => (
           <TableRow key={entry.id}>
             <TableCell className="whitespace-nowrap text-muted-foreground">
-              {formatDateTime(entry.createdAt, viewerTz)}
+              {formatDateTime(entry.createdAt, viewerTz, viewerHour12)}
             </TableCell>
             <TableCell>{entry.actorMembership?.user.name ?? "System"}</TableCell>
             <TableCell>{ACTION_LABELS[entry.action] ?? entry.action}</TableCell>

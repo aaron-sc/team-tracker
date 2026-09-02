@@ -100,6 +100,29 @@ export function inviteEmailHtml({
 
 const FORMATION_ACCENT = "#6366f1";
 
+export function resetPasswordEmailHtml({ name, resetUrl }: { name: string; resetUrl: string }): string {
+  const safeName = escapeHtml(name);
+
+  return emailShell({
+    accentColor: FORMATION_ACCENT,
+    headerLabel: "Formation",
+    bodyHtml: `
+                <p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#18181b;">
+                  Hi ${safeName}, we received a request to reset your Formation password. Click below to choose a
+                  new one.
+                </p>
+                ${ctaButton(FORMATION_ACCENT, resetUrl, "Reset password")}
+                <p style="margin:24px 0 0;font-size:12px;line-height:1.5;color:#a1a1aa;">
+                  Or paste this link into your browser:<br />
+                  <a href="${resetUrl}" style="color:#71717a;word-break:break-all;">${resetUrl}</a>
+                </p>
+                <p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:#a1a1aa;">
+                  This link expires in 1 hour. If you didn't request this, you can safely ignore this email — your
+                  password won't change.
+                </p>`,
+  });
+}
+
 export function verifyEmailHtml({ name, verifyUrl }: { name: string; verifyUrl: string }): string {
   const safeName = escapeHtml(name);
 

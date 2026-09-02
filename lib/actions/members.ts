@@ -199,6 +199,7 @@ export async function updateOrgProfileAction(
   const name = formData.get("name");
   const timezone = formData.get("timezone");
   const themeColor = formData.get("themeColor");
+  const websiteUrlRaw = formData.get("websiteUrl");
   if (typeof name !== "string" || name.trim().length < 2) {
     return { error: "Organization name must be at least 2 characters." };
   }
@@ -208,8 +209,15 @@ export async function updateOrgProfileAction(
   if (typeof themeColor !== "string" || !/^#[0-9a-fA-F]{6}$/.test(themeColor)) {
     return { error: "Theme color must be a valid hex color." };
   }
+  const websiteUrl = typeof websiteUrlRaw === "string" ? websiteUrlRaw.trim() : "";
+  if (websiteUrl && !/^https?:\/\/.+/.test(websiteUrl)) {
+    return { error: "Website must be a valid URL starting with http:// or https://." };
+  }
 
-  await prisma.organization.update({ where: { id: orgId }, data: { name: name.trim(), timezone, themeColor } });
+  await prisma.organization.update({
+    where: { id: orgId },
+    data: { name: name.trim(), timezone, themeColor, websiteUrl: websiteUrl || null },
+  });
 
   await logAudit({
     orgId,

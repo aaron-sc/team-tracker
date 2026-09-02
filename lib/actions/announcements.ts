@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { fromZonedTime } from "date-fns-tz";
 import { prisma } from "@/lib/db/prisma";
 import { requirePermission } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
@@ -18,51 +19,73 @@ export async function createAnnouncementAction(orgSlug: string, orgId: string, _
     body: formData.get("body"),
     teamId: formData.get("teamId") ?? "",
     pinned: formData.get("pinned") === "on",
+    publishAt: formData.get("publishAt") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
+  // The team <Select> can't use an empty-string value (Radix reserves "" for "no selection"), so
+  // the "entire organization" option submits the sentinel "none" instead — treat that the same
+  // as no team chosen, rather than passing "none" straight through as a team id.
+  const teamId = parsed.data.teamId && parsed.data.teamId !== "none" ? parsed.data.teamId : null;
   const pinned = parsed.data.pinned && membership.permissions.includes(Permission.announcement_pin);
 
-  await prisma.announcement.create({
+  const org = await prisma.organization.findUniqueOrThrow({ where: { id: orgId }, select: { timezone: true } });
+  const publishAt = parsed.data.publishAt ? fromZonedTime(parsed.data.publishAt, org.timezone) : null;
+  const scheduledForLater = !!publishAt && publishAt.getTime() > Date.now();
+
+  const announcement = await prisma.announcement.create({
     data: {
       orgId,
-      teamId: parsed.data.teamId || null,
+      teamId,
       authorId: membership.membershipId,
       title: parsed.data.title,
       body: parsed.data.body,
       pinned,
+      publishAt: scheduledForLater ? publishAt : null,
+      published: !scheduledForLater,
     },
   });
 
-  let webhookUrl: string | null | undefined;
-  let mentionRoleId: string | null | undefined;
-  if (parsed.data.teamId) {
-    const team = await prisma.team.findUnique({
-      where: { id: parsed.data.teamId },
-      select: { discordWebhookUrl: true, discordMentionRoleId: true },
-    });
-    webhookUrl = team?.discordWebhookUrl;
-    mentionRoleId = team?.discordMentionRoleId;
-  }
-  if (!webhookUrl) {
-    const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { discordWebhookUrl: true } });
-    webhookUrl = org?.discordWebhookUrl;
-    mentionRoleId = null;
-  }
-  await notifyDiscord(webhookUrl, {
-    content: roleMentionPrefix(mentionRoleId) || undefined,
-    embeds: [
-      {
-        title: parsed.data.title,
-        description: parsed.data.body.slice(0, 1500),
-        color: FORMATION_EMBED_COLOR,
-        footer: { text: `${session.user.name ?? "Formation"} • Announcement${pinned ? " (pinned)" : ""}` },
-        timestamp: new Date().toISOString(),
-      },
-    ],
+  await logAudit({
+    orgId,
+    actorMembershipId: membership.membershipId,
+    action: "announcement.created",
+    targetType: "Announcement",
+    targetId: announcement.id,
+    metadata: { title: announcement.title, scheduled: scheduledForLater },
   });
+
+  if (!scheduledForLater) {
+    let webhookUrl: string | null | undefined;
+    let mentionRoleId: string | null | undefined;
+    if (teamId) {
+      const team = await prisma.team.findUnique({
+        where: { id: teamId },
+        select: { discordWebhookUrl: true, discordMentionRoleId: true },
+      });
+      webhookUrl = team?.discordWebhookUrl;
+      mentionRoleId = team?.discordMentionRoleId;
+    }
+    if (!webhookUrl) {
+      const orgWebhook = await prisma.organization.findUnique({ where: { id: orgId }, select: { discordWebhookUrl: true } });
+      webhookUrl = orgWebhook?.discordWebhookUrl;
+      mentionRoleId = null;
+    }
+    await notifyDiscord(webhookUrl, {
+      content: roleMentionPrefix(mentionRoleId) || undefined,
+      embeds: [
+        {
+          title: parsed.data.title,
+          description: parsed.data.body.slice(0, 1500),
+          color: FORMATION_EMBED_COLOR,
+          footer: { text: `${session.user.name ?? "Formation"} • Announcement${pinned ? " (pinned)" : ""}` },
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    });
+  }
 
   revalidatePath(`/${orgSlug}/announcements`);
   revalidatePath(`/${orgSlug}/dashboard`);

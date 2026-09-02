@@ -28,6 +28,7 @@ export default async function MatchDetailPage({
   const { orgSlug, matchId } = await params;
   const { session, org, membership } = await getOrgContext(orgSlug);
   const viewerTz = session.user.timezone ?? org.timezone;
+  const viewerHour12 = session.user.timeFormat !== "24h";
 
   const match = await prisma.match.findUnique({
     where: { id: matchId },
@@ -65,7 +66,7 @@ export default async function MatchDetailPage({
         <CardContent className="space-y-3 pt-6 text-sm">
           <div className="flex items-center gap-2">
             <Calendar className="size-4 text-muted-foreground" />
-            {formatDateTimeLong(match.scheduledAt, viewerTz)}
+            {formatDateTimeLong(match.scheduledAt, viewerTz, viewerHour12)}
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="size-4 text-muted-foreground" />

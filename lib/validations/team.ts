@@ -14,19 +14,24 @@ export const teamDiscordSettingsSchema = z.object({
   scrimReminderMinutes: z.enum(REMINDER_MINUTES_VALUES),
 });
 
+const trackerUrl = z.string().trim().url("Enter a valid URL.").max(300).optional().or(z.literal(""));
+
+const rosterProfileFields = {
+  jerseyNumber: z.string().trim().max(10).optional().or(z.literal("")),
+  position: z.string().trim().max(40).optional().or(z.literal("")),
+  inGameName: z.string().trim().max(40).optional().or(z.literal("")),
+  bio: z.string().trim().max(1000).optional().or(z.literal("")),
+  trackerLink: trackerUrl,
+  trackerValorant: trackerUrl,
+  trackerRocketLeague: trackerUrl,
+  trackerSmash: trackerUrl,
+  trackerLeagueOfLegends: trackerUrl,
+  isStarter: z.boolean().default(false),
+};
+
 export const rosterEntrySchema = z.object({
   membershipId: z.string().min(1),
-  jerseyNumber: z.string().trim().max(10).optional().or(z.literal("")),
-  position: z.string().trim().max(40).optional().or(z.literal("")),
-  inGameName: z.string().trim().max(40).optional().or(z.literal("")),
-  trackerLink: z.string().trim().url("Enter a valid URL.").max(300).optional().or(z.literal("")),
-  isStarter: z.boolean().default(false),
+  ...rosterProfileFields,
 });
 
-export const updateRosterEntrySchema = z.object({
-  jerseyNumber: z.string().trim().max(10).optional().or(z.literal("")),
-  position: z.string().trim().max(40).optional().or(z.literal("")),
-  inGameName: z.string().trim().max(40).optional().or(z.literal("")),
-  trackerLink: z.string().trim().url("Enter a valid URL.").max(300).optional().or(z.literal("")),
-  isStarter: z.boolean().default(false),
-});
+export const updateRosterEntrySchema = z.object(rosterProfileFields);

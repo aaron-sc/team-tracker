@@ -17,6 +17,8 @@ export function EditRuleGroupDialog({
   endTime,
   timezone,
   timezones,
+  orgTimezone,
+  hour12,
 }: {
   orgSlug: string;
   orgId: string;
@@ -27,6 +29,8 @@ export function EditRuleGroupDialog({
   endTime: string;
   timezone: string;
   timezones: string[];
+  orgTimezone: string;
+  hour12?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const action = saveAvailabilityRuleGroupAction.bind(null, orgSlug, orgId, membershipId, ruleIds);
@@ -51,6 +55,8 @@ export function EditRuleGroupDialog({
           defaultEndTime={endTime}
           submitLabel="Save"
           onSaved={() => setOpen(false)}
+          orgTimezone={orgTimezone}
+          hour12={hour12}
         />
       </DialogContent>
     </Dialog>

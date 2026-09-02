@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { updateRosterEntryAction } from "@/lib/actions/teams";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -20,7 +21,18 @@ export function EditRosterEntryDialog({
   orgId: string;
   teamMembershipId: string;
   playerName: string;
-  defaultValues: { position: string; jerseyNumber: string; inGameName: string; trackerLink: string; isStarter: boolean };
+  defaultValues: {
+    position: string;
+    jerseyNumber: string;
+    inGameName: string;
+    bio: string;
+    trackerLink: string;
+    trackerValorant: string;
+    trackerRocketLeague: string;
+    trackerSmash: string;
+    trackerLeagueOfLegends: string;
+    isStarter: boolean;
+  };
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | undefined>();
@@ -65,12 +77,58 @@ export function EditRosterEntryDialog({
             <Input id="edit-jerseyNumber" name="jerseyNumber" defaultValue={defaultValues.jerseyNumber} className="w-20" />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="edit-trackerLink">Tracker link</Label>
+            <Label htmlFor="edit-bio">Bio</Label>
+            <Textarea id="edit-bio" name="bio" rows={3} defaultValue={defaultValues.bio} maxLength={1000} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-trackerValorant">Valorant tracker</Label>
+              <Input
+                id="edit-trackerValorant"
+                name="trackerValorant"
+                type="url"
+                placeholder="https://tracker.gg/valorant/…"
+                defaultValue={defaultValues.trackerValorant}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-trackerLeagueOfLegends">League of Legends tracker</Label>
+              <Input
+                id="edit-trackerLeagueOfLegends"
+                name="trackerLeagueOfLegends"
+                type="url"
+                placeholder="https://op.gg/…"
+                defaultValue={defaultValues.trackerLeagueOfLegends}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-trackerRocketLeague">Rocket League tracker</Label>
+              <Input
+                id="edit-trackerRocketLeague"
+                name="trackerRocketLeague"
+                type="url"
+                placeholder="https://tracker.gg/rocket-league/…"
+                defaultValue={defaultValues.trackerRocketLeague}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-trackerSmash">Smash Bros tracker</Label>
+              <Input
+                id="edit-trackerSmash"
+                name="trackerSmash"
+                type="url"
+                placeholder="https://start.gg/…"
+                defaultValue={defaultValues.trackerSmash}
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-trackerLink">Other tracker link</Label>
             <Input
               id="edit-trackerLink"
               name="trackerLink"
               type="url"
-              placeholder="https://tracker.gg/valorant/…"
+              placeholder="https://…"
               defaultValue={defaultValues.trackerLink}
             />
           </div>

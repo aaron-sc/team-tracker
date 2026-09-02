@@ -31,6 +31,8 @@ function parseSessionForm(formData: FormData, fallbackTeamId?: string) {
   });
 }
 
+const REPEAT_WEEKS_VALUES = new Set([1, 4, 8, 12]);
+
 export async function createPracticeSessionAction(
   orgSlug: string,
   orgId: string,
@@ -44,6 +46,9 @@ export async function createPracticeSessionAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
+  const rawRepeatWeeks = Number(formData.get("repeatWeeks") ?? 1);
+  const occurrences = REPEAT_WEEKS_VALUES.has(rawRepeatWeeks) ? rawRepeatWeeks : 1;
+
   const team = await prisma.team.findUnique({ where: { id: parsed.data.teamId } });
   if (!team || team.orgId !== orgId) return { error: "Team not found." };
 
@@ -55,34 +60,42 @@ export async function createPracticeSessionAction(
 
   const org = await prisma.organization.findUniqueOrThrow({ where: { id: orgId } });
   const roster = await prisma.teamMembership.findMany({ where: { teamId: team.id }, select: { membershipId: true } });
+  const firstScheduledAt = fromZonedTime(parsed.data.scheduledAt, org.timezone);
 
-  const session = await prisma.practiceSession.create({
-    data: {
-      teamId: team.id,
-      type: parsed.data.type,
-      opponentId,
-      scheduledAt: fromZonedTime(parsed.data.scheduledAt, org.timezone),
-      durationMinutes: parsed.data.durationMinutes,
-      timezone: org.timezone,
-      locationType: parsed.data.locationType,
-      venueId: parsed.data.locationType === "LAN" ? parsed.data.venueId || null : null,
-      notes: parsed.data.notes || null,
-      createdById: membership.membershipId,
-      attendances: { create: roster.map((r) => ({ membershipId: r.membershipId })) },
-    },
-  });
+  const sessions = await prisma.$transaction(
+    Array.from({ length: occurrences }, (_, i) =>
+      prisma.practiceSession.create({
+        data: {
+          teamId: team.id,
+          type: parsed.data.type,
+          opponentId,
+          scheduledAt: new Date(firstScheduledAt.getTime() + i * 7 * 24 * 60 * 60 * 1000),
+          durationMinutes: parsed.data.durationMinutes,
+          timezone: org.timezone,
+          locationType: parsed.data.locationType,
+          venueId: parsed.data.locationType === "LAN" ? parsed.data.venueId || null : null,
+          notes: parsed.data.notes || null,
+          createdById: membership.membershipId,
+          attendances: { create: roster.map((r) => ({ membershipId: r.membershipId })) },
+        },
+      }),
+    ),
+  );
 
   await logAudit({
     orgId,
     actorMembershipId: membership.membershipId,
     action: "practice.created",
     targetType: "PracticeSession",
-    targetId: session.id,
-    metadata: { teamId: team.id, type: parsed.data.type },
+    targetId: sessions[0].id,
+    metadata: { teamId: team.id, type: parsed.data.type, occurrences },
   });
 
   revalidatePath(`/${orgSlug}/schedule`);
-  redirect(`/${orgSlug}/schedule/practice/${session.id}`);
+  if (occurrences > 1) {
+    redirect(`/${orgSlug}/schedule`);
+  }
+  redirect(`/${orgSlug}/schedule/practice/${sessions[0].id}`);
 }
 
 export async function updatePracticeSessionAction(

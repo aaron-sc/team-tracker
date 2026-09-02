@@ -6,8 +6,10 @@ import { prisma } from "@/lib/db/prisma";
 import { TeamForm } from "@/components/teams/team-form";
 import { TeamLogoForm } from "@/components/teams/team-logo-form";
 import { TeamDiscordPanel } from "@/components/teams/team-discord-panel";
+import { PublicRosterEmbedPanel } from "@/components/teams/public-roster-embed-panel";
 import { updateTeamAction } from "@/lib/actions/teams";
 import { DeleteTeamButton } from "@/components/teams/delete-team-button";
+import { getBaseUrl } from "@/lib/utils/base-url";
 
 export default async function EditTeamPage({
   params,
@@ -23,6 +25,7 @@ export default async function EditTeamPage({
 
   const action = updateTeamAction.bind(null, orgSlug, org.id, team.id);
   const canDelete = membership.permissions.includes(Permission.team_delete);
+  const baseUrl = await getBaseUrl();
 
   return (
     <div className="space-y-8">
@@ -52,6 +55,21 @@ export default async function EditTeamPage({
           matchReminderMinutes={team.discordMatchReminderMinutes}
           practiceReminderMinutes={team.discordPracticeReminderMinutes}
           scrimReminderMinutes={team.discordScrimReminderMinutes}
+        />
+      </div>
+
+      <div>
+        <h2 className="mb-1 text-sm font-medium">Public roster embed</h2>
+        <p className="mb-3 text-sm text-muted-foreground">
+          Get an iframe you can drop into your organization&apos;s own website to display this team&apos;s roster.
+        </p>
+        <PublicRosterEmbedPanel
+          orgSlug={orgSlug}
+          orgId={org.id}
+          teamId={team.id}
+          baseUrl={baseUrl}
+          enabled={team.publicRosterEnabled}
+          token={team.publicRosterToken}
         />
       </div>
 

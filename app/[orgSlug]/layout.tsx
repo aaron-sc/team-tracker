@@ -42,6 +42,7 @@ export default async function OrgLayout({
           orgSlug={org.slug}
           orgId={org.id}
           orgLogoUrl={org.logoUrl}
+          orgWebsiteUrl={org.websiteUrl}
           roleName={membership.roleName}
           userName={session.user.name ?? session.user.email ?? "User"}
           userEmail={session.user.email ?? ""}

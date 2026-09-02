@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
-import { requirePermission } from "@/lib/auth/authorize";
+import { requirePermission, requireMembership } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
 import { teamSchema, rosterEntrySchema, updateRosterEntrySchema } from "@/lib/validations/team";
 import { Permission } from "@/lib/generated/prisma/enums";
@@ -182,7 +182,12 @@ export async function addToRosterAction(
     jerseyNumber: formData.get("jerseyNumber") ?? "",
     position: formData.get("position") ?? "",
     inGameName: formData.get("inGameName") ?? "",
+    bio: formData.get("bio") ?? "",
     trackerLink: formData.get("trackerLink") ?? "",
+    trackerValorant: formData.get("trackerValorant") ?? "",
+    trackerRocketLeague: formData.get("trackerRocketLeague") ?? "",
+    trackerSmash: formData.get("trackerSmash") ?? "",
+    trackerLeagueOfLegends: formData.get("trackerLeagueOfLegends") ?? "",
     isStarter: formData.get("isStarter") === "on",
   });
   if (!parsed.success) {
@@ -208,7 +213,12 @@ export async function addToRosterAction(
       jerseyNumber: parsed.data.jerseyNumber || null,
       position: parsed.data.position || null,
       inGameName: parsed.data.inGameName || null,
+      bio: parsed.data.bio || null,
       trackerLink: parsed.data.trackerLink || null,
+      trackerValorant: parsed.data.trackerValorant || null,
+      trackerRocketLeague: parsed.data.trackerRocketLeague || null,
+      trackerSmash: parsed.data.trackerSmash || null,
+      trackerLeagueOfLegends: parsed.data.trackerLeagueOfLegends || null,
       isStarter: parsed.data.isStarter,
     },
   });
@@ -232,18 +242,7 @@ export async function updateRosterEntryAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requirePermission(orgId, Permission.roster_manage);
-
-  const parsed = updateRosterEntrySchema.safeParse({
-    jerseyNumber: formData.get("jerseyNumber") ?? "",
-    position: formData.get("position") ?? "",
-    inGameName: formData.get("inGameName") ?? "",
-    trackerLink: formData.get("trackerLink") ?? "",
-    isStarter: formData.get("isStarter") === "on",
-  });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
-  }
+  const { membership: actor } = await requireMembership(orgId);
 
   const entry = await prisma.teamMembership.findUnique({
     where: { id: teamMembershipId },
@@ -251,18 +250,50 @@ export async function updateRosterEntryAction(
   });
   if (!entry || entry.membership.orgId !== orgId) return { error: "Roster entry not found." };
 
+  const isSelf = actor.membershipId === entry.membershipId;
+  const isManager = actor.permissions.includes(Permission.roster_manage);
+  if (!isSelf && !isManager) return { error: "You don't have permission to edit this roster entry." };
+
+  const parsed = updateRosterEntrySchema.safeParse({
+    jerseyNumber: formData.get("jerseyNumber") ?? "",
+    position: formData.get("position") ?? "",
+    inGameName: formData.get("inGameName") ?? "",
+    bio: formData.get("bio") ?? "",
+    trackerLink: formData.get("trackerLink") ?? "",
+    trackerValorant: formData.get("trackerValorant") ?? "",
+    trackerRocketLeague: formData.get("trackerRocketLeague") ?? "",
+    trackerSmash: formData.get("trackerSmash") ?? "",
+    trackerLeagueOfLegends: formData.get("trackerLeagueOfLegends") ?? "",
+    isStarter: formData.get("isStarter") === "on",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
   await prisma.teamMembership.update({
     where: { id: teamMembershipId },
     data: {
-      jerseyNumber: parsed.data.jerseyNumber || null,
-      position: parsed.data.position || null,
-      inGameName: parsed.data.inGameName || null,
+      // A player editing their own entry can only touch their bio/trackers — roster-assignment
+      // fields (jersey, position, IGN, starter) stay coach-controlled.
+      ...(isManager
+        ? {
+            jerseyNumber: parsed.data.jerseyNumber || null,
+            position: parsed.data.position || null,
+            inGameName: parsed.data.inGameName || null,
+            isStarter: parsed.data.isStarter,
+          }
+        : {}),
+      bio: parsed.data.bio || null,
       trackerLink: parsed.data.trackerLink || null,
-      isStarter: parsed.data.isStarter,
+      trackerValorant: parsed.data.trackerValorant || null,
+      trackerRocketLeague: parsed.data.trackerRocketLeague || null,
+      trackerSmash: parsed.data.trackerSmash || null,
+      trackerLeagueOfLegends: parsed.data.trackerLeagueOfLegends || null,
     },
   });
 
   revalidatePath(`/${orgSlug}/teams`);
+  revalidatePath(`/${orgSlug}/roster/${entry.membershipId}`);
 }
 
 export async function removeFromRosterAction(orgSlug: string, orgId: string, teamMembershipId: string): Promise<ActionState> {

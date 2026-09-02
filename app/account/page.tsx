@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordForm } from "@/components/account/change-password-form";
 import { UpdateNameForm } from "@/components/account/update-name-form";
 import { UpdateTimezoneForm } from "@/components/account/update-timezone-form";
+import { UpdateTimeFormatForm } from "@/components/account/update-time-format-form";
 import { UpdateProfileDetailsForm } from "@/components/account/update-profile-details-form";
 import { AvatarUploadForm } from "@/components/account/avatar-upload-form";
 import { LeaveOrgButton } from "@/components/account/leave-org-button";
@@ -22,7 +23,7 @@ export default async function AccountPage() {
 
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: session.user.id },
-    select: { name: true, avatarUrl: true, timezone: true, discordHandle: true, phone: true },
+    select: { name: true, avatarUrl: true, timezone: true, timeFormat: true, discordHandle: true, phone: true },
   });
 
   return (
@@ -77,6 +78,15 @@ export default async function AccountPage() {
           </CardHeader>
           <CardContent>
             <UpdateTimezoneForm currentTimezone={user.timezone} timezones={getTimezones()} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Time format</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <UpdateTimeFormatForm currentTimeFormat={user.timeFormat === "24h" ? "24h" : "12h"} />
           </CardContent>
         </Card>
 

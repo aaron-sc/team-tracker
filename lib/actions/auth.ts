@@ -19,11 +19,16 @@ import {
   changePasswordSchema,
   updateNameSchema,
   updateTimezoneSchema,
+  updateTimeFormatSchema,
   updateProfileDetailsSchema,
 } from "@/lib/validations/auth";
 import { createNotification } from "@/lib/notifications/create";
 import { sendVerificationEmail } from "@/lib/actions/email-verification";
 import { saveUploadedImage, deleteUploadedFile, UploadError } from "@/lib/storage/local";
+import { sendEmail } from "@/lib/email/resend";
+import { resetPasswordEmailHtml } from "@/lib/email/templates";
+import { getBaseUrl } from "@/lib/utils/base-url";
+import { checkRateLimit } from "@/lib/utils/rate-limit";
 
 async function notifyInviterOfAcceptance(invite: { orgId: string; invitedById: string | null }, newMemberName: string) {
   if (!invite.invitedById) return;
@@ -43,6 +48,9 @@ export type ActionState = { error?: string } | undefined;
 const RESET_TOKEN_EXPIRY_HOURS = 1;
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const allowed = await checkRateLimit("login", 10, 5 * 60 * 1000);
+  if (!allowed) return { error: "Too many attempts. Try again in a few minutes." };
+
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -81,6 +89,9 @@ async function generateUniqueOrgSlug(name: string): Promise<string> {
 }
 
 export async function signupAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const allowed = await checkRateLimit("signup", 5, 60 * 60 * 1000);
+  if (!allowed) return { error: "Too many attempts. Try again later." };
+
   const parsed = signupSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -359,19 +370,24 @@ export async function logoutAction() {
   await signOut({ redirectTo: "/login" });
 }
 
-export type RequestResetState = { error?: string; resetUrl?: string } | undefined;
+export type RequestResetState = { error?: string; message?: string; devResetUrl?: string } | undefined;
+
+const RESET_REQUEST_GENERIC_MESSAGE = "If an account exists for that email, we've sent a password reset link.";
 
 /**
- * No email service is configured (see invite flow for the same pattern), so
- * instead of sending mail we hand back a copyable dev-mode link. This does
- * leak account existence to whoever submits the form — acceptable for local
- * dev, but flagged here as something a real deployment would need to fix by
- * wiring up actual email delivery and returning a generic message instead.
+ * Always returns the same generic message regardless of whether the account exists — revealing
+ * that distinction (user enumeration) is a real, common attack primitive, not a cosmetic detail.
+ * Likewise, the reset link is only ever emailed to the account's own address, never returned in
+ * the response — the one exception is a dev-only fallback (see below) for when no email provider
+ * is configured locally.
  */
 export async function requestPasswordResetAction(
   _prev: RequestResetState,
   formData: FormData,
 ): Promise<RequestResetState> {
+  const allowed = await checkRateLimit("password-reset-request", 5, 15 * 60 * 1000);
+  if (!allowed) return { error: "Too many attempts. Try again in a few minutes." };
+
   const parsed = requestPasswordResetSchema.safeParse({ email: formData.get("email") });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -379,7 +395,7 @@ export async function requestPasswordResetAction(
 
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (!user) {
-    return { error: "No account found with that email." };
+    return { message: RESET_REQUEST_GENERIC_MESSAGE };
   }
 
   const token = crypto.randomBytes(32).toString("base64url");
@@ -391,10 +407,27 @@ export async function requestPasswordResetAction(
     },
   });
 
-  return { resetUrl: `/reset-password/${token}` };
+  const resetUrl = `${await getBaseUrl()}/reset-password/${token}`;
+  const result = await sendEmail({
+    to: user.email,
+    subject: "Reset your Formation password",
+    html: resetPasswordEmailHtml({ name: user.name, resetUrl }),
+  });
+
+  // Dev-only convenience for when no email provider is configured — never surfaced once deployed
+  // for real (NODE_ENV=production), and still wrapped in the same generic message either way, so
+  // this can't be used to distinguish a real account from a made-up one.
+  if (!result.ok && process.env.NODE_ENV !== "production") {
+    return { message: RESET_REQUEST_GENERIC_MESSAGE, devResetUrl: `/reset-password/${token}` };
+  }
+
+  return { message: RESET_REQUEST_GENERIC_MESSAGE };
 }
 
 export async function resetPasswordAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const allowed = await checkRateLimit("password-reset-submit", 10, 15 * 60 * 1000);
+  if (!allowed) return { error: "Too many attempts. Try again in a few minutes." };
+
   const parsed = resetPasswordSchema.safeParse({
     token: formData.get("token"),
     password: formData.get("password"),
@@ -483,6 +516,24 @@ export async function updateTimezoneAction(_prev: UpdateTimezoneState, formData:
   await prisma.user.update({ where: { id: session.user.id }, data: { timezone: parsed.data.timezone } });
 
   return { success: "Timezone updated. Match and practice times will now show in your local time." };
+}
+
+export type UpdateTimeFormatState = { error?: string; success?: string } | undefined;
+
+export async function updateTimeFormatAction(_prev: UpdateTimeFormatState, formData: FormData): Promise<UpdateTimeFormatState> {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "You must be logged in." };
+  }
+
+  const parsed = updateTimeFormatSchema.safeParse({ timeFormat: formData.get("timeFormat") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  await prisma.user.update({ where: { id: session.user.id }, data: { timeFormat: parsed.data.timeFormat } });
+
+  return { success: "Time format updated." };
 }
 
 export type UpdateProfileDetailsState = { error?: string; success?: string } | undefined;

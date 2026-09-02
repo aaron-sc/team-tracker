@@ -18,6 +18,7 @@ export type OrgContext = {
     logoUrl: string | null;
     themeColor: string;
     apiKey: string | null;
+    websiteUrl: string | null;
   };
   teams: { id: string; name: string; game: string; slug: string }[];
 };
@@ -38,7 +39,16 @@ export const getOrgContext = cache(async (orgSlug: string): Promise<OrgContext> 
   const [org, teams] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: membership.orgId },
-      select: { id: true, name: true, slug: true, timezone: true, logoUrl: true, themeColor: true, apiKey: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        timezone: true,
+        logoUrl: true,
+        themeColor: true,
+        apiKey: true,
+        websiteUrl: true,
+      },
     }),
     prisma.team.findMany({
       where: { orgId: membership.orgId },

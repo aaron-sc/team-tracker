@@ -13,8 +13,11 @@ import { AddExceptionForm } from "@/components/availability/add-exception-form";
 import { DeleteExceptionButton } from "@/components/availability/delete-exception-button";
 import { saveAvailabilityRuleGroupAction, addAvailabilityExceptionAction } from "@/lib/actions/availability";
 import { getTimezones } from "@/lib/utils/timezones";
-import { formatCalendarDate } from "@/lib/utils/format-time";
-import { Users } from "lucide-react";
+import { formatCalendarDate, formatWallClockTime } from "@/lib/utils/format-time";
+import { convertWeeklyTime } from "@/lib/utils/availability-tz";
+import { Users, ArrowRight } from "lucide-react";
+
+const DAY_LABELS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -23,6 +26,7 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ o
   const { session, org, membership } = await getOrgContext(orgSlug);
   await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
   const myTimezone = session.user.timezone ?? org.timezone;
+  const viewerHour12 = session.user.timeFormat !== "24h";
 
   const canManageSelf = membership.permissions.includes(Permission.availability_manage_self);
   const canManageOthers = membership.permissions.includes(Permission.availability_manage_others);
@@ -96,7 +100,17 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ o
                 <p className="text-sm text-muted-foreground">No availability set yet.</p>
               ) : (
                 <div className="space-y-2">
-                  {ruleGroups.map((group) => (
+                  {ruleGroups.map((group) => {
+                    const showsOrgConversion = group.timezone !== org.timezone;
+                    const referenceDay = group.days[0] ?? 0;
+                    const orgStart = showsOrgConversion
+                      ? convertWeeklyTime(referenceDay, group.startTime, group.timezone, org.timezone)
+                      : null;
+                    const orgEnd = showsOrgConversion
+                      ? convertWeeklyTime(referenceDay, group.endTime, group.timezone, org.timezone)
+                      : null;
+                    const dayShifted = orgStart && orgStart.dayOfWeek !== referenceDay;
+                    return (
                     <div
                       key={`${group.startTime}-${group.endTime}`}
                       className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2.5"
@@ -112,8 +126,17 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ o
                           </Badge>
                         ))}
                         <span className="ml-2 text-sm text-muted-foreground">
-                          {group.startTime}–{group.endTime} ({group.timezone.replace(/_/g, " ")})
+                          {formatWallClockTime(group.startTime, viewerHour12)}–{formatWallClockTime(group.endTime, viewerHour12)}{" "}
+                          ({group.timezone.replace(/_/g, " ")})
                         </span>
+                        {showsOrgConversion && orgStart && orgEnd ? (
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground/70">
+                            <ArrowRight className="size-3" />
+                            {dayShifted ? `${DAY_LABELS_LONG[orgStart.dayOfWeek]} ` : ""}
+                            {formatWallClockTime(orgStart.time, viewerHour12)}–{formatWallClockTime(orgEnd.time, viewerHour12)} to
+                            your team ({org.timezone.replace(/_/g, " ")} org time)
+                          </span>
+                        ) : null}
                       </div>
                       <div className="flex items-center">
                         <EditRuleGroupDialog
@@ -126,6 +149,8 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ o
                           endTime={group.endTime}
                           timezone={group.timezone}
                           timezones={getTimezones()}
+                          orgTimezone={org.timezone}
+                          hour12={viewerHour12}
                         />
                         <DeleteRuleGroupButton
                           orgSlug={orgSlug}
@@ -135,12 +160,19 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ o
                         />
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               <div className="border-t pt-4">
                 <p className="mb-2 text-sm font-medium">Add availability</p>
-                <RuleGroupForm action={addRuleAction} defaultTimezone={myTimezone} timezones={getTimezones()} />
+                <RuleGroupForm
+                  action={addRuleAction}
+                  defaultTimezone={myTimezone}
+                  timezones={getTimezones()}
+                  orgTimezone={org.timezone}
+                  hour12={viewerHour12}
+                />
               </div>
             </CardContent>
           </Card>
@@ -159,7 +191,9 @@ export default async function AvailabilityPage({ params }: { params: Promise<{ o
                       <span>
                         {formatCalendarDate(exception.date)} —{" "}
                         {exception.isAvailable ? "Extra available" : "Unavailable"}
-                        {exception.startTime && exception.endTime ? ` (${exception.startTime}–${exception.endTime})` : ""}
+                        {exception.startTime && exception.endTime
+                          ? ` (${formatWallClockTime(exception.startTime, viewerHour12)}–${formatWallClockTime(exception.endTime, viewerHour12)})`
+                          : ""}
                         {exception.reason ? ` · ${exception.reason}` : ""}
                       </span>
                       <DeleteExceptionButton

@@ -12,7 +12,8 @@ export default async function ConversationPage({
   params: Promise<{ orgSlug: string; conversationId: string }>;
 }) {
   const { orgSlug, conversationId } = await params;
-  const { org, membership } = await getOrgContext(orgSlug);
+  const { session, org, membership } = await getOrgContext(orgSlug);
+  const viewerHour12 = session.user.timeFormat !== "24h";
 
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },
@@ -59,6 +60,7 @@ export default async function ConversationPage({
         orgId={org.id}
         conversationId={conversationId}
         currentMembershipId={membership.membershipId}
+        hour12={viewerHour12}
         initialMessages={messages.map((m) => ({
           id: m.id,
           body: m.body,

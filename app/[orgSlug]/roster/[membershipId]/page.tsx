@@ -7,6 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Phone, MessageSquare, Calendar, ExternalLink } from "lucide-react";
 import { formatDate } from "@/lib/utils/format-time";
 import { Permission } from "@/lib/generated/prisma/enums";
+import { EditMyProfileDialog } from "@/components/roster/edit-my-profile-dialog";
+
+const NAMED_TRACKERS: { key: "trackerValorant" | "trackerLeagueOfLegends" | "trackerRocketLeague" | "trackerSmash"; label: string }[] = [
+  { key: "trackerValorant", label: "Valorant" },
+  { key: "trackerLeagueOfLegends", label: "League of Legends" },
+  { key: "trackerRocketLeague", label: "Rocket League" },
+  { key: "trackerSmash", label: "Smash Bros" },
+];
 
 function initials(name: string) {
   return name
@@ -35,6 +43,7 @@ export default async function MemberProfilePage({
   const canViewContactInfo =
     viewerMembership.membershipId === membership.id ||
     viewerMembership.permissions.includes(Permission.org_members_contact_view);
+  const isOwnProfile = viewerMembership.membershipId === membership.id;
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -91,27 +100,57 @@ export default async function MemberProfilePage({
           {membership.teamMemberships.length === 0 ? (
             <p className="text-sm text-muted-foreground">Not on any team roster yet.</p>
           ) : (
-            <div className="space-y-2">
-              {membership.teamMemberships.map((tm) => (
-                <div key={tm.id} className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{tm.team.name}</span>
-                  <span className="flex items-center gap-2 text-muted-foreground">
-                    {tm.inGameName ? `"${tm.inGameName}" · ` : ""}
-                    {tm.position ?? "—"} {tm.jerseyNumber ? `#${tm.jerseyNumber}` : ""} {tm.isStarter ? "· Starter" : ""}
-                    {tm.trackerLink ? (
-                      <a
-                        href={tm.trackerLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1 text-primary underline underline-offset-4"
-                      >
-                        <ExternalLink className="size-3.5" />
-                        Stats
-                      </a>
+            <div className="space-y-4">
+              {membership.teamMemberships.map((tm) => {
+                const trackers = [
+                  ...NAMED_TRACKERS.filter((t) => tm[t.key]).map((t) => ({ label: t.label, url: tm[t.key]! })),
+                  ...(tm.trackerLink ? [{ label: "Other", url: tm.trackerLink }] : []),
+                ];
+                return (
+                  <div key={tm.id} className="space-y-2 border-b pb-3 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{tm.team.name}</span>
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        {tm.inGameName ? `"${tm.inGameName}" · ` : ""}
+                        {tm.position ?? "—"} {tm.jerseyNumber ? `#${tm.jerseyNumber}` : ""} {tm.isStarter ? "· Starter" : ""}
+                      </span>
+                    </div>
+                    {tm.bio ? <p className="text-sm text-muted-foreground">{tm.bio}</p> : null}
+                    {trackers.length > 0 ? (
+                      <div className="flex flex-wrap items-center gap-3 text-xs">
+                        {trackers.map((t) => (
+                          <a
+                            key={t.label}
+                            href={t.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1 text-primary underline underline-offset-4"
+                          >
+                            <ExternalLink className="size-3" />
+                            {t.label}
+                          </a>
+                        ))}
+                      </div>
                     ) : null}
-                  </span>
-                </div>
-              ))}
+                    {isOwnProfile ? (
+                      <EditMyProfileDialog
+                        orgSlug={orgSlug}
+                        orgId={org.id}
+                        teamMembershipId={tm.id}
+                        teamName={tm.team.name}
+                        defaultValues={{
+                          bio: tm.bio ?? "",
+                          trackerLink: tm.trackerLink ?? "",
+                          trackerValorant: tm.trackerValorant ?? "",
+                          trackerRocketLeague: tm.trackerRocketLeague ?? "",
+                          trackerSmash: tm.trackerSmash ?? "",
+                          trackerLeagueOfLegends: tm.trackerLeagueOfLegends ?? "",
+                        }}
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>

@@ -11,17 +11,26 @@ import Link from "next/link";
 export function ForgotPasswordForm() {
   const [state, formAction] = useActionState<RequestResetState, FormData>(requestPasswordResetAction, undefined);
 
-  if (state?.resetUrl) {
+  if (state?.message) {
     return (
       <Alert>
         <AlertDescription className="space-y-2">
-          <p>
-            No email is configured yet, so here&apos;s your reset link directly (this would normally be emailed):
-          </p>
-          <Link href={state.resetUrl} className="block break-all font-medium text-primary underline underline-offset-4">
-            {typeof window !== "undefined" ? window.location.origin : ""}
-            {state.resetUrl}
-          </Link>
+          <p>{state.message}</p>
+          {state.devResetUrl ? (
+            <>
+              <p className="text-xs text-muted-foreground">
+                No email provider is configured in this environment, so here&apos;s the link directly (dev only —
+                this never happens in production):
+              </p>
+              <Link
+                href={state.devResetUrl}
+                className="block break-all font-medium text-primary underline underline-offset-4"
+              >
+                {typeof window !== "undefined" ? window.location.origin : ""}
+                {state.devResetUrl}
+              </Link>
+            </>
+          ) : null}
         </AlertDescription>
       </Alert>
     );

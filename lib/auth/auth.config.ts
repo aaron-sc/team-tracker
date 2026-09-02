@@ -28,7 +28,10 @@ export const authConfig = {
         pathname.startsWith("/reset-password") ||
         pathname.startsWith("/verify-email") ||
         pathname.startsWith("/api/auth") ||
-        pathname.startsWith("/api/v1");
+        pathname.startsWith("/api/v1") ||
+        // Unauthenticated, token-gated roster embed meant to be iframed on an org's own site —
+        // the route itself checks the token/enabled flag; no session is ever involved.
+        pathname.startsWith("/embed");
       return isPublic || isLoggedIn;
     },
   },

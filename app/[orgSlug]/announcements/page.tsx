@@ -9,22 +9,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteAnnouncementButton } from "@/components/announcements/delete-announcement-button";
 import { BroadcastDialog } from "@/components/notifications/broadcast-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Plus, Pin, Megaphone } from "lucide-react";
-import { formatDate } from "@/lib/utils/format-time";
+import { Plus, Pin, Megaphone, Clock } from "lucide-react";
+import { formatDate, formatDateTime } from "@/lib/utils/format-time";
 
 export default async function AnnouncementsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { session, org, membership, teams } = await getOrgContext(orgSlug);
   await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
   const viewerTz = session.user.timezone ?? org.timezone;
+  const viewerHour12 = session.user.timeFormat !== "24h";
+
+  const canCreate = membership.permissions.includes(Permission.announcement_create);
 
   const announcements = await prisma.announcement.findMany({
-    where: { orgId: org.id },
+    // Members who can create announcements also get to see scheduled-but-not-yet-published ones
+    // (so they know what's queued up); everyone else only sees what's actually gone out.
+    where: canCreate ? { orgId: org.id } : { orgId: org.id, published: true },
     include: { author: { include: { user: true } }, team: true },
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
   });
 
-  const canCreate = membership.permissions.includes(Permission.announcement_create);
   const canDelete = membership.permissions.includes(Permission.announcement_delete);
   const canBroadcast = membership.permissions.includes(Permission.notification_send_broadcast);
 
@@ -62,9 +66,18 @@ export default async function AnnouncementsPage({ params }: { params: Promise<{ 
                   <CardTitle className="flex items-center gap-2 text-base">
                     {a.pinned ? <Pin className="size-3.5 fill-primary text-primary" /> : null}
                     {a.title}
+                    {!a.published ? (
+                      <Badge variant="outline" className="gap-1">
+                        <Clock className="size-3" />
+                        Scheduled
+                      </Badge>
+                    ) : null}
                   </CardTitle>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {a.author?.user.name ?? "Former member"} · {formatDate(a.createdAt, viewerTz)}
+                    {a.author?.user.name ?? "Former member"} ·{" "}
+                    {!a.published && a.publishAt
+                      ? `posts ${formatDateTime(a.publishAt, viewerTz, viewerHour12)}`
+                      : formatDate(a.createdAt, viewerTz)}
                     {a.team ? (
                       <>
                         {" "}

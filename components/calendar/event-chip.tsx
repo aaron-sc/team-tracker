@@ -3,7 +3,17 @@ import { cn } from "@/lib/utils";
 import type { CalendarEvent } from "@/lib/calendar/types";
 import { formatTimeShort } from "@/lib/utils/format-time";
 
-export function EventChip({ event, timeZone, className }: { event: CalendarEvent; timeZone: string; className?: string }) {
+export function EventChip({
+  event,
+  timeZone,
+  hour12 = true,
+  className,
+}: {
+  event: CalendarEvent;
+  timeZone: string;
+  hour12?: boolean;
+  className?: string;
+}) {
   return (
     <Link
       href={event.href}
@@ -16,7 +26,7 @@ export function EventChip({ event, timeZone, className }: { event: CalendarEvent
       )}
       title={event.title}
     >
-      {formatTimeShort(event.start, timeZone)} {event.title}
+      {formatTimeShort(event.start, timeZone, hour12)} {event.title}
     </Link>
   );
 }

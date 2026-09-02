@@ -19,6 +19,21 @@ export default async function RosterPage({ params }: { params: Promise<{ orgSlug
     orderBy: { user: { name: "asc" } },
   });
 
+  // Reliability score: share of past practices/scrims actually attended (late counts as
+  // attended; no-response/declined/upcoming sessions don't count either way).
+  const attendanceRows = await prisma.sessionAttendance.groupBy({
+    by: ["membershipId", "status"],
+    where: { membershipId: { in: members.map((m) => m.id) }, status: { in: ["ATTENDED", "ABSENT", "LATE"] } },
+    _count: true,
+  });
+  const attendanceByMember = new Map<string, { attended: number; total: number }>();
+  for (const row of attendanceRows) {
+    const entry = attendanceByMember.get(row.membershipId) ?? { attended: 0, total: 0 };
+    entry.total += row._count;
+    if (row.status === "ATTENDED" || row.status === "LATE") entry.attended += row._count;
+    attendanceByMember.set(row.membershipId, entry);
+  }
+
   const mailtoHref = `mailto:?bcc=${members.map((m) => encodeURIComponent(m.user.email)).join(",")}`;
 
   return (
@@ -55,6 +70,10 @@ export default async function RosterPage({ params }: { params: Promise<{ orgSlug
           roleName: m.role.name,
           roleColor: m.role.color,
           teamNames: m.teamMemberships.map((tm) => tm.team.name),
+          attendanceRate: (() => {
+            const entry = attendanceByMember.get(m.id);
+            return entry && entry.total > 0 ? Math.round((entry.attended / entry.total) * 100) : null;
+          })(),
         }))}
       />
     </div>

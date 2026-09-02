@@ -38,6 +38,7 @@ export function TopNav({
   orgSlug,
   orgId,
   orgLogoUrl,
+  orgWebsiteUrl,
   roleName,
   userName,
   userEmail,
@@ -50,6 +51,7 @@ export function TopNav({
   orgSlug: string;
   orgId: string;
   orgLogoUrl: string | null;
+  orgWebsiteUrl: string | null;
   roleName: string;
   userName: string;
   userEmail: string;
@@ -74,10 +76,23 @@ export function TopNav({
           <span className="hidden sm:inline">Formation</span>
         </Link>
         {orgLogoUrl ? (
-          <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-background">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={orgLogoUrl} alt={orgName} className="size-full object-contain" />
-          </span>
+          orgWebsiteUrl ? (
+            <a
+              href={orgWebsiteUrl}
+              target="_blank"
+              rel="noreferrer"
+              title={`Visit ${orgName}'s website`}
+              className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-background transition-opacity hover:opacity-80"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={orgLogoUrl} alt={orgName} className="size-full object-contain" />
+            </a>
+          ) : (
+            <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-background">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={orgLogoUrl} alt={orgName} className="size-full object-contain" />
+            </span>
+          )
         ) : null}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
