@@ -69,7 +69,10 @@ export function TopNav({
   const [createOrgOpen, setCreateOrgOpen] = useState(false);
 
   return (
-    <header className="flex h-14 items-center justify-between border-b bg-background px-4">
+    <header
+      className="flex h-14 items-center justify-between border-b bg-background px-4"
+      style={{ viewTransitionName: "site-header" } as React.CSSProperties}
+    >
       <div className="flex items-center gap-3">
         <Link href="/" className="flex items-center gap-2 font-semibold">
           <ShieldCheck className="size-5 text-primary" />

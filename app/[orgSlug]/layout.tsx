@@ -1,3 +1,4 @@
+import { ViewTransition } from "react";
 import { getOrgContext } from "@/lib/org/context";
 import { prisma } from "@/lib/db/prisma";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
@@ -67,10 +68,17 @@ export default async function OrgLayout({
         />
       </div>
       <div className="flex flex-1">
-        <aside className="no-print hidden w-56 shrink-0 border-r sm:block">
+        <aside
+          className="no-print hidden w-56 shrink-0 border-r sm:block"
+          style={{ viewTransitionName: "site-sidebar" } as React.CSSProperties}
+        >
           <SidebarNav orgSlug={org.slug} permissions={membership.permissions} />
         </aside>
-        <main className="flex-1 overflow-x-hidden bg-muted/20 p-6">{children}</main>
+        <main className="flex-1 overflow-x-hidden bg-muted/20 p-6">
+          <ViewTransition name="app-content" enter="auto" exit="auto">
+            {children}
+          </ViewTransition>
+        </main>
       </div>
     </div>
   );

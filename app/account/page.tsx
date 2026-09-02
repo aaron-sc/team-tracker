@@ -9,6 +9,7 @@ import { UpdateNameForm } from "@/components/account/update-name-form";
 import { UpdateTimezoneForm } from "@/components/account/update-timezone-form";
 import { UpdateTimeFormatForm } from "@/components/account/update-time-format-form";
 import { PushNotificationsToggle } from "@/components/account/push-notifications-toggle";
+import { ConnectDiscordForm } from "@/components/account/connect-discord-form";
 import { UpdateProfileDetailsForm } from "@/components/account/update-profile-details-form";
 import { AvatarUploadForm } from "@/components/account/avatar-upload-form";
 import { LeaveOrgButton } from "@/components/account/leave-org-button";
@@ -24,7 +25,15 @@ export default async function AccountPage() {
 
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: session.user.id },
-    select: { name: true, avatarUrl: true, timezone: true, timeFormat: true, discordHandle: true, phone: true },
+    select: {
+      name: true,
+      avatarUrl: true,
+      timezone: true,
+      timeFormat: true,
+      discordHandle: true,
+      discordUserId: true,
+      phone: true,
+    },
   });
 
   return (
@@ -97,6 +106,15 @@ export default async function AccountPage() {
           </CardHeader>
           <CardContent>
             <PushNotificationsToggle />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Connect Discord</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ConnectDiscordForm discordUserId={user.discordUserId} discordHandle={user.discordHandle} />
           </CardContent>
         </Card>
 

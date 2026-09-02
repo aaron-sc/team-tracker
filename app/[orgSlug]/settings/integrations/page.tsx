@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { ApiKeyPanel } from "@/components/settings/api-key-panel";
 import { DiscordPanel } from "@/components/settings/discord-panel";
+import { DiscordBotPanel } from "@/components/settings/discord-bot-panel";
+import { buildDiscordInviteUrl } from "@/lib/integrations/discord-invite-url";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function IntegrationsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
@@ -13,7 +15,7 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ o
 
   const fullOrg = await prisma.organization.findUniqueOrThrow({
     where: { id: org.id },
-    select: { discordWebhookUrl: true },
+    select: { discordWebhookUrl: true, discordGuildId: true },
   });
 
   return (
@@ -26,6 +28,30 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ o
           match/practice/scrim reminders and a dedicated channel.
         </p>
         <DiscordPanel orgSlug={orgSlug} orgId={org.id} webhookUrl={fullOrg.discordWebhookUrl} />
+      </div>
+
+      <div>
+        <h2 className="mb-1 text-lg font-medium">Discord bot</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Beyond webhook pings, the bot lets players act from inside Discord — <code className="rounded bg-muted px-1 py-0.5 text-xs">/available</code> adds
+          a weekly availability rule without opening Formation at all.
+        </p>
+        <DiscordBotPanel
+          orgSlug={orgSlug}
+          orgId={org.id}
+          inviteUrl={buildDiscordInviteUrl()}
+          connectedGuildId={fullOrg.discordGuildId}
+        />
+      </div>
+
+      <div>
+        <h2 className="mb-1 text-lg font-medium">Calendar sync</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Every member can subscribe to a live feed of just their own teams&apos; matches and practices from the{" "}
+          <span className="font-medium">Subscribe</span> button on the Schedule page — no setup here required. The
+          org-wide feed below (every team, all at once) is also available there under &quot;Whole org&quot;, gated by
+          the API key.
+        </p>
       </div>
 
       <div>

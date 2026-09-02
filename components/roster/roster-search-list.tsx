@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, ViewTransition } from "react";
 import Link from "next/link";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -69,14 +69,16 @@ export function RosterSearchList({ orgSlug, members }: { orgSlug: string; member
             <Card className="transition-colors hover:bg-accent">
               <CardContent className="flex items-center justify-between py-3">
                 <div className="flex items-center gap-3">
-                  <Avatar className="size-9">
-                    {m.avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={m.avatarUrl} alt={m.name} className="size-full rounded-full object-cover" />
-                    ) : (
-                      <AvatarFallback>{initials(m.name)}</AvatarFallback>
-                    )}
-                  </Avatar>
+                  <ViewTransition name={`roster-avatar-${m.id}`} share="roster-avatar">
+                    <Avatar className="size-9">
+                      {m.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={m.avatarUrl} alt={m.name} className="size-full rounded-full object-cover" />
+                      ) : (
+                        <AvatarFallback>{initials(m.name)}</AvatarFallback>
+                      )}
+                    </Avatar>
+                  </ViewTransition>
                   <div>
                     <p className="text-sm font-medium">{m.name}</p>
                     {m.email ? <p className="text-xs text-muted-foreground">{m.email}</p> : null}

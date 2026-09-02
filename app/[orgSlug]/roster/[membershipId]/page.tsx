@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ViewTransition } from "react";
 import { getOrgContext } from "@/lib/org/context";
 import { prisma } from "@/lib/db/prisma";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -71,14 +72,16 @@ export default async function MemberProfilePage({
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center gap-4">
-        <Avatar className="size-14">
-          {membership.user.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={membership.user.avatarUrl} alt={membership.user.name} className="size-full rounded-full object-cover" />
-          ) : (
-            <AvatarFallback className="text-lg">{initials(membership.user.name)}</AvatarFallback>
-          )}
-        </Avatar>
+        <ViewTransition name={`roster-avatar-${membership.id}`} share="roster-avatar">
+          <Avatar className="size-14">
+            {membership.user.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={membership.user.avatarUrl} alt={membership.user.name} className="size-full rounded-full object-cover" />
+            ) : (
+              <AvatarFallback className="text-lg">{initials(membership.user.name)}</AvatarFallback>
+            )}
+          </Avatar>
+        </ViewTransition>
         <div>
           <h1 className="text-xl font-semibold">{membership.user.name}</h1>
           <RoleBadge name={membership.role.name} color={membership.role.color} />

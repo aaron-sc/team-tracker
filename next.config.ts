@@ -5,6 +5,17 @@ import type { NextConfig } from "next";
 // rule below is deliberately listed before the /embed override, which relaxes it for the one
 // route in this app that's meant to be iframed on third-party sites.
 const nextConfig: NextConfig = {
+  experimental: {
+    // Powers React's native <ViewTransition> (see components using it, e.g. app/[orgSlug]/layout.tsx)
+    // — the app's route-change crossfade and the roster list→detail morph both depend on this.
+    viewTransition: true,
+  },
+  // discord.js's gateway package (@discordjs/ws) lazily `import()`s the optional native module
+  // zlib-sync, which isn't installed (it's an optional perf dependency, not required). Turbopack
+  // tries to statically resolve every import when bundling for Server Components and fails on it
+  // — externalizing discord.js makes it a plain Node require() at runtime instead, which resolves
+  // that dynamic import lazily and only if the module is actually present.
+  serverExternalPackages: ["discord.js"],
   async headers() {
     return [
       {
