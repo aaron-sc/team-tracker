@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { GameSelect } from "@/components/ui/game-select";
 import { SubmitButton } from "@/components/auth/submit-button";
 
 export function ProspectForm({
@@ -58,7 +59,7 @@ export function ProspectForm({
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="game">Game</Label>
-          <Input id="game" name="game" placeholder="Valorant" defaultValue={defaultValues?.game} required />
+          <GameSelect defaultValue={defaultValues?.game} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="teamId">Target team (optional)</Label>
