@@ -185,7 +185,7 @@ export default async function HomePage() {
                 <ComparisonRow label="Timezone-aware availability" />
                 <ComparisonRow label="Real win rate & attendance trends" />
                 <ComparisonRow label="Who can edit what, precisely" />
-                <ComparisonRow label="Your data, self-hosted" />
+                <ComparisonRow label="A full audit log of every change" />
               </tbody>
             </table>
           </div>
@@ -243,13 +243,13 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ---------- Self-hosted ---------- */}
+        {/* ---------- Security ---------- */}
         <section className="mx-auto max-w-4xl px-6 py-24 text-center">
           <Lock className="mx-auto mb-4 size-8 text-primary" />
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Self-hosted. Your data stays yours.</h2>
+          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Secured from day one, not bolted on after.</h2>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-            Formation runs on infrastructure you control — not a third-party SaaS platform holding your roster
-            hostage. No one else&apos;s outage takes down your org&apos;s schedule.
+            Hardened security headers, rate-limited login and password reset, and a full audit log of every
+            sensitive change — running on AWS infrastructure, not a spreadsheet with a share link.
           </p>
         </section>
 
