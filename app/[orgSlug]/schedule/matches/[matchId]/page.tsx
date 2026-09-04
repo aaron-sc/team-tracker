@@ -9,7 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MatchResultForm } from "@/components/schedule/match-result-form";
 import { DeleteMatchButton } from "@/components/schedule/delete-match-button";
 import { DuplicateMatchButton } from "@/components/schedule/duplicate-match-button";
+import { TeamPlaybookPanel } from "@/components/schedule/team-playbook-panel";
+import { EventDiscussionPanel } from "@/components/schedule/event-discussion-panel";
 import { recordMatchResultAction } from "@/lib/actions/matches";
+import { postMatchCommentAction, deleteMatchCommentAction } from "@/lib/actions/match-comments";
 import { venueDirectionsUrl } from "@/lib/utils/venue-directions";
 import { formatDateTimeLong } from "@/lib/utils/format-time";
 import { Calendar, MapPin, Radio, Pencil, Navigation, CalendarPlus } from "lucide-react";
@@ -41,6 +44,40 @@ export default async function MatchDetailPage({
   const canCreate = membership.permissions.includes(Permission.match_create);
   const canRecordResult = membership.permissions.includes(Permission.match_result_record);
   const resultAction = recordMatchResultAction.bind(null, orgSlug, org.id, match.id);
+
+  // Playbook and discussion are scoped to this match's own team, same bar as the team page's
+  // own strategy section — not the whole org.
+  const isOnTeam = membership.teamIds.includes(match.teamId);
+  const canViewTeamStuff = isOnTeam || canEdit;
+
+  const [strategies, comments] = await Promise.all([
+    canViewTeamStuff
+      ? prisma.strategy.findMany({ where: { teamId: match.teamId }, orderBy: [{ map: "asc" }, { createdAt: "desc" }] })
+      : Promise.resolve([]),
+    canViewTeamStuff
+      ? prisma.matchComment.findMany({
+          where: { matchId: match.id },
+          include: { membership: { include: { user: true } } },
+          orderBy: { createdAt: "asc" },
+        })
+      : Promise.resolve([]),
+  ]);
+  const strategyItems = strategies.map((s) => ({
+    id: s.id,
+    map: s.map,
+    title: s.title,
+    notes: s.notes,
+    agents: s.agents as { role: string; agent: string }[] | null,
+  }));
+  const commentItems = comments.map((c) => ({
+    id: c.id,
+    body: c.body,
+    authorName: c.membership.user.name,
+    membershipId: c.membershipId,
+    createdAt: c.createdAt.toISOString(),
+  }));
+  const postCommentAction = postMatchCommentAction.bind(null, orgSlug, org.id, match.id);
+  const deleteCommentAction = deleteMatchCommentAction.bind(null, orgSlug, org.id, match.id);
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -113,6 +150,35 @@ export default async function MatchDetailPage({
                 scoreFor: match.scoreFor,
                 scoreAgainst: match.scoreAgainst,
               }}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {canViewTeamStuff ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Team playbook</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TeamPlaybookPanel orgSlug={orgSlug} teamSlug={match.team.slug} strategies={strategyItems} />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {canViewTeamStuff ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Discussion</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <EventDiscussionPanel
+              comments={commentItems}
+              currentMembershipId={membership.membershipId}
+              canPost={canViewTeamStuff}
+              canModerate={canEdit}
+              onPost={postCommentAction}
+              onDelete={deleteCommentAction}
             />
           </CardContent>
         </Card>

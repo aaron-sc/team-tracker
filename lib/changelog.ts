@@ -1,6 +1,7 @@
 // Release notes shown in the "What's new" dialog (components/layout/whats-new-dialog.tsx).
 // Add a new entry at the TOP of this array as part of any deploy that ships user-facing
-// changes — the dialog always shows CHANGELOG[0] and auto-opens once per version per browser.
+// changes — the dialog shows CHANGELOG[0] by default and pages back through older entries a
+// returning visitor hasn't seen yet (see the dialog component for how "seen" is tracked).
 
 export type ChangelogGroup = { title: string; items: string[] };
 export type ChangelogEntry = {
@@ -11,6 +12,27 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2026-09-04",
+    date: "September 4, 2026",
+    headline: "Strategy, playbooks, and match chat",
+    groups: [
+      {
+        title: "Strategy & playbooks",
+        items: [
+          "Every team gets a strategy section — log a playbook entry per map, with an optional agent/role composition (works for Valorant, League, or anything else your game uses roles for).",
+          "An upcoming match or practice shows that team's playbook as a quick-reference panel, organized by map, so nobody has to go dig through an old Discord thread to find the plan.",
+        ],
+      },
+      {
+        title: "Match & practice chat",
+        items: [
+          "A discussion thread now lives under every match and practice — talk through the game plan, confirm the veto, or coordinate right where the schedule already is.",
+          "Both strategy and discussion are visible only to that team's own roster (plus coaches/managers who oversee multiple teams) — not the whole org.",
+        ],
+      },
+    ],
+  },
   {
     version: "2026-09-02",
     date: "September 2, 2026",

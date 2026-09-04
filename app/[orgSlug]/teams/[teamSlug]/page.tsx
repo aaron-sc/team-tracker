@@ -14,6 +14,7 @@ import { EditRosterEntryDialog } from "@/components/teams/edit-roster-entry-dial
 import { TeamInviteLinkPanel } from "@/components/teams/team-invite-link-panel";
 import { TeamResourcesPanel } from "@/components/teams/team-resources-panel";
 import { TeamPollsPanel } from "@/components/teams/team-polls-panel";
+import { TeamStrategyPanel, type StrategyItem } from "@/components/teams/team-strategy-panel";
 import { addToRosterAction } from "@/lib/actions/teams";
 import { Pencil, Star, Calendar, Swords, ExternalLink } from "lucide-react";
 import { formatDateTimeShort } from "@/lib/utils/format-time";
@@ -35,6 +36,11 @@ export default async function TeamDetailPage({
   const canEditTeam = membership.permissions.includes(Permission.team_edit);
   const canManageResources = membership.permissions.includes(Permission.team_resources_manage);
   const canManagePolls = membership.permissions.includes(Permission.poll_manage);
+  const canManageStrategy = membership.permissions.includes(Permission.strategy_manage);
+  // Strategy is competitively sensitive, so it's visible only to this team's own roster plus
+  // whoever can manage strategy org-wide (e.g. a head coach overseeing several teams) — unlike
+  // resources/polls above, which any org member can already see on this page.
+  const canViewStrategy = membership.teamIds.includes(team.id) || canManageStrategy;
   const canInviteToTeam =
     membership.permissions.includes(Permission.org_members_invite) ||
     (membership.permissions.includes(Permission.team_members_invite) && membership.teamIds.includes(team.id));
@@ -72,7 +78,7 @@ export default async function TeamDetailPage({
     }),
   ]);
 
-  const [resourceLinks, polls] = await Promise.all([
+  const [resourceLinks, polls, strategies] = await Promise.all([
     prisma.teamResourceLink.findMany({ where: { teamId: team.id }, orderBy: { createdAt: "desc" } }),
     prisma.poll.findMany({
       where: { teamId: team.id },
@@ -80,7 +86,17 @@ export default async function TeamDetailPage({
       take: 10,
       include: { options: { orderBy: { order: "asc" }, include: { votes: true } } },
     }),
+    canViewStrategy
+      ? prisma.strategy.findMany({ where: { teamId: team.id }, orderBy: [{ map: "asc" }, { createdAt: "desc" }] })
+      : Promise.resolve([]),
   ]);
+  const strategyItems: StrategyItem[] = strategies.map((s) => ({
+    id: s.id,
+    map: s.map,
+    title: s.title,
+    notes: s.notes,
+    agents: (s.agents as { role: string; agent: string }[] | null) ?? null,
+  }));
   const pollItems = polls.map((p) => {
     const totalVotes = p.options.reduce((sum, o) => sum + o.votes.length, 0);
     const myVote = p.options.find((o) => o.votes.some((v) => v.membershipId === membership.membershipId));
@@ -358,6 +374,24 @@ export default async function TeamDetailPage({
           <TeamPollsPanel orgSlug={orgSlug} orgId={org.id} teamId={team.id} polls={pollItems} canManage={canManagePolls} />
         </CardContent>
       </Card>
+
+      {canViewStrategy ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Strategy &amp; playbooks</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TeamStrategyPanel
+              orgSlug={orgSlug}
+              orgId={org.id}
+              teamId={team.id}
+              teamSlug={team.slug}
+              strategies={strategyItems}
+              canManage={canManageStrategy}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       {canManageRoster ? (
         <Card>

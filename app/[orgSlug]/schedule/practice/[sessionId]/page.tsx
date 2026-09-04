@@ -10,6 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AttendanceStatusSelect } from "@/components/schedule/attendance-status-select";
 import { DeletePracticeButton } from "@/components/schedule/delete-practice-button";
 import { DuplicatePracticeButton } from "@/components/schedule/duplicate-practice-button";
+import { TeamPlaybookPanel } from "@/components/schedule/team-playbook-panel";
+import { EventDiscussionPanel } from "@/components/schedule/event-discussion-panel";
+import { postPracticeCommentAction, deletePracticeCommentAction } from "@/lib/actions/practice-comments";
 import { getConflictsForSession } from "@/lib/availability/conflicts";
 import { venueDirectionsUrl } from "@/lib/utils/venue-directions";
 import { formatDateTimeLong } from "@/lib/utils/format-time";
@@ -43,6 +46,38 @@ export default async function PracticeSessionDetailPage({
   const canManageAttendance = membership.permissions.includes(Permission.attendance_manage);
 
   const conflicts = await getConflictsForSession(session);
+
+  const isOnTeam = membership.teamIds.includes(session.teamId);
+  const canViewTeamStuff = isOnTeam || canEdit;
+
+  const [strategies, comments] = await Promise.all([
+    canViewTeamStuff
+      ? prisma.strategy.findMany({ where: { teamId: session.teamId }, orderBy: [{ map: "asc" }, { createdAt: "desc" }] })
+      : Promise.resolve([]),
+    canViewTeamStuff
+      ? prisma.practiceComment.findMany({
+          where: { sessionId: session.id },
+          include: { membership: { include: { user: true } } },
+          orderBy: { createdAt: "asc" },
+        })
+      : Promise.resolve([]),
+  ]);
+  const strategyItems = strategies.map((s) => ({
+    id: s.id,
+    map: s.map,
+    title: s.title,
+    notes: s.notes,
+    agents: s.agents as { role: string; agent: string }[] | null,
+  }));
+  const commentItems = comments.map((c) => ({
+    id: c.id,
+    body: c.body,
+    authorName: c.membership.user.name,
+    membershipId: c.membershipId,
+    createdAt: c.createdAt.toISOString(),
+  }));
+  const postCommentAction = postPracticeCommentAction.bind(null, orgSlug, org.id, session.id);
+  const deleteCommentAction = deletePracticeCommentAction.bind(null, orgSlug, org.id, session.id);
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -148,6 +183,35 @@ export default async function PracticeSessionDetailPage({
           </Table>
         </CardContent>
       </Card>
+
+      {canViewTeamStuff ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Team playbook</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TeamPlaybookPanel orgSlug={orgSlug} teamSlug={session.team.slug} strategies={strategyItems} />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {canViewTeamStuff ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Discussion</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <EventDiscussionPanel
+              comments={commentItems}
+              currentMembershipId={membership.membershipId}
+              canPost={canViewTeamStuff}
+              canModerate={canEdit}
+              onPost={postCommentAction}
+              onDelete={deleteCommentAction}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" asChild>

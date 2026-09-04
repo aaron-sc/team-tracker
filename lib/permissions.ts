@@ -78,6 +78,10 @@ export const PERMISSION_GROUPS: { label: string; permissions: Permission[] }[] =
     permissions: [Permission.poll_manage, Permission.team_resources_manage],
   },
   {
+    label: "Strategy",
+    permissions: [Permission.strategy_manage],
+  },
+  {
     label: "Admin tools",
     permissions: [Permission.gear_manage, Permission.expense_manage],
   },
@@ -124,6 +128,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   team_resources_manage: "Manage a team's pinned resource links",
   gear_manage: "Manage equipment/gear inventory",
   expense_manage: "Manage the expense ledger",
+  strategy_manage: "Create and edit team strategies, playbooks, and agent compositions",
 };
 
 /** Default permission grants for system-seeded roles, applied at org creation time. */
@@ -156,6 +161,7 @@ export const ROLE_PRESETS: Record<string, { description: string; color: string; 
       Permission.analytics_view,
       Permission.poll_manage,
       Permission.team_resources_manage,
+      Permission.strategy_manage,
     ],
   },
   Manager: {
@@ -193,6 +199,7 @@ export const ROLE_PRESETS: Record<string, { description: string; color: string; 
       Permission.availability_manage_self,
       Permission.team_members_invite,
       Permission.poll_manage,
+      Permission.strategy_manage,
     ],
   },
   Player: {
