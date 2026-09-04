@@ -7,21 +7,19 @@ type StrategyItem = { id: string; map: string; title: string; notes: string | nu
 
 /** Read-only reference view of a team's playbook — shown on that team's upcoming matches and
  *  practices so players can pull up the plan without leaving the page. Full editing happens on
- *  the team page itself. */
+ *  the dedicated Strategies page. */
 export function TeamPlaybookPanel({
   orgSlug,
-  teamSlug,
   strategies,
 }: {
   orgSlug: string;
-  teamSlug: string;
   strategies: StrategyItem[];
 }) {
   if (strategies.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
         No strategies logged for this team yet.{" "}
-        <Link href={`/${orgSlug}/teams/${teamSlug}`} className="text-primary underline underline-offset-4">
+        <Link href={`/${orgSlug}/strategies`} className="text-primary underline underline-offset-4">
           Add one
         </Link>
         .
@@ -66,7 +64,7 @@ export function TeamPlaybookPanel({
           </div>
         </div>
       ))}
-      <Link href={`/${orgSlug}/teams/${teamSlug}`} className="text-xs text-primary underline underline-offset-4">
+      <Link href={`/${orgSlug}/strategies`} className="text-xs text-primary underline underline-offset-4">
         Manage strategies
       </Link>
     </div>

@@ -161,7 +161,7 @@ export default async function MatchDetailPage({
             <CardTitle className="text-base">Team playbook</CardTitle>
           </CardHeader>
           <CardContent>
-            <TeamPlaybookPanel orgSlug={orgSlug} teamSlug={match.team.slug} strategies={strategyItems} />
+            <TeamPlaybookPanel orgSlug={orgSlug} strategies={strategyItems} />
           </CardContent>
         </Card>
       ) : null}

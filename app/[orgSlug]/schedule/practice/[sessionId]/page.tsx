@@ -190,7 +190,7 @@ export default async function PracticeSessionDetailPage({
             <CardTitle className="text-base">Team playbook</CardTitle>
           </CardHeader>
           <CardContent>
-            <TeamPlaybookPanel orgSlug={orgSlug} teamSlug={session.team.slug} strategies={strategyItems} />
+            <TeamPlaybookPanel orgSlug={orgSlug} strategies={strategyItems} />
           </CardContent>
         </Card>
       ) : null}

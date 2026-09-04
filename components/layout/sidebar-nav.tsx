@@ -19,6 +19,7 @@ import {
   BarChart3,
   Package,
   Receipt,
+  Swords,
 } from "lucide-react";
 
 const SETTINGS_PERMISSIONS: Permission[] = [
@@ -41,6 +42,7 @@ export function SidebarNav({ orgSlug, permissions }: { orgSlug: string; permissi
     { href: `${base}/dashboard`, label: "Dashboard", icon: LayoutDashboard, show: true, tour: "nav-dashboard" },
     { href: `${base}/roster`, label: "Roster", icon: Users, show: true, tour: "nav-roster" },
     { href: `${base}/teams`, label: "Teams", icon: Shield, show: true, tour: "nav-teams" },
+    { href: `${base}/strategies`, label: "Strategies", icon: Swords, show: true, tour: undefined },
     { href: `${base}/schedule`, label: "Schedule", icon: CalendarClock, show: true, tour: "nav-schedule" },
     { href: `${base}/availability`, label: "Availability", icon: ClipboardList, show: true, tour: undefined },
     {
