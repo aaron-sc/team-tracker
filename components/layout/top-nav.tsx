@@ -22,6 +22,7 @@ import { KeyboardShortcutsDialog } from "@/components/layout/keyboard-shortcuts-
 import { CreateOrgDialog } from "@/components/auth/create-org-dialog";
 import { startProductTour } from "@/components/onboarding/product-tour";
 import { openWhatsNew } from "@/components/layout/whats-new-dialog";
+import { FeatureRequestDialog } from "@/components/layout/feature-request-dialog";
 
 type OrgOption = { orgId: string; orgSlug: string; orgName: string; orgLogoUrl: string | null; roleName: string };
 type NotificationItem = {
@@ -143,6 +144,7 @@ export function TopNav({
         <span data-tour="search" className="contents">
           <CommandPalette orgId={orgId} />
         </span>
+        <FeatureRequestDialog orgName={orgName} />
         <Badge variant="secondary" className="hidden sm:inline-flex">
           {roleName}
         </Badge>
