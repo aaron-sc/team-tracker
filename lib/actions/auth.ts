@@ -90,7 +90,7 @@ async function generateUniqueOrgSlug(name: string): Promise<string> {
 
 /** How many organizations one person is allowed to own (be the system "Owner" of). Memberships
  *  in orgs someone else owns don't count. */
-export const MAX_ORGS_PER_USER = 5;
+const MAX_ORGS_PER_USER = 5;
 
 function countOwnedOrgs(userId: string): Promise<number> {
   return prisma.membership.count({
