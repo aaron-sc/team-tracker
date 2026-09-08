@@ -9,6 +9,7 @@ import { WinLossBar } from "@/components/dashboard/win-loss-bar";
 import { AttendanceMeter } from "@/components/dashboard/attendance-meter";
 import { FunnelBars } from "@/components/dashboard/funnel-bars";
 import { RsvpQuickActions } from "@/components/dashboard/rsvp-quick-actions";
+import { SetupChecklist, type SetupStep } from "@/components/dashboard/setup-checklist";
 import {
   Calendar,
   Radio,
@@ -21,6 +22,8 @@ import {
   ClipboardCheck,
   CalendarCheck,
   History,
+  UserPlus,
+  Bot,
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils/format-time";
 
@@ -154,12 +157,42 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
 
   const prospectCounts = Object.fromEntries(prospectsByStage.map((g) => [g.stage, g._count]));
 
+  const canManageOrgSetup = membership.permissions.includes(Permission.org_settings_manage);
+  const setupSteps: SetupStep[] = [
+    {
+      key: "team",
+      label: "Create your first team",
+      description: "A team is where rosters, schedules, and strategy playbooks live.",
+      href: `/${orgSlug}/teams/new`,
+      done: teamCount > 0,
+      icon: <Shield className="size-4" />,
+    },
+    {
+      key: "roster",
+      label: "Invite your roster",
+      description: "Bring in coaches, captains, and players so they can set their own availability.",
+      href: `/${orgSlug}/settings/members`,
+      done: memberCount > 1,
+      icon: <UserPlus className="size-4" />,
+    },
+    {
+      key: "discord",
+      label: "Connect Discord",
+      description: "Lets players RSVP and set availability with a slash command, without opening Formation.",
+      href: `/${orgSlug}/settings/integrations`,
+      done: !!org.discordGuildId,
+      icon: <Bot className="size-4" />,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">{org.name}</h1>
         <p className="text-muted-foreground">Welcome back, here&apos;s what&apos;s happening.</p>
       </div>
+
+      {canManageOrgSetup ? <SetupChecklist orgId={org.id} steps={setupSteps} /> : null}
 
       {!session.user.timezone ? (
         <Card className="border-amber-500/30 bg-amber-500/5">

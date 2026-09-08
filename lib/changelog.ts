@@ -24,6 +24,12 @@ export const CHANGELOG: ChangelogEntry[] = [
           "Each person can own up to 5 organizations.",
         ],
       },
+      {
+        title: "Getting started",
+        items: [
+          "A setup checklist on the dashboard for new orgs — create your first team, invite your roster, and connect Discord, with live progress and a dismiss option once you've got it covered.",
+        ],
+      },
     ],
   },
   {
