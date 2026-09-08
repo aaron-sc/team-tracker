@@ -482,10 +482,24 @@ export async function postAccessRequestForReview(
   links: { approveUrl: string | null; denyUrl: string | null },
 ): Promise<boolean> {
   const channelId = process.env.ACCESS_REQUEST_DISCORD_CHANNEL_ID;
-  if (!client?.isReady() || !channelId) return false;
+  if (!client?.isReady()) {
+    console.warn("[discord-bot] Access-request post skipped — bot not ready.");
+    return false;
+  }
+  if (!channelId) {
+    console.warn("[discord-bot] Access-request post skipped — ACCESS_REQUEST_DISCORD_CHANNEL_ID not set.");
+    return false;
+  }
   try {
     const channel = await client.channels.fetch(channelId);
-    if (!channel || !channel.isTextBased() || !("send" in channel)) return false;
+    if (!channel) {
+      console.warn(`[discord-bot] Access-request post skipped — channel ${channelId} not found (bot may not have access to it, or it's in another server).`);
+      return false;
+    }
+    if (!channel.isTextBased() || !("send" in channel)) {
+      console.warn(`[discord-bot] Access-request post skipped — channel ${channelId} is type ${channel.type}, not a postable text channel.`);
+      return false;
+    }
 
     const embed = new EmbedBuilder()
       .setTitle("New Formation access request")
