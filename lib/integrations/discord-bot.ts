@@ -105,6 +105,19 @@ export function startDiscordBot() {
     void registerCommandsForAllGuilds(c);
   });
 
+  client.on("shardDisconnect", (event) => {
+    console.warn(`[discord-bot] Shard disconnected (code ${event.code}).`);
+  });
+  client.on("shardReconnecting", () => {
+    console.warn("[discord-bot] Shard reconnecting…");
+  });
+  client.on("shardResume", () => {
+    console.log("[discord-bot] Shard resumed.");
+  });
+  client.on("error", (err) => {
+    console.error("[discord-bot] Client error:", err);
+  });
+
   client.on("guildCreate", (guild) => {
     void registerGuildCommands(guild.id);
   });
@@ -482,8 +495,15 @@ export async function postAccessRequestForReview(
   links: { approveUrl: string | null; denyUrl: string | null },
 ): Promise<boolean> {
   const channelId = process.env.ACCESS_REQUEST_DISCORD_CHANNEL_ID;
-  if (!client?.isReady()) {
-    console.warn("[discord-bot] Access-request post skipped — bot not ready.");
+  if (!client) {
+    console.warn("[discord-bot] Access-request post skipped — client is null (DISCORD_BOT_TOKEN unset, or startDiscordBot() never ran in this process).");
+    return false;
+  }
+  if (!client.isReady()) {
+    console.warn(
+      `[discord-bot] Access-request post skipped — client exists but isReady() is false ` +
+        `(ws status: ${client.ws.status}, readyAt: ${client.readyAt}, uptime: ${client.uptime}ms).`,
+    );
     return false;
   }
   if (!channelId) {
