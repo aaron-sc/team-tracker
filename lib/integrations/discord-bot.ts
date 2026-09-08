@@ -84,7 +84,13 @@ function generateCode(): string {
 
 const CODE_LIFETIME_MS = 10 * 60 * 1000;
 
-let client: Client | null = null;
+// Next.js/Turbopack can give a Server Action its own module instance, separate from the one
+// instrumentation.ts evaluates at boot — a plain module-scope `let` would then read back null
+// from inside a Server Action even though the bot is connected. Anchor the singleton on
+// globalThis (same trick lib/db/prisma.ts uses for the same reason) so every module instance
+// resolves to the one real, logged-in client.
+const globalForDiscordBot = globalThis as unknown as { __discordBotClient?: Client | null };
+let client: Client | null = globalForDiscordBot.__discordBotClient ?? null;
 
 /** Starts the Discord bot's gateway connection. Safe to call repeatedly — no-ops after the first
  *  call, and no-ops entirely if DISCORD_BOT_TOKEN isn't set (bot is an optional integration). */
@@ -99,6 +105,7 @@ export function startDiscordBot() {
   // No privileged intents needed: fetching one specific guild member by ID (for role sync) is a
   // plain REST call, not a gateway subscription, so it works fine on the default Guilds intent.
   client = new Client({ intents: [GatewayIntentBits.Guilds] });
+  globalForDiscordBot.__discordBotClient = client;
 
   client.once("ready", (c) => {
     console.log(`[discord-bot] Logged in as ${c.user.tag}.`);
