@@ -88,13 +88,37 @@ async function generateUniqueOrgSlug(name: string): Promise<string> {
   return slug;
 }
 
+/** How many organizations one person is allowed to own (be the system "Owner" of). Memberships
+ *  in orgs someone else owns don't count. */
+export const MAX_ORGS_PER_USER = 5;
+
+function countOwnedOrgs(userId: string): Promise<number> {
+  return prisma.membership.count({
+    where: { userId, role: { isSystem: true, name: "Owner" } },
+  });
+}
+
+/**
+ * Creates the first account + org for someone who was approved through the access-request gate.
+ * Only reachable with a valid, approved, unconsumed AccessRequest token (see /signup?token=… and
+ * lib/actions/access-request.ts) — the email is taken from that request, never from form input,
+ * so an approval can't be redirected to a different address.
+ */
 export async function signupAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const allowed = await checkRateLimit("signup", 5, 60 * 60 * 1000);
   if (!allowed) return { error: "Too many attempts. Try again later." };
 
+  const token = String(formData.get("token") ?? "");
+  const accessRequest = token
+    ? await prisma.accessRequest.findUnique({ where: { token } })
+    : null;
+  if (!accessRequest || accessRequest.status !== "APPROVED" || accessRequest.consumedAt) {
+    return { error: "This signup link isn't valid anymore. Request access again to get a new one." };
+  }
+
   const parsed = signupSchema.safeParse({
     name: formData.get("name"),
-    email: formData.get("email"),
+    email: accessRequest.email,
     password: formData.get("password"),
     orgName: formData.get("orgName"),
   });
@@ -134,6 +158,11 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
       data: { userId: user.id, orgId: org.id, roleId: ownerRoleId! },
     });
 
+    await tx.accessRequest.update({
+      where: { id: accessRequest.id },
+      data: { consumedAt: new Date() },
+    });
+
     return user.id;
   });
 
@@ -159,6 +188,10 @@ export async function createAdditionalOrgAction(_prev: ActionState, formData: Fo
   const parsed = createOrgSchema.safeParse({ orgName: formData.get("orgName") });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  if ((await countOwnedOrgs(session.user.id)) >= MAX_ORGS_PER_USER) {
+    return { error: `You can own at most ${MAX_ORGS_PER_USER} organizations.` };
   }
 
   const slug = await generateUniqueOrgSlug(parsed.data.orgName);

@@ -29,6 +29,9 @@ export const authConfig = {
         pathname.startsWith("/verify-email") ||
         pathname.startsWith("/api/auth") ||
         pathname.startsWith("/api/v1") ||
+        // Signed approve/deny link for access requests — authorized by its HMAC signature, not a
+        // session (you click it from Discord). See app/api/access-requests/decide/route.ts.
+        pathname.startsWith("/api/access-requests") ||
         // Unauthenticated, token-gated roster embed meant to be iframed on an org's own site —
         // the route itself checks the token/enabled flag; no session is ever involved.
         pathname.startsWith("/embed") ||

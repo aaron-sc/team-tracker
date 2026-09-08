@@ -16,7 +16,7 @@ export default async function LoginPage() {
         <>
           Don&apos;t have an organization yet?{" "}
           <Link href="/signup" className="font-medium text-foreground underline underline-offset-4">
-            Create one
+            Request access
           </Link>
         </>
       }

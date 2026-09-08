@@ -123,6 +123,29 @@ export function resetPasswordEmailHtml({ name, resetUrl }: { name: string; reset
   });
 }
 
+export function accessApprovedEmailHtml({ name, signupUrl }: { name: string; signupUrl: string }): string {
+  const safeName = escapeHtml(name);
+
+  return emailShell({
+    accentColor: FORMATION_ACCENT,
+    headerLabel: "Formation",
+    bodyHtml: `
+                <p style="margin:0 0 16px;font-size:16px;line-height:1.5;color:#18181b;">
+                  Hi ${safeName}, your request to use Formation has been approved. Click below to create your
+                  account and set up your organization.
+                </p>
+                ${ctaButton(FORMATION_ACCENT, signupUrl, "Create your account")}
+                <p style="margin:24px 0 0;font-size:12px;line-height:1.5;color:#a1a1aa;">
+                  Or paste this link into your browser:<br />
+                  <a href="${signupUrl}" style="color:#71717a;word-break:break-all;">${signupUrl}</a>
+                </p>
+                <p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:#a1a1aa;">
+                  This link is single-use and tied to your email address. If you didn't request access to
+                  Formation, you can ignore this email.
+                </p>`,
+  });
+}
+
 export function verifyEmailHtml({ name, verifyUrl }: { name: string; verifyUrl: string }): string {
   const safeName = escapeHtml(name);
 

@@ -13,6 +13,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "2026-09-08",
+    date: "September 8, 2026",
+    headline: "Invite-only signup and an org limit",
+    groups: [
+      {
+        title: "Access",
+        items: [
+          "New organizations are now request-only — the signup page collects a few details about your org, and we approve access before an account is created. Existing accounts, invites, and team-join links are unaffected.",
+          "Each person can own up to 5 organizations.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2026-09-07",
     date: "September 7, 2026",
     headline: "Legal pages, a real contact form, and SEO polish",

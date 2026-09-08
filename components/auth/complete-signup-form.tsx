@@ -6,22 +6,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/auth/submit-button";
 
-export function SignupForm() {
+/** Shown at /signup?token=… once an access request has been approved. The email is fixed by the
+ *  approved request (server-side) and only displayed here. */
+export function CompleteSignupForm({
+  token,
+  email,
+  defaultName,
+  defaultOrgName,
+}: {
+  token: string;
+  email: string;
+  defaultName: string;
+  defaultOrgName: string;
+}) {
   const [state, formAction] = useActionState<ActionState, FormData>(signupAction, undefined);
 
   return (
     <form action={formAction} className="space-y-4">
+      <input type="hidden" name="token" value={token} />
+      <div className="space-y-1.5">
+        <Label htmlFor="email">Email</Label>
+        <Input id="email" value={email} readOnly />
+      </div>
       <div className="space-y-1.5">
         <Label htmlFor="orgName">Organization name</Label>
-        <Input id="orgName" name="orgName" placeholder="Nova Esports" required />
+        <Input id="orgName" name="orgName" defaultValue={defaultOrgName} placeholder="Nova Esports" required />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="name">Your name</Label>
-        <Input id="name" name="name" autoComplete="name" required />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" autoComplete="email" required />
+        <Input id="name" name="name" autoComplete="name" defaultValue={defaultName} required />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="password">Password</Label>

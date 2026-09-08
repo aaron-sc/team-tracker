@@ -60,7 +60,7 @@ export default async function HomePage() {
               <Link href="/login">Log in</Link>
             </Button>
             <Button asChild>
-              <Link href="/signup">Get started</Link>
+              <Link href="/signup">Request access</Link>
             </Button>
           </div>
         </div>
@@ -94,7 +94,7 @@ export default async function HomePage() {
             <div className="fx-rise mt-8 flex justify-center gap-3" style={{ animationDelay: "240ms" }}>
               <Button size="lg" className="group" asChild>
                 <Link href="/signup">
-                  Create your organization
+                  Request access
                   <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
               </Button>
@@ -278,11 +278,11 @@ export default async function HomePage() {
         <section className="border-t bg-muted/30 py-20">
           <div className="mx-auto max-w-2xl px-6 text-center">
             <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">Ready to run your org like a pro?</h2>
-            <p className="mt-3 text-muted-foreground">Set up your organization in under a minute — no credit card, no sales call.</p>
+            <p className="mt-3 text-muted-foreground">Formation is invite-only during early access — tell us about your org and we&apos;ll be in touch.</p>
             <div className="mt-8 flex justify-center gap-3">
               <Button size="lg" className="group" asChild>
                 <Link href="/signup">
-                  Create your organization
+                  Request access
                   <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
               </Button>

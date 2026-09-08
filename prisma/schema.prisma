@@ -21,6 +21,12 @@ enum InviteStatus {
   EXPIRED
 }
 
+enum AccessRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
 enum MembershipStatus {
   ACTIVE
   SUSPENDED
@@ -272,6 +278,33 @@ model EmailVerificationToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime @default(now())
+}
+
+// Formation signup is invite-only during early access — someone fills out the request form at
+// /signup, it's posted to the operator's Discord for an Approve/Deny decision (buttons via the
+// bot, or a signed link as a fallback), and only on approval do they get a single-use link
+// (?token=) back to /signup that actually creates their account + org. `token` is that link's
+// secret; `consumedAt` marks it spent.
+model AccessRequest {
+  id            String              @id @default(cuid())
+  email         String              @unique
+  name          String
+  role          String              // requester's role in their org: owner | manager | coach | other
+  orgName       String
+  websiteUrl    String?
+  discordInvite String?
+  games         String
+  rosterSize    String?             // free-form bucket label, e.g. "11–30"
+  reason        String
+  referral      String?
+  ip            String?
+  status        AccessRequestStatus @default(PENDING)
+  token         String              @unique
+  reviewedAt    DateTime?
+  reviewedBy    String?             // who actioned it — "discord:<tag>" or "link"
+  consumedAt    DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 }
 
 model Role {

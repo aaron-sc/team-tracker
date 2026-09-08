@@ -10,6 +10,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  EmbedBuilder,
   type Client as DiscordClient,
   type ChatInputCommandInteraction,
   type AutocompleteInteraction,
@@ -19,6 +20,9 @@ import {
 import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { availabilityRuleGroupSchema } from "@/lib/validations/availability";
+import { FORMATION_EMBED_COLOR } from "@/lib/integrations/discord";
+import { approveAccessRequest, denyAccessRequest } from "@/lib/access-requests/service";
+import { getBackgroundBaseUrl } from "@/lib/utils/base-url";
 
 // Optional integration: every handler below assumes DISCORD_BOT_TOKEN may simply be unset (self-
 // hosted orgs that don't want a bot), so startDiscordBot() below is the only thing that decides
@@ -112,6 +116,7 @@ export function startDiscordBot() {
         return;
       }
       if (interaction.isButton()) {
+        if (await handleAccessRequestButton(interaction)) return;
         await handleRsvpButton(interaction);
         return;
       }
@@ -409,6 +414,111 @@ async function handleRsvpButton(interaction: ButtonInteraction) {
     content: status === "CONFIRMED" ? "✅ You're marked as attending." : "❌ You're marked as not attending.",
     ephemeral: true,
   });
+}
+
+/** Handles the Approve/Deny buttons on an access-request review message. Returns false (so the
+ *  caller falls through to other button handlers) if this isn't one of ours. */
+async function handleAccessRequestButton(interaction: ButtonInteraction): Promise<boolean> {
+  const [prefix, action, token] = interaction.customId.split(":");
+  if (prefix !== "accessreq" || (action !== "approve" && action !== "deny") || !token) return false;
+
+  await interaction.deferReply({ ephemeral: true });
+  const reviewer = `discord:${interaction.user.tag ?? interaction.user.username}`;
+  const result =
+    action === "approve"
+      ? await approveAccessRequest(token, reviewer, getBackgroundBaseUrl() ?? "")
+      : await denyAccessRequest(token, reviewer);
+
+  if (!result.ok) {
+    await interaction.editReply(`⚠️ ${result.error}`);
+    return true;
+  }
+
+  const decidedBy = interaction.user.tag ?? interaction.user.username;
+  try {
+    if (interaction.message.editable) {
+      await interaction.message.edit({
+        content:
+          result.status === "APPROVED"
+            ? `✅ Approved by ${decidedBy}${result.alreadyDecided ? " (already approved)" : ""}`
+            : `⛔ Denied by ${decidedBy}${result.alreadyDecided ? " (already denied)" : ""}`,
+        components: [],
+      });
+    }
+  } catch {
+    // Message too old to edit — the ephemeral reply below still confirms the outcome.
+  }
+
+  if (result.status === "APPROVED") {
+    await interaction.editReply(
+      result.signupUrl.startsWith("http")
+        ? `✅ Approved. A single-use signup link was emailed to ${result.email}.`
+        : `✅ Approved, but APP_URL isn't set so no link could be built — set it and re-approve, or send them a link manually.`,
+    );
+  } else {
+    await interaction.editReply(`⛔ Denied. ${result.email} won't get access.`);
+  }
+  return true;
+}
+
+/** Posts a new access request to the review channel (ACCESS_REQUEST_DISCORD_CHANNEL_ID) with
+ *  Approve/Deny buttons. Returns false if the bot isn't connected or no channel is configured,
+ *  so the caller can fall back to a webhook. */
+export async function postAccessRequestForReview(
+  req: {
+    token: string;
+    name: string;
+    email: string;
+    role: string;
+    orgName: string;
+    websiteUrl: string | null;
+    discordInvite: string | null;
+    games: string;
+    rosterSize: string | null;
+    reason: string;
+    referral: string | null;
+    ip: string | null;
+  },
+  links: { approveUrl: string | null; denyUrl: string | null },
+): Promise<boolean> {
+  const channelId = process.env.ACCESS_REQUEST_DISCORD_CHANNEL_ID;
+  if (!client?.isReady() || !channelId) return false;
+  try {
+    const channel = await client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || !("send" in channel)) return false;
+
+    const embed = new EmbedBuilder()
+      .setTitle("New Formation access request")
+      .setColor(FORMATION_EMBED_COLOR)
+      .addFields(
+        { name: "Email", value: req.email, inline: true },
+        { name: "Name", value: req.name, inline: true },
+        { name: "Their role", value: req.role, inline: true },
+        { name: "Org", value: req.orgName, inline: true },
+        { name: "Game(s)", value: req.games || "—", inline: true },
+        { name: "Roster size", value: req.rosterSize || "—", inline: true },
+        { name: "Website", value: req.websiteUrl || "—", inline: true },
+        { name: "Discord invite", value: req.discordInvite || "—", inline: true },
+        { name: "Heard about us via", value: req.referral || "—", inline: true },
+        { name: "IP", value: req.ip || "—", inline: true },
+        { name: "Why they want in", value: req.reason.slice(0, 1024) },
+      )
+      .setTimestamp(new Date());
+    if (links.approveUrl) {
+      embed.addFields({ name: "Fallback links", value: `[Approve](${links.approveUrl}) · [Deny](${links.denyUrl})` });
+    }
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`accessreq:approve:${req.token}`).setLabel("Approve").setStyle(ButtonStyle.Success).setEmoji("✅"),
+      new ButtonBuilder().setCustomId(`accessreq:deny:${req.token}`).setLabel("Deny").setStyle(ButtonStyle.Danger).setEmoji("⛔"),
+    );
+
+    await channel.send({ embeds: [embed], components: [row] });
+    return true;
+  } catch (err) {
+    console.error("[discord-bot] Failed to post access request for review:", err);
+    return false;
+  }
 }
 
 /** Posts a reminder with RSVP buttons to a team's configured channel (Team.discordReminderChannelId).
