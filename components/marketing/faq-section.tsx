@@ -1,5 +1,10 @@
 const FAQS = [
   {
+    question: "What kind of esports team management software is Formation?",
+    answer:
+      "Formation is purpose-built esports team management software — rosters, scheduling, timezone-aware availability, strategy playbooks, and recruitment in one place, designed around how competitive orgs actually run, rather than a generic project-management tool repurposed for gaming.",
+  },
+  {
     question: "Is Formation free to use?",
     answer:
       "Creating an organization and inviting your roster is self-serve — no credit card, no sales call. Reach out through the contact page if you want to talk through your org's specific needs first.",

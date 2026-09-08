@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -32,9 +33,14 @@ const ORG_JSON_LD = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   url: SITE_URL,
+  image: `${SITE_URL}/marketing/preview-dashboard.png`,
   description:
-    "Rosters, custom roles, scheduling, timezone-aware availability, strategy playbooks, and recruitment for esports organizations.",
+    "Esports team management software for rosters, custom roles, scheduling, timezone-aware availability, strategy playbooks, and recruitment.",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+};
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
 };
 
 export default async function HomePage() {
@@ -85,7 +91,7 @@ export default async function HomePage() {
               Built for competitive esports organizations
             </p>
             <h1 className="fx-rise text-balance text-4xl font-bold tracking-tight sm:text-6xl" style={{ animationDelay: "80ms" }}>
-              Run your org. Not five apps that don&apos;t talk to each other.
+              Esports team management software — not five apps that don&apos;t talk to each other.
             </h1>
             <p className="fx-rise mx-auto mt-5 max-w-2xl text-lg text-muted-foreground" style={{ animationDelay: "160ms" }}>
               Formation replaces the spreadsheet, the Discord pings nobody reads, and the group chat where
@@ -107,7 +113,12 @@ export default async function HomePage() {
           </div>
 
           <div className="fx-rise mx-auto mt-14 max-w-5xl px-6 pb-20" style={{ animationDelay: "340ms" }}>
-            <ProductShot src="/marketing/preview-dashboard.png" alt="Formation dashboard showing upcoming matches, announcements, and team performance" priority />
+            <ProductShot
+              src="/marketing/preview-dashboard.png"
+              alt="Formation dashboard showing upcoming matches, announcements, and team performance"
+              priority
+              sizes="(min-width: 1024px) 1024px, 100vw"
+            />
           </div>
         </section>
 
@@ -325,7 +336,19 @@ export default async function HomePage() {
   );
 }
 
-function ProductShot({ src, alt, priority }: { src: string; alt: string; priority?: boolean }) {
+function ProductShot({
+  src,
+  alt,
+  priority,
+  sizes = "100vw",
+}: {
+  src: string;
+  alt: string;
+  priority?: boolean;
+  /** Matches the container this shot actually renders in, so Next serves an appropriately
+   *  sized image instead of assuming full-viewport width on every breakpoint. */
+  sizes?: string;
+}) {
   return (
     <div className="overflow-hidden rounded-xl border bg-card shadow-2xl shadow-primary/10">
       <div className="flex items-center gap-1.5 border-b bg-muted/50 px-4 py-2.5">
@@ -333,7 +356,7 @@ function ProductShot({ src, alt, priority }: { src: string; alt: string; priorit
         <span className="size-2.5 rounded-full bg-amber-500/40" />
         <span className="size-2.5 rounded-full bg-emerald-500/40" />
       </div>
-      <Image src={src} alt={alt} width={1440} height={960} priority={priority} className="w-full" />
+      <Image src={src} alt={alt} width={1440} height={960} priority={priority} sizes={sizes} className="w-full" />
     </div>
   );
 }
@@ -360,7 +383,7 @@ function Showcase({
         <h3 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h3>
         <p className="mt-4 text-muted-foreground">{description}</p>
       </div>
-      <ProductShot src={src} alt={alt} />
+      <ProductShot src={src} alt={alt} sizes="(min-width: 1024px) 560px, 100vw" />
     </div>
   );
 }

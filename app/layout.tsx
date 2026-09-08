@@ -18,16 +18,17 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const title = "Formation — Esports Team Management Software";
 const description =
-  "Rosters, custom roles, scheduling, timezone-aware availability, strategy playbooks, and recruitment for esports organizations.";
+  "Formation is esports team management software for scheduling, rosters, availability, and recruitment — built for competitive organizations.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: "Formation — Esports Team Management", template: "%s | Formation" },
+  title: { default: title, template: "%s | Formation" },
   description,
   robots: { index: true, follow: true },
   openGraph: {
-    title: "Formation — Esports Team Management",
+    title,
     description,
     url: SITE_URL,
     siteName: "Formation",
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Formation — Esports Team Management",
+    title,
     description,
     images: ["/marketing/preview-dashboard.png"],
   },
