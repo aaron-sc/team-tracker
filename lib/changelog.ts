@@ -37,6 +37,13 @@ export const CHANGELOG: ChangelogEntry[] = [
           "5 FAQs added to the landing page, a sticky \"create your organization\" button on mobile, and better search-engine visibility (titles, descriptions, sitemap).",
         ],
       },
+      {
+        title: "Mobile",
+        items: [
+          "A menu button now opens the full section nav (Roster, Schedule, Strategies, and the rest) on a phone — it was only reachable on a wider screen before.",
+          "Fixed the top bar crowding into the org switcher on narrow phones.",
+        ],
+      },
     ],
   },
   {
