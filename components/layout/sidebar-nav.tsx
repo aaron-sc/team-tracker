@@ -31,7 +31,16 @@ const SETTINGS_PERMISSIONS: Permission[] = [
   Permission.onboarding_manage,
 ];
 
-export function SidebarNav({ orgSlug, permissions }: { orgSlug: string; permissions: Permission[] }) {
+export function SidebarNav({
+  orgSlug,
+  permissions,
+  onNavigate,
+}: {
+  orgSlug: string;
+  permissions: Permission[];
+  /** Called after a link is clicked — used by the mobile menu to close its sheet on navigation. */
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const base = `/${orgSlug}`;
 
@@ -92,6 +101,7 @@ export function SidebarNav({ orgSlug, permissions }: { orgSlug: string; permissi
               key={item.href}
               href={item.href}
               data-tour={item.tour}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 active

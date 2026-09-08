@@ -23,6 +23,8 @@ import { CreateOrgDialog } from "@/components/auth/create-org-dialog";
 import { startProductTour } from "@/components/onboarding/product-tour";
 import { openWhatsNew } from "@/components/layout/whats-new-dialog";
 import { FeatureRequestDialog } from "@/components/layout/feature-request-dialog";
+import { MobileNav } from "@/components/layout/mobile-nav";
+import type { Permission } from "@/lib/generated/prisma/enums";
 
 type OrgOption = { orgId: string; orgSlug: string; orgName: string; orgLogoUrl: string | null; roleName: string };
 type NotificationItem = {
@@ -42,6 +44,7 @@ export function TopNav({
   orgLogoUrl,
   orgWebsiteUrl,
   roleName,
+  permissions,
   userName,
   userEmail,
   userImage,
@@ -55,6 +58,7 @@ export function TopNav({
   orgLogoUrl: string | null;
   orgWebsiteUrl: string | null;
   roleName: string;
+  permissions: Permission[];
   userName: string;
   userEmail: string;
   userImage: string | null;
@@ -75,68 +79,78 @@ export function TopNav({
       className="flex h-14 items-center justify-between border-b bg-background px-4"
       style={{ viewTransitionName: "site-header" } as React.CSSProperties}
     >
-      <div className="flex items-center gap-3">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <MobileNav orgSlug={orgSlug} permissions={permissions} />
+        <Link href="/" className="hidden items-center gap-2 font-semibold sm:flex">
           <ShieldCheck className="size-5 text-primary" />
           <span className="hidden sm:inline">Formation</span>
         </Link>
-        {orgLogoUrl ? (
-          orgWebsiteUrl ? (
-            <a
-              href={orgWebsiteUrl}
-              target="_blank"
-              rel="noreferrer"
-              title={`Visit ${orgName}'s website`}
-              className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-background transition-opacity hover:opacity-80"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={orgLogoUrl} alt={orgName} className="size-full object-contain" />
-            </a>
-          ) : (
-            <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-background">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={orgLogoUrl} alt={orgName} className="size-full object-contain" />
-            </span>
-          )
-        ) : null}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5">
-              {orgName}
-              <ChevronsUpDown className="size-3.5 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuLabel>Switch organization</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {orgOptions.map((o) => (
-              <DropdownMenuItem key={o.orgId} asChild>
-                <Link href={`/${o.orgSlug}/dashboard`} className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    {o.orgLogoUrl ? (
-                      <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded border bg-background">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={o.orgLogoUrl} alt="" className="size-full object-contain" />
-                      </span>
-                    ) : null}
-                    {o.orgName}
-                  </span>
-                  {o.orgSlug === orgSlug ? <Check className="size-4" /> : null}
-                </Link>
+        {/* Org logo + the full switch-organization dropdown — desktop only. The dropdown's
+            trigger button can't shrink below its label, so on a narrow phone header it just
+            collides with the icons on the other side; the mobile nav sheet offers a "Switch
+            organization" link instead, and the plain label below covers "which org am I in". */}
+        <span className="hidden sm:contents">
+          {orgLogoUrl ? (
+            orgWebsiteUrl ? (
+              <a
+                href={orgWebsiteUrl}
+                target="_blank"
+                rel="noreferrer"
+                title={`Visit ${orgName}'s website`}
+                className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-background transition-opacity hover:opacity-80"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={orgLogoUrl} alt={orgName} className="size-full object-contain" />
+              </a>
+            ) : (
+              <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-background">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={orgLogoUrl} alt={orgName} className="size-full object-contain" />
+              </span>
+            )
+          ) : null}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                {orgName}
+                <ChevronsUpDown className="size-3.5 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuLabel>Switch organization</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {orgOptions.map((o) => (
+                <DropdownMenuItem key={o.orgId} asChild>
+                  <Link href={`/${o.orgSlug}/dashboard`} className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      {o.orgLogoUrl ? (
+                        <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded border bg-background">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={o.orgLogoUrl} alt="" className="size-full object-contain" />
+                        </span>
+                      ) : null}
+                      {o.orgName}
+                    </span>
+                    {o.orgSlug === orgSlug ? <Check className="size-4" /> : null}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setCreateOrgOpen(true);
+                }}
+              >
+                <Plus className="size-4" />
+                Create new organization
               </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                setCreateOrgOpen(true);
-              }}
-            >
-              <Plus className="size-4" />
-              Create new organization
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </span>
+        {/* Mobile-only stand-in for the dropdown above — just enough to show which org you're
+            in; switching happens from the "Switch organization" link in the nav sheet instead. */}
+        <span className="min-w-0 truncate text-sm font-medium sm:hidden">{orgName}</span>
       </div>
       <CreateOrgDialog open={createOrgOpen} onOpenChange={setCreateOrgOpen} />
 
