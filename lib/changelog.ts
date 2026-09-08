@@ -13,6 +13,33 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "2026-09-07",
+    date: "September 7, 2026",
+    headline: "Legal pages, a real contact form, and SEO polish",
+    groups: [
+      {
+        title: "Legal & privacy",
+        items: [
+          "A real Privacy Policy and Terms & Conditions, hosted right on Formation (not a third-party doc).",
+          "A cookie consent banner — analytics only load after you accept.",
+        ],
+      },
+      {
+        title: "Getting in touch",
+        items: [
+          "A public Contact page with a real form — reach out without needing an account.",
+          "A custom 404 page instead of a dead end when a link is wrong or outdated.",
+        ],
+      },
+      {
+        title: "Under the hood",
+        items: [
+          "5 FAQs added to the landing page, a sticky \"create your organization\" button on mobile, and better search-engine visibility (titles, descriptions, sitemap).",
+        ],
+      },
+    ],
+  },
+  {
     version: "2026-09-04",
     date: "September 4, 2026",
     headline: "Strategy, playbooks, and match chat",

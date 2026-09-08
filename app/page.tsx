@@ -21,6 +21,21 @@ import {
   X,
 } from "lucide-react";
 import { FORMATION_DOCS_URL, FORMATION_BOT_TERMS_URL, FORMATION_BOT_PRIVACY_URL } from "@/lib/links";
+import { FaqSection } from "@/components/marketing/faq-section";
+import { StickyMobileCta } from "@/components/marketing/sticky-mobile-cta";
+import { SITE_URL } from "@/lib/utils/site-url";
+
+const ORG_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Formation",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  url: SITE_URL,
+  description:
+    "Rosters, custom roles, scheduling, timezone-aware availability, strategy playbooks, and recruitment for esports organizations.",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+};
 
 export default async function HomePage() {
   const session = await auth();
@@ -29,7 +44,11 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col pb-16 sm:pb-0">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(ORG_JSON_LD).replace(/</g, "\\u003c") }}
+      />
       <header className="border-b">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2 text-lg font-semibold">
@@ -253,6 +272,8 @@ export default async function HomePage() {
           </p>
         </section>
 
+        <FaqSection />
+
         {/* ---------- Final CTA ---------- */}
         <section className="border-t bg-muted/30 py-20">
           <div className="mx-auto max-w-2xl px-6 text-center">
@@ -274,9 +295,18 @@ export default async function HomePage() {
       </main>
 
       <footer className="border-t py-6">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-6 text-center text-sm text-muted-foreground sm:flex-row sm:justify-between sm:text-left">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-6 text-center text-sm text-muted-foreground sm:flex-row sm:justify-between sm:text-left">
           <p>Formation — built for competitive esports organizations.</p>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
+            <Link href="/contact" className="hover:text-foreground hover:underline">
+              Contact
+            </Link>
+            <Link href="/privacy" className="hover:text-foreground hover:underline">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-foreground hover:underline">
+              Terms
+            </Link>
             <a href={FORMATION_DOCS_URL} target="_blank" rel="noreferrer" className="hover:text-foreground hover:underline">
               Docs
             </a>
@@ -289,6 +319,8 @@ export default async function HomePage() {
           </div>
         </div>
       </footer>
+
+      <StickyMobileCta />
     </div>
   );
 }

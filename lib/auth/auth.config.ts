@@ -31,7 +31,13 @@ export const authConfig = {
         pathname.startsWith("/api/v1") ||
         // Unauthenticated, token-gated roster embed meant to be iframed on an org's own site —
         // the route itself checks the token/enabled flag; no session is ever involved.
-        pathname.startsWith("/embed");
+        pathname.startsWith("/embed") ||
+        // Public marketing/legal pages and SEO files — no session involved.
+        pathname.startsWith("/privacy") ||
+        pathname.startsWith("/terms") ||
+        pathname.startsWith("/contact") ||
+        pathname === "/robots.txt" ||
+        pathname === "/sitemap.xml";
       return isPublic || isLoggedIn;
     },
   },
