@@ -11,10 +11,18 @@ import { ScrimQuickActionButton } from "@/components/scrims/scrim-quick-action-b
 import { ScrimRequestDialog } from "@/components/scrims/scrim-request-dialog";
 import { formatDateTime } from "@/lib/utils/format-time";
 import { SITE_URL } from "@/lib/utils/site-url";
-import { Plus, MapPin, Gauge, Check, X, ExternalLink } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Plus, MapPin, Gauge, Check, X, ExternalLink, Megaphone, Handshake, CalendarCheck, CalendarClock } from "lucide-react";
 
-export default async function ScrimsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
+export default async function ScrimsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ orgSlug: string }>;
+  searchParams: Promise<{ game?: string }>;
+}) {
   const { orgSlug } = await params;
+  const { game: gameFilter } = await searchParams;
   const { session, org, membership, teams } = await getOrgContext(orgSlug);
   const viewerTz = session.user.timezone ?? org.timezone;
   const viewerHour12 = session.user.timeFormat !== "24h";
@@ -23,14 +31,17 @@ export default async function ScrimsPage({ params }: { params: Promise<{ orgSlug
 
   const partnerOrgIds = await getPartnerOrgIds(org.id);
 
-  const [board, myListings, myRequests] = await Promise.all([
+  const boardWhere = {
+    status: "OPEN" as const,
+    proposedStart: { gte: now },
+    orgId: { not: org.id },
+    OR: [{ visibility: "OPEN" as const }, { visibility: "PARTNERS_ONLY" as const, orgId: { in: partnerOrgIds } }],
+  };
+
+  const [boardGames, board, myListings, myRequests] = await Promise.all([
+    prisma.scrimListing.findMany({ where: boardWhere, select: { game: true }, distinct: ["game"] }),
     prisma.scrimListing.findMany({
-      where: {
-        status: "OPEN",
-        proposedStart: { gte: now },
-        orgId: { not: org.id },
-        OR: [{ visibility: "OPEN" }, { visibility: "PARTNERS_ONLY", orgId: { in: partnerOrgIds } }],
-      },
+      where: { ...boardWhere, ...(gameFilter ? { game: gameFilter } : {}) },
       include: { org: true, team: { select: { id: true, name: true, game: true, publicRosterEnabled: true, publicRosterToken: true } } },
       orderBy: { proposedStart: "asc" },
       take: 30,
@@ -56,14 +67,46 @@ export default async function ScrimsPage({ params }: { params: Promise<{ orgSlug
       : Promise.resolve([]),
   ]);
 
+  const gameFilterPills =
+    boardGames.length > 1 ? (
+      <div className="flex flex-wrap gap-1.5">
+        <Link
+          href={`/${orgSlug}/scrims`}
+          className={cn(
+            "rounded-md border px-2.5 py-1 text-xs font-medium",
+            !gameFilter ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent",
+          )}
+        >
+          All games
+        </Link>
+        {boardGames.map(({ game }) => (
+          <Link
+            key={game}
+            href={`/${orgSlug}/scrims?game=${encodeURIComponent(game)}`}
+            className={cn(
+              "rounded-md border px-2.5 py-1 text-xs font-medium",
+              gameFilter === game ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent",
+            )}
+          >
+            {game}
+          </Link>
+        ))}
+      </div>
+    ) : null;
+
   const boardContent = (
     <div className="space-y-3">
+      {gameFilterPills}
       {board.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No open scrim listings right now{teams.length > 0 ? " — be the first to post one." : "."}
+          {gameFilter
+            ? `No open ${gameFilter} listings right now.`
+            : `No open scrim listings right now${teams.length > 0 ? " — be the first to post one." : "."}`}
         </p>
       ) : (
-        board.map((listing) => (
+        board.map((listing) => {
+          const eligibleTeams = teams.filter((t) => t.game === listing.game);
+          return (
           <Card key={listing.id}>
             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
               <div>
@@ -106,18 +149,23 @@ export default async function ScrimsPage({ params }: { params: Promise<{ orgSlug
                   </a>
                 ) : null}
               </div>
-              {canManage && teams.length > 0 ? (
-                <ScrimRequestDialog
-                  orgSlug={orgSlug}
-                  orgId={org.id}
-                  listingId={listing.id}
-                  listingLabel={`${listing.org.name} — ${listing.team.name}`}
-                  teams={teams}
-                />
+              {canManage ? (
+                eligibleTeams.length > 0 ? (
+                  <ScrimRequestDialog
+                    orgSlug={orgSlug}
+                    orgId={org.id}
+                    listingId={listing.id}
+                    listingLabel={`${listing.org.name} — ${listing.team.name}`}
+                    teams={eligibleTeams}
+                  />
+                ) : teams.length > 0 ? (
+                  <p className="text-xs text-muted-foreground">None of your teams play {listing.game}.</p>
+                ) : null
               ) : null}
             </CardContent>
           </Card>
-        ))
+          );
+        })
       )}
     </div>
   );
@@ -149,6 +197,20 @@ export default async function ScrimsPage({ params }: { params: Promise<{ orgSlug
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <Megaphone className="size-3.5" /> Post your team&apos;s availability
+        </span>
+        <span aria-hidden>→</span>
+        <span className="flex items-center gap-1.5">
+          <Handshake className="size-3.5" /> Another org requests, you accept
+        </span>
+        <span aria-hidden>→</span>
+        <span className="flex items-center gap-1.5">
+          <CalendarCheck className="size-3.5" /> It&apos;s on both calendars, roster invited automatically
+        </span>
+      </div>
+
       <Tabs defaultValue="board">
         <TabsList>
           <TabsTrigger value="board">Open board</TabsTrigger>
@@ -165,13 +227,14 @@ export default async function ScrimsPage({ params }: { params: Promise<{ orgSlug
             <p className="text-sm text-muted-foreground">You haven&apos;t posted a scrim listing yet.</p>
           ) : (
             myListings.map((listing) => {
-              const pending = listing.requests.filter((r) => r.status === "PENDING");
+              const statusRank = { PENDING: 0, ACCEPTED: 1, DECLINED: 2, WITHDRAWN: 2 } as const;
+              const requests = [...listing.requests].sort((a, b) => statusRank[a.status] - statusRank[b.status]);
               return (
                 <Card key={listing.id}>
                   <CardHeader className="flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-base">
                       {listing.team.name}
-                      <Badge variant="secondary" className="ml-2">
+                      <Badge variant={listing.status === "MATCHED" ? "default" : "secondary"} className="ml-2">
                         {listing.status}
                       </Badge>
                     </CardTitle>
@@ -190,10 +253,10 @@ export default async function ScrimsPage({ params }: { params: Promise<{ orgSlug
                       {formatDateTime(listing.proposedStart, viewerTz, viewerHour12)} · {listing.format}
                       {listing.region ? ` · ${listing.region}` : ""}
                     </p>
-                    {pending.length === 0 ? (
+                    {requests.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No requests yet.</p>
                     ) : (
-                      pending.map((req) => (
+                      requests.map((req) => (
                         <div key={req.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-sm">
                           <div>
                             <p className="font-medium">
@@ -201,24 +264,38 @@ export default async function ScrimsPage({ params }: { params: Promise<{ orgSlug
                             </p>
                             {req.message ? <p className="text-muted-foreground">{req.message}</p> : null}
                           </div>
-                          <div className="flex gap-1.5">
-                            <ScrimQuickActionButton
-                              variant="default"
-                              successMessage="Scrim confirmed!"
-                              action={acceptScrimRequestAction.bind(null, orgSlug, org.id, req.id)}
+                          {req.status === "PENDING" ? (
+                            <div className="flex gap-1.5">
+                              <ScrimQuickActionButton
+                                variant="default"
+                                successMessage="Scrim confirmed!"
+                                action={acceptScrimRequestAction.bind(null, orgSlug, org.id, req.id)}
+                              >
+                                <Check className="size-3.5" />
+                                Accept
+                              </ScrimQuickActionButton>
+                              <ScrimQuickActionButton
+                                variant="outline"
+                                successMessage="Request declined."
+                                action={declineScrimRequestAction.bind(null, orgSlug, org.id, req.id)}
+                              >
+                                <X className="size-3.5" />
+                                Decline
+                              </ScrimQuickActionButton>
+                            </div>
+                          ) : req.status === "ACCEPTED" && req.homeSessionId ? (
+                            <Link
+                              href={`/${orgSlug}/schedule/practice/${req.homeSessionId}`}
+                              className="flex items-center gap-1 text-xs text-primary underline underline-offset-4"
                             >
-                              <Check className="size-3.5" />
-                              Accept
-                            </ScrimQuickActionButton>
-                            <ScrimQuickActionButton
-                              variant="outline"
-                              successMessage="Request declined."
-                              action={declineScrimRequestAction.bind(null, orgSlug, org.id, req.id)}
-                            >
-                              <X className="size-3.5" />
-                              Decline
-                            </ScrimQuickActionButton>
-                          </div>
+                              <CalendarClock className="size-3" />
+                              View scrim on schedule
+                            </Link>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground">
+                              {req.status === "WITHDRAWN" ? "Withdrawn" : "Declined"}
+                            </Badge>
+                          )}
                         </div>
                       ))
                     )}
@@ -255,6 +332,14 @@ export default async function ScrimsPage({ params }: { params: Promise<{ orgSlug
                     >
                       Withdraw
                     </ScrimQuickActionButton>
+                  ) : req.status === "ACCEPTED" && req.awaySessionId ? (
+                    <Link
+                      href={`/${orgSlug}/schedule/practice/${req.awaySessionId}`}
+                      className="flex items-center gap-1 text-xs text-primary underline underline-offset-4"
+                    >
+                      <CalendarClock className="size-3" />
+                      View scrim on schedule
+                    </Link>
                   ) : null}
                 </CardContent>
               </Card>

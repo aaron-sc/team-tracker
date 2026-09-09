@@ -50,6 +50,14 @@ export const CHANGELOG: ChangelogEntry[] = [
           "Scrim Finder's region field is now a fixed dropdown of real regions instead of free text, so listings are easier to filter and compare.",
         ],
       },
+      {
+        title: "Scrim Finder polish",
+        items: [
+          "A game filter on the open board when more than one game is posted, and a quick 3-step explainer of how matching works.",
+          "Requesting a scrim now only offers teams that actually play that listing's game.",
+          "Accepted requests now show a direct link to the scheduled scrim instead of disappearing from your listings once they're no longer pending.",
+        ],
+      },
     ],
   },
   {
