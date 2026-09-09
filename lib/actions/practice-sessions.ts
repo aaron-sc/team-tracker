@@ -9,6 +9,7 @@ import { logAudit } from "@/lib/audit/log";
 import { practiceSessionSchema, attendanceStatusSchema } from "@/lib/validations/practice";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
+import { createNotification } from "@/lib/notifications/create";
 
 async function resolveOpponent(orgId: string, opponentId: string, newOpponentName: string): Promise<string | null> {
   if (opponentId) return opponentId;
@@ -90,6 +91,19 @@ export async function createPracticeSessionAction(
     targetId: sessions[0].id,
     metadata: { teamId: team.id, type: parsed.data.type, occurrences },
   });
+
+  await Promise.all(
+    roster
+      .filter((r) => r.membershipId !== membership.membershipId)
+      .map((r) =>
+        createNotification({
+          membershipId: r.membershipId,
+          type: "practice_created",
+          title: `New ${parsed.data.type === "SCRIM" ? "scrim" : "practice"} scheduled for ${team.name}`,
+          linkUrl: `/${orgSlug}/schedule/practice/${sessions[0].id}`,
+        }),
+      ),
+  );
 
   revalidatePath(`/${orgSlug}/schedule`);
   if (occurrences > 1) {
@@ -186,6 +200,14 @@ export async function deletePracticeSessionAction(orgSlug: string, orgId: string
   const session = await prisma.practiceSession.findUnique({ where: { id: sessionId }, include: { team: true } });
   if (!session || session.team.orgId !== orgId) return { error: "Session not found." };
 
+  if (session.createdById !== membership.membershipId) {
+    await createNotification({
+      membershipId: session.createdById,
+      type: "practice_cancelled",
+      title: `${session.team.name}'s ${session.type === "SCRIM" ? "scrim" : "practice"} was cancelled`,
+    }).catch(() => {});
+  }
+
   await prisma.practiceSession.delete({ where: { id: sessionId } });
 
   await logAudit({
@@ -213,7 +235,10 @@ export async function respondToAttendanceAction(
   const parsedStatus = attendanceStatusSchema.safeParse(status);
   if (!parsedStatus.success) return { error: "Invalid status." };
 
-  const attendance = await prisma.sessionAttendance.findUnique({ where: { id: attendanceId } });
+  const attendance = await prisma.sessionAttendance.findUnique({
+    where: { id: attendanceId },
+    include: { session: { include: { team: true } } },
+  });
   if (!attendance) return { error: "Not found." };
   if (attendance.membershipId !== membership.membershipId) {
     return { error: "You can only update your own attendance." };
@@ -223,6 +248,15 @@ export async function respondToAttendanceAction(
     where: { id: attendanceId },
     data: { status: parsedStatus.data, respondedAt: new Date() },
   });
+
+  if (parsedStatus.data === "DECLINED" && attendance.session.createdById !== membership.membershipId) {
+    await createNotification({
+      membershipId: attendance.session.createdById,
+      type: "practice_declined",
+      title: `A player can't make ${attendance.session.team.name}'s ${attendance.session.type === "SCRIM" ? "scrim" : "practice"}`,
+      linkUrl: `/${orgSlug}/schedule/practice/${attendance.session.id}`,
+    }).catch(() => {});
+  }
 
   revalidatePath(`/${orgSlug}/schedule`);
 }

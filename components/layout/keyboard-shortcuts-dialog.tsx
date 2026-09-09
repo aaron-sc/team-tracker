@@ -4,18 +4,17 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Keyboard } from "lucide-react";
+import { isTypingTarget } from "@/lib/utils/keyboard";
 
 const SHORTCUTS: { keys: string; description: string }[] = [
   { keys: "Ctrl / ⌘ K", description: "Open search" },
   { keys: "?", description: "Show this shortcuts panel" },
   { keys: "Esc", description: "Close a dialog or panel" },
+  { keys: "G then D", description: "Go to dashboard" },
+  { keys: "G then R", description: "Go to roster" },
+  { keys: "G then T", description: "Go to teams" },
+  { keys: "G then S", description: "Go to schedule" },
 ];
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
-}
 
 export function KeyboardShortcutsDialog() {
   const [open, setOpen] = useState(false);

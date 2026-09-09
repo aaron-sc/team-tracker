@@ -35,6 +35,7 @@ export default async function EditMatchPage({
         opponents={opponents}
         venues={venues}
         lockTeam
+        excludeMatchId={match.id}
         defaultValues={{
           teamId: match.teamId,
           opponentId: match.opponentId,

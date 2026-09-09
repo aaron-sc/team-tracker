@@ -19,8 +19,9 @@ export async function GET(req: NextRequest) {
   const orgSlug = membership.orgSlug;
   const canViewRecruitment = membership.permissions.includes(Permission.recruitment_view);
   const canViewEmails = membership.permissions.includes(Permission.org_members_contact_view);
+  const canViewScrims = membership.permissions.includes(Permission.scrim_manage);
 
-  const [members, teams, venues, prospects] = await Promise.all([
+  const [members, teams, venues, prospects, scrimListings, matches, sessions, announcements] = await Promise.all([
     prisma.membership.findMany({
       where: {
         orgId,
@@ -40,6 +41,29 @@ export async function GET(req: NextRequest) {
     canViewRecruitment
       ? prisma.recruitmentProspect.findMany({ where: { orgId, name: { contains: q } }, take: 6 })
       : Promise.resolve([]),
+    canViewScrims
+      ? prisma.scrimListing.findMany({
+          where: { orgId, OR: [{ game: { contains: q } }, { team: { name: { contains: q } } }] },
+          include: { team: true },
+          take: 6,
+        })
+      : Promise.resolve([]),
+    prisma.match.findMany({
+      where: { team: { orgId }, OR: [{ opponent: { name: { contains: q } } }, { team: { name: { contains: q } } }] },
+      include: { team: true, opponent: true },
+      orderBy: { scheduledAt: "desc" },
+      take: 6,
+    }),
+    prisma.practiceSession.findMany({
+      where: { team: { orgId }, OR: [{ opponent: { name: { contains: q } } }, { team: { name: { contains: q } } }] },
+      include: { team: true, opponent: true },
+      orderBy: { scheduledAt: "desc" },
+      take: 6,
+    }),
+    prisma.announcement.findMany({
+      where: { orgId, published: true, OR: [{ title: { contains: q } }, { body: { contains: q } }] },
+      take: 6,
+    }),
   ]);
 
   const results: SearchResult[] = [
@@ -64,6 +88,33 @@ export async function GET(req: NextRequest) {
       label: p.name,
       sublabel: p.game,
       href: `/${orgSlug}/recruitment/${p.id}`,
+    })),
+    ...scrimListings.map((s) => ({
+      type: "Scrim listing",
+      id: s.id,
+      label: `${s.team.name} (${s.game})`,
+      sublabel: s.status,
+      href: `/${orgSlug}/scrims`,
+    })),
+    ...matches.map((m) => ({
+      type: "Match",
+      id: m.id,
+      label: `${m.team.name} vs ${m.opponent.name}`,
+      sublabel: m.status,
+      href: `/${orgSlug}/schedule/matches/${m.id}`,
+    })),
+    ...sessions.map((s) => ({
+      type: "Practice",
+      id: s.id,
+      label: s.opponent ? `${s.team.name} vs ${s.opponent.name}` : `${s.team.name} practice`,
+      sublabel: s.type,
+      href: `/${orgSlug}/schedule/practice/${s.id}`,
+    })),
+    ...announcements.map((a) => ({
+      type: "Announcement",
+      id: a.id,
+      label: a.title,
+      href: `/${orgSlug}/announcements`,
     })),
   ];
 

@@ -24,6 +24,9 @@ import {
   History,
   UserPlus,
   Bot,
+  Handshake,
+  Package,
+  Receipt,
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils/format-time";
 
@@ -73,8 +76,12 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
   const viewerHour12 = session.user.timeFormat !== "24h";
 
   const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const canViewRecruitment = membership.permissions.includes(Permission.recruitment_view);
   const canViewAudit = membership.permissions.includes(Permission.audit_log_view);
+  const canViewScrims = membership.permissions.includes(Permission.scrim_manage);
+  const canManageGear = membership.permissions.includes(Permission.gear_manage);
+  const canManageExpenses = membership.permissions.includes(Permission.expense_manage);
 
   const [
     upcomingMatches,
@@ -87,6 +94,9 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
     attendanceByStatus,
     pendingRsvps,
     recentActivity,
+    openScrimCount,
+    gearNeedsAttentionCount,
+    expensesThisMonth,
   ] = await Promise.all([
     prisma.match.findMany({
       where: { team: { orgId: org.id }, scheduledAt: { gte: now }, status: "SCHEDULED" },
@@ -138,6 +148,11 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
           take: 6,
         })
       : Promise.resolve([]),
+    canViewScrims ? prisma.scrimListing.count({ where: { orgId: org.id, status: "OPEN" } }) : Promise.resolve(0),
+    canManageGear ? prisma.gearItem.count({ where: { orgId: org.id, status: { not: "AVAILABLE" } } }) : Promise.resolve(0),
+    canManageExpenses
+      ? prisma.expense.aggregate({ where: { orgId: org.id, incurredAt: { gte: startOfMonth } }, _sum: { amountCents: true } })
+      : Promise.resolve({ _sum: { amountCents: null } }),
   ]);
 
   const winLossByTeam = new Map(teams.map((t) => [t.id, { wins: 0, losses: 0, draws: 0 }]));
@@ -217,6 +232,29 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
           value={upcomingMatches.length + upcomingSessions.length}
           href={`/${orgSlug}/schedule`}
         />
+        {canViewScrims ? (
+          <StatCard icon={<Handshake className="size-5" />} label="Open scrim listings" value={openScrimCount} href={`/${orgSlug}/scrims`} />
+        ) : null}
+        {canManageGear ? (
+          <StatCard
+            icon={<Package className="size-5" />}
+            label="Gear needing attention"
+            value={gearNeedsAttentionCount}
+            href={`/${orgSlug}/gear`}
+          />
+        ) : null}
+        {canManageExpenses ? (
+          <StatCard
+            icon={<Receipt className="size-5" />}
+            label="Spent this month"
+            value={((expensesThisMonth._sum.amountCents ?? 0) / 100).toLocaleString("en-US", {
+              style: "currency",
+              currency: "USD",
+              maximumFractionDigits: 0,
+            })}
+            href={`/${orgSlug}/expenses`}
+          />
+        ) : null}
       </div>
 
       {pendingRsvps.length > 0 ? (
@@ -448,7 +486,17 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
   );
 }
 
-function StatCard({ icon, label, value, href }: { icon: React.ReactNode; label: string; value: number; href: string }) {
+function StatCard({
+  icon,
+  label,
+  value,
+  href,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number | string;
+  href: string;
+}) {
   return (
     <Link href={href}>
       <Card className="transition-colors hover:bg-accent">

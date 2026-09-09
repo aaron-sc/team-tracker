@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteAnnouncementButton } from "@/components/announcements/delete-announcement-button";
+import { EditAnnouncementDialog } from "@/components/announcements/edit-announcement-dialog";
+import { DuplicateAnnouncementButton } from "@/components/announcements/duplicate-announcement-button";
 import { AnnouncementReadTracker } from "@/components/announcements/announcement-read-tracker";
 import { BroadcastDialog } from "@/components/notifications/broadcast-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -30,6 +32,7 @@ export default async function AnnouncementsPage({ params }: { params: Promise<{ 
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
   });
 
+  const canPin = membership.permissions.includes(Permission.announcement_pin);
   const canDelete = membership.permissions.includes(Permission.announcement_delete);
   const canBroadcast = membership.permissions.includes(Permission.notification_send_broadcast);
   // Read counts are only useful to whoever can post/manage announcements — nobody else needs to
@@ -108,6 +111,19 @@ export default async function AnnouncementsPage({ params }: { params: Promise<{ 
                     audienceSize={a.teamId ? (rosterSizeByTeam.get(a.teamId) ?? 0) : orgMemberCount}
                     showCount={showReadCounts}
                   />
+                  {canCreate ? (
+                    <>
+                      <EditAnnouncementDialog
+                        orgSlug={orgSlug}
+                        orgId={org.id}
+                        announcementId={a.id}
+                        teams={teams}
+                        canPin={canPin}
+                        defaultValues={{ title: a.title, body: a.body, teamId: a.teamId ?? "none", pinned: a.pinned }}
+                      />
+                      <DuplicateAnnouncementButton orgSlug={orgSlug} orgId={org.id} announcementId={a.id} />
+                    </>
+                  ) : null}
                   {canDelete ? <DeleteAnnouncementButton orgSlug={orgSlug} orgId={org.id} announcementId={a.id} /> : null}
                 </div>
               </CardHeader>

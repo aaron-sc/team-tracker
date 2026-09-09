@@ -38,6 +38,40 @@ export async function addTeamResourceLinkAction(
   return { success: "Added." };
 }
 
+export async function updateTeamResourceLinkAction(
+  orgSlug: string,
+  orgId: string,
+  resourceLinkId: string,
+  teamSlug: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { membership: actor } = await requirePermission(orgId, Permission.team_resources_manage);
+
+  const link = await prisma.teamResourceLink.findUnique({ where: { id: resourceLinkId }, include: { team: true } });
+  if (!link || link.team.orgId !== orgId) return { error: "Not found." };
+
+  const parsed = teamResourceLinkSchema.safeParse({ title: formData.get("title"), url: formData.get("url") });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+
+  await prisma.teamResourceLink.update({
+    where: { id: resourceLinkId },
+    data: { title: parsed.data.title, url: parsed.data.url },
+  });
+
+  await logAudit({
+    orgId,
+    actorMembershipId: actor.membershipId,
+    action: "team_resource.updated",
+    targetType: "Team",
+    targetId: link.teamId,
+    metadata: { title: parsed.data.title },
+  });
+
+  revalidatePath(`/${orgSlug}/teams/${teamSlug}`);
+  return { success: "Saved." };
+}
+
 export async function deleteTeamResourceLinkAction(
   orgSlug: string,
   orgId: string,

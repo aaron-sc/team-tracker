@@ -2,6 +2,7 @@
 
 import { StrategyDialog } from "@/components/teams/strategy-dialog";
 import { DeleteStrategyButton } from "@/components/teams/delete-strategy-button";
+import { DuplicateStrategyButton } from "@/components/teams/duplicate-strategy-button";
 import { Badge } from "@/components/ui/badge";
 import { Swords } from "lucide-react";
 
@@ -55,6 +56,7 @@ export function TeamStrategyPanel({
                     {canManage ? (
                       <div className="flex shrink-0 items-center gap-1">
                         <StrategyDialog orgSlug={orgSlug} orgId={orgId} teamId={teamId} teamSlug={teamSlug} strategy={s} />
+                        <DuplicateStrategyButton orgSlug={orgSlug} orgId={orgId} strategyId={s.id} teamSlug={teamSlug} />
                         <DeleteStrategyButton orgSlug={orgSlug} orgId={orgId} strategyId={s.id} teamSlug={teamSlug} />
                       </div>
                     ) : null}

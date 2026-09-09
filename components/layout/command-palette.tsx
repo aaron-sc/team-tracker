@@ -84,7 +84,7 @@ export function CommandPalette({ orgId }: { orgId: string }) {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search members, teams, venues, prospects…"
+            placeholder="Search members, teams, matches, announcements…"
             className="border-0 shadow-none focus-visible:ring-0"
           />
           {loading ? <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" /> : null}

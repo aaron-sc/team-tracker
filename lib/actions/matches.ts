@@ -11,6 +11,7 @@ import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
 import { notifyDiscord, FORMATION_EMBED_COLOR, roleMentionPrefix } from "@/lib/integrations/discord";
 import { getBaseUrl } from "@/lib/utils/base-url";
+import { createNotification } from "@/lib/notifications/create";
 
 async function resolveOpponent(orgId: string, opponentId: string, newOpponentName: string): Promise<string | null> {
   if (opponentId) return opponentId;
@@ -74,6 +75,21 @@ export async function createMatchAction(orgSlug: string, orgId: string, _prev: A
     targetId: match.id,
     metadata: { teamId: team.id },
   });
+
+  const roster = await prisma.teamMembership.findMany({
+    where: { teamId: team.id, membershipId: { not: membership.membershipId } },
+    select: { membershipId: true },
+  });
+  await Promise.all(
+    roster.map((r) =>
+      createNotification({
+        membershipId: r.membershipId,
+        type: "match_created",
+        title: `New match scheduled for ${team.name}`,
+        linkUrl: `/${orgSlug}/schedule/matches/${match.id}`,
+      }),
+    ),
+  );
 
   revalidatePath(`/${orgSlug}/schedule`);
   redirect(`/${orgSlug}/schedule/matches/${match.id}`);
@@ -177,6 +193,15 @@ export async function recordMatchResultAction(
     targetId: matchId,
     metadata: { status: parsed.data.status, resultStatus: parsed.data.resultStatus },
   });
+
+  if (parsed.data.status === "CANCELLED" && match.createdById !== membership.membershipId) {
+    await createNotification({
+      membershipId: match.createdById,
+      type: "match_cancelled",
+      title: `${match.team.name} vs ${match.opponent.name} was cancelled`,
+      linkUrl: `/${orgSlug}/schedule/matches/${matchId}`,
+    }).catch(() => {});
+  }
 
   if (parsed.data.status === "COMPLETED" && parsed.data.resultStatus) {
     let webhookUrl: string | null | undefined = match.team.discordWebhookUrl;

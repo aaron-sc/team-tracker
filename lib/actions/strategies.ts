@@ -101,6 +101,35 @@ export async function updateStrategyAction(
   return { success: "Strategy updated." };
 }
 
+export async function duplicateStrategyAction(orgSlug: string, orgId: string, strategyId: string, teamSlug: string): Promise<ActionState> {
+  const { membership: actor } = await requirePermission(orgId, Permission.strategy_manage);
+  const strategy = await prisma.strategy.findUnique({ where: { id: strategyId }, include: { team: true } });
+  if (!strategy || strategy.team.orgId !== orgId) return { error: "Not found." };
+
+  await prisma.strategy.create({
+    data: {
+      teamId: strategy.teamId,
+      map: strategy.map,
+      title: `${strategy.title} (copy)`,
+      notes: strategy.notes,
+      agents: strategy.agents ?? Prisma.JsonNull,
+      createdById: actor.membershipId,
+    },
+  });
+
+  await logAudit({
+    orgId,
+    actorMembershipId: actor.membershipId,
+    action: "strategy.duplicated",
+    targetType: "Team",
+    targetId: strategy.teamId,
+    metadata: { sourceStrategyId: strategyId },
+  });
+
+  revalidatePath(`/${orgSlug}/teams/${teamSlug}`);
+  return { success: "Duplicated." };
+}
+
 export async function deleteStrategyAction(orgSlug: string, orgId: string, strategyId: string, teamSlug: string): Promise<ActionState> {
   const { membership: actor } = await requirePermission(orgId, Permission.strategy_manage);
   const strategy = await prisma.strategy.findUnique({ where: { id: strategyId }, include: { team: true } });

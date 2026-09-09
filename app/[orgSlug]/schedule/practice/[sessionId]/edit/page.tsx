@@ -35,6 +35,7 @@ export default async function EditPracticeSessionPage({
         opponents={opponents}
         venues={venues}
         lockTeam
+        excludePracticeId={session.id}
         defaultValues={{
           teamId: session.teamId,
           type: session.type,

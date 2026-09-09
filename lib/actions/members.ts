@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requirePermission } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
-import { inviteMemberSchema } from "@/lib/validations/org";
+import { inviteMembersSchema } from "@/lib/validations/org";
+import { z } from "zod";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
 import { saveUploadedImage, deleteUploadedFile, UploadError } from "@/lib/storage/local";
@@ -15,6 +16,8 @@ import { getBaseUrl } from "@/lib/utils/base-url";
 
 const INVITE_EXPIRY_DAYS = 7;
 
+const emailSchema = z.string().trim().toLowerCase().email();
+
 export async function createInviteAction(
   orgSlug: string,
   orgId: string,
@@ -23,8 +26,8 @@ export async function createInviteAction(
 ): Promise<ActionState> {
   const { session, membership } = await requirePermission(orgId, Permission.org_members_invite);
 
-  const parsed = inviteMemberSchema.safeParse({
-    email: formData.get("email"),
+  const parsed = inviteMembersSchema.safeParse({
+    emails: formData.get("emails"),
     roleId: formData.get("roleId"),
   });
   if (!parsed.success) {
@@ -36,65 +39,68 @@ export async function createInviteAction(
     return { error: "Invalid role selected." };
   }
 
-  const existingMember = await prisma.membership.findFirst({
-    where: { orgId, user: { email: parsed.data.email } },
-  });
-  if (existingMember) {
-    return { error: "This person is already a member of the organization." };
-  }
+  // Newline- or comma-separated, deduped, case-insensitive — a fresh Set preserves first-seen order.
+  const candidates = parsed.data.emails.split(/[\n,]/).map((e) => e.trim().toLowerCase()).filter(Boolean);
+  const emails = Array.from(new Set(candidates));
+  if (emails.length === 0) return { error: "Enter at least one email address." };
 
-  const existingInvite = await prisma.invite.findFirst({
-    where: { orgId, email: parsed.data.email, status: "PENDING" },
-  });
-  if (existingInvite) {
-    return { error: "There's already a pending invite for this email." };
-  }
-
-  const token = crypto.randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
-
-  await prisma.invite.create({
-    data: {
-      orgId,
-      email: parsed.data.email,
-      roleId: parsed.data.roleId,
-      token,
-      expiresAt,
-      invitedById: session.user.id,
-    },
-  });
-
-  await logAudit({
-    orgId,
-    actorMembershipId: membership.membershipId,
-    action: "invite.created",
-    targetType: "Invite",
-    targetId: token,
-    metadata: { email: parsed.data.email, role: role.name },
-  });
+  const invalid = emails.filter((e) => !emailSchema.safeParse(e).success);
+  if (invalid.length > 0) return { error: `Not a valid email address: ${invalid[0]}` };
 
   const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { name: true, themeColor: true } });
   const baseUrl = await getBaseUrl();
-  const inviteUrl = `${baseUrl}/invite/${token}`;
 
-  const emailResult = await sendEmail({
-    to: parsed.data.email,
-    subject: `You're invited to join ${org?.name ?? "an organization"} on Formation`,
-    html: inviteEmailHtml({
-      orgName: org?.name ?? "your organization",
-      accentColor: org?.themeColor ?? "#6366f1",
-      inviterName: session.user.name ?? session.user.email ?? "A teammate",
-      roleName: role.name,
-      inviteUrl,
-    }),
-  });
+  let invited = 0;
+  const skipped: string[] = [];
+
+  for (const email of emails) {
+    const existingMember = await prisma.membership.findFirst({ where: { orgId, user: { email } } });
+    if (existingMember) {
+      skipped.push(`${email} (already a member)`);
+      continue;
+    }
+    const existingInvite = await prisma.invite.findFirst({ where: { orgId, email, status: "PENDING" } });
+    if (existingInvite) {
+      skipped.push(`${email} (already invited)`);
+      continue;
+    }
+
+    const token = crypto.randomBytes(32).toString("base64url");
+    const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+
+    await prisma.invite.create({
+      data: { orgId, email, roleId: parsed.data.roleId, token, expiresAt, invitedById: session.user.id },
+    });
+
+    await logAudit({
+      orgId,
+      actorMembershipId: membership.membershipId,
+      action: "invite.created",
+      targetType: "Invite",
+      targetId: token,
+      metadata: { email, role: role.name },
+    });
+
+    await sendEmail({
+      to: email,
+      subject: `You're invited to join ${org?.name ?? "an organization"} on Formation`,
+      html: inviteEmailHtml({
+        orgName: org?.name ?? "your organization",
+        accentColor: org?.themeColor ?? "#6366f1",
+        inviterName: session.user.name ?? session.user.email ?? "A teammate",
+        roleName: role.name,
+        inviteUrl: `${baseUrl}/invite/${token}`,
+      }),
+    });
+
+    invited++;
+  }
 
   revalidatePath(`/${orgSlug}/settings/members`);
-  return {
-    success: emailResult.ok
-      ? `Invite email sent to ${parsed.data.email}.`
-      : `Invite created for ${parsed.data.email} — email delivery isn't configured yet, so share the link below manually.`,
-  };
+
+  if (invited === 0) return { error: `No invites sent — ${skipped.join(", ")}.` };
+  const summary = `Invited ${invited} ${invited === 1 ? "person" : "people"}.`;
+  return { success: skipped.length > 0 ? `${summary} Skipped ${skipped.length}: ${skipped.join(", ")}.` : summary };
 }
 
 export async function revokeInviteAction(orgSlug: string, orgId: string, inviteId: string): Promise<ActionState> {

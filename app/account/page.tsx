@@ -9,6 +9,7 @@ import { UpdateNameForm } from "@/components/account/update-name-form";
 import { UpdateTimezoneForm } from "@/components/account/update-timezone-form";
 import { UpdateTimeFormatForm } from "@/components/account/update-time-format-form";
 import { PushNotificationsToggle } from "@/components/account/push-notifications-toggle";
+import { NotificationPreferencesForm } from "@/components/account/notification-preferences-form";
 import { ConnectDiscordForm } from "@/components/account/connect-discord-form";
 import { UpdateProfileDetailsForm } from "@/components/account/update-profile-details-form";
 import { AvatarUploadForm } from "@/components/account/avatar-upload-form";
@@ -33,8 +34,11 @@ export default async function AccountPage() {
       discordHandle: true,
       discordUserId: true,
       phone: true,
+      mutedNotificationTypes: true,
     },
   });
+
+  const mutedTypes = Array.isArray(user.mutedNotificationTypes) ? (user.mutedNotificationTypes as string[]) : [];
 
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
@@ -106,6 +110,15 @@ export default async function AccountPage() {
           </CardHeader>
           <CardContent>
             <PushNotificationsToggle />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Notification preferences</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <NotificationPreferencesForm mutedTypes={mutedTypes} />
           </CardContent>
         </Card>
 

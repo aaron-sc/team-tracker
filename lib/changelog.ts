@@ -58,6 +58,41 @@ export const CHANGELOG: ChangelogEntry[] = [
           "Accepted requests now show a direct link to the scheduled scrim instead of disappearing from your listings once they're no longer pending.",
         ],
       },
+      {
+        title: "Search & navigation",
+        items: [
+          "Search now also covers scrim listings, matches, practices/scrims, and announcements — not just members, teams, venues, and prospects.",
+          "New keyboard shortcut: press G then R/T/S/D to jump straight to Roster, Teams, Schedule, or Dashboard.",
+        ],
+      },
+      {
+        title: "Notifications",
+        items: [
+          "You're now notified when a match or practice is scheduled or cancelled, a teammate declines a practice or scrim, or a new announcement goes out.",
+          "New notification preferences on your account page — mute any notification type individually, in-app and push.",
+        ],
+      },
+      {
+        title: "Editing & duplicating",
+        items: [
+          "Announcements, expenses, and pinned team resources can now be edited in place instead of delete-and-recreate.",
+          "Duplicate an announcement or a strategy with one click to reuse it as a starting point.",
+        ],
+      },
+      {
+        title: "Exports & dashboard",
+        items: [
+          "Gear and Expenses now have CSV export, matching Roster, Recruitment, and Schedule.",
+          "The dashboard shows open scrim listings, gear needing attention, and this month's spending at a glance (for those with access to each).",
+        ],
+      },
+      {
+        title: "Scheduling",
+        items: [
+          "Bulk invites — paste a list of emails (comma or newline separated) to invite everyone at once.",
+          "A heads-up when you schedule a match or practice at a venue that's already booked around that time — informational only, it never blocks saving.",
+        ],
+      },
     ],
   },
   {

@@ -4,10 +4,11 @@ import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { GearItemDialog } from "@/components/gear/gear-item-dialog";
 import { DeleteGearItemButton } from "@/components/gear/delete-gear-item-button";
-import { Package } from "lucide-react";
+import { Package, Download } from "lucide-react";
 
 const STATUS_LABEL: Record<string, string> = {
   AVAILABLE: "Available",
@@ -48,7 +49,15 @@ export default async function GearPage({ params }: { params: Promise<{ orgSlug: 
         <p className="text-sm text-muted-foreground">
           {items.length} item{items.length === 1 ? "" : "s"}
         </p>
-        <GearItemDialog orgSlug={orgSlug} orgId={org.id} members={memberOptions} teams={teamOptions} />
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" asChild>
+            <a href={`/${orgSlug}/gear/export`} download>
+              <Download className="size-4" />
+              Export CSV
+            </a>
+          </Button>
+          <GearItemDialog orgSlug={orgSlug} orgId={org.id} members={memberOptions} teams={teamOptions} />
+        </div>
       </div>
 
       {items.length === 0 ? (

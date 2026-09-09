@@ -3,11 +3,13 @@ import { requirePagePermission } from "@/lib/org/require-permission-page";
 import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ExpenseDialog } from "@/components/expenses/expense-dialog";
+import { EditExpenseDialog } from "@/components/expenses/edit-expense-dialog";
 import { DeleteExpenseButton } from "@/components/expenses/delete-expense-button";
 import { formatDate } from "@/lib/utils/format-time";
-import { Receipt } from "lucide-react";
+import { Receipt, Download } from "lucide-react";
 
 function formatCents(cents: number): string {
   return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -35,7 +37,15 @@ export default async function ExpensesPage({ params }: { params: Promise<{ orgSl
             {expenses.length} expense{expenses.length === 1 ? "" : "s"} · Total {formatCents(total)}
           </p>
         </div>
-        <ExpenseDialog orgSlug={orgSlug} orgId={org.id} teams={teams.map((t) => ({ id: t.id, name: t.name }))} />
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" asChild>
+            <a href={`/${orgSlug}/expenses/export`} download>
+              <Download className="size-4" />
+              Export CSV
+            </a>
+          </Button>
+          <ExpenseDialog orgSlug={orgSlug} orgId={org.id} teams={teams.map((t) => ({ id: t.id, name: t.name }))} />
+        </div>
       </div>
 
       {byCategory.size > 0 ? (
@@ -69,6 +79,19 @@ export default async function ExpensesPage({ params }: { params: Promise<{ orgSl
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-sm font-medium">{formatCents(e.amountCents)}</span>
+                  <EditExpenseDialog
+                    orgSlug={orgSlug}
+                    orgId={org.id}
+                    expenseId={e.id}
+                    teams={teams.map((t) => ({ id: t.id, name: t.name }))}
+                    defaultValues={{
+                      category: e.category,
+                      description: e.description,
+                      amount: (e.amountCents / 100).toFixed(2),
+                      incurredAt: e.incurredAt.toISOString().slice(0, 10),
+                      teamId: e.teamId ?? "none",
+                    }}
+                  />
                   <DeleteExpenseButton orgSlug={orgSlug} orgId={org.id} expenseId={e.id} />
                 </div>
               </CardContent>

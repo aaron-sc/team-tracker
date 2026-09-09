@@ -3,8 +3,8 @@
 import { useActionState } from "react";
 import { createInviteAction } from "@/lib/actions/members";
 import type { ActionState } from "@/lib/actions/types";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubmitButton } from "@/components/auth/submit-button";
 
@@ -23,8 +23,15 @@ export function InviteForm({
   return (
     <form action={formAction} className="flex flex-wrap items-end gap-3">
       <div className="space-y-1.5">
-        <Label htmlFor="invite-email">Email</Label>
-        <Input id="invite-email" name="email" type="email" placeholder="player@example.com" required className="w-64" />
+        <Label htmlFor="invite-emails">Email(s)</Label>
+        <Textarea
+          id="invite-emails"
+          name="emails"
+          placeholder={"player@example.com\ncoach@example.com"}
+          required
+          rows={1}
+          className="w-64 resize-y"
+        />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="invite-role">Role</Label>
@@ -41,7 +48,8 @@ export function InviteForm({
           </SelectContent>
         </Select>
       </div>
-      <SubmitButton>Create invite</SubmitButton>
+      <SubmitButton>Send invite(s)</SubmitButton>
+      <p className="w-full text-xs text-muted-foreground">Separate multiple addresses with a comma or a new line.</p>
       {state?.error ? <p className="w-full text-sm text-destructive">{state.error}</p> : null}
       {state?.success ? <p className="w-full text-sm text-emerald-600">{state.success}</p> : null}
     </form>

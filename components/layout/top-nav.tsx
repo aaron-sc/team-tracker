@@ -19,6 +19,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { KeyboardShortcutsDialog } from "@/components/layout/keyboard-shortcuts-dialog";
+import { KeyboardNav } from "@/components/layout/keyboard-nav";
 import { CreateOrgDialog } from "@/components/auth/create-org-dialog";
 import { startProductTour } from "@/components/onboarding/product-tour";
 import { openWhatsNew } from "@/components/layout/whats-new-dialog";
@@ -155,6 +156,7 @@ export function TopNav({
       <CreateOrgDialog open={createOrgOpen} onOpenChange={setCreateOrgOpen} />
 
       <div className="flex items-center gap-3">
+        <KeyboardNav orgSlug={orgSlug} />
         <span data-tour="search" className="contents">
           <CommandPalette orgId={orgId} />
         </span>

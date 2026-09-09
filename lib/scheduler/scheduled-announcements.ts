@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db/prisma";
 import { notifyDiscord, FORMATION_EMBED_COLOR, roleMentionPrefix } from "@/lib/integrations/discord";
+import { createNotification } from "@/lib/notifications/create";
 
 /** Publishes any announcement whose scheduled time has arrived — flips it visible and sends its
  *  Discord post (deferred at creation time specifically so it goes out now, not when it was
@@ -8,11 +9,27 @@ import { notifyDiscord, FORMATION_EMBED_COLOR, roleMentionPrefix } from "@/lib/i
 export async function sweepScheduledAnnouncements() {
   const due = await prisma.announcement.findMany({
     where: { published: false, publishAt: { lte: new Date() } },
-    include: { team: true, author: { include: { user: true } } },
+    include: { team: true, author: { include: { user: true } }, org: { select: { slug: true } } },
   });
 
   for (const a of due) {
     await prisma.announcement.update({ where: { id: a.id }, data: { published: true } });
+
+    const recipientIds = a.teamId
+      ? (await prisma.teamMembership.findMany({ where: { teamId: a.teamId }, select: { membershipId: true } })).map(
+          (r) => r.membershipId,
+        )
+      : (await prisma.membership.findMany({ where: { orgId: a.orgId }, select: { id: true } })).map((r) => r.id);
+    await Promise.all(
+      recipientIds.map((membershipId) =>
+        createNotification({
+          membershipId,
+          type: "announcement_published",
+          title: a.title,
+          linkUrl: `/${a.org.slug}/announcements`,
+        }),
+      ),
+    );
 
     let webhookUrl = a.team?.discordWebhookUrl ?? null;
     let mentionRoleId = a.team?.discordWebhookUrl ? a.team.discordMentionRoleId : null;

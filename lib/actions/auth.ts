@@ -6,6 +6,7 @@ import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/db/prisma";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { ROLE_PRESETS } from "@/lib/permissions";
 import { isReservedSlug, slugify } from "@/lib/utils/slug";
 import {
@@ -23,6 +24,7 @@ import {
   updateProfileDetailsSchema,
 } from "@/lib/validations/auth";
 import { createNotification } from "@/lib/notifications/create";
+import { NOTIFICATION_TYPE_LABELS } from "@/lib/constants/notification-types";
 import { sendVerificationEmail } from "@/lib/actions/email-verification";
 import { saveUploadedImage, deleteUploadedFile, UploadError } from "@/lib/storage/local";
 import { sendEmail } from "@/lib/email/resend";
@@ -567,6 +569,30 @@ export async function updateTimeFormatAction(_prev: UpdateTimeFormatState, formD
   await prisma.user.update({ where: { id: session.user.id }, data: { timeFormat: parsed.data.timeFormat } });
 
   return { success: "Time format updated." };
+}
+
+export type UpdateNotificationPreferencesState = { error?: string; success?: string } | undefined;
+
+export async function updateNotificationPreferencesAction(
+  _prev: UpdateNotificationPreferencesState,
+  formData: FormData,
+): Promise<UpdateNotificationPreferencesState> {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "You must be logged in." };
+  }
+
+  // Checkboxes submit which types are still subscribed (checked = on) — muted is the complement,
+  // so a type introduced after a user last saved defaults to subscribed rather than silently muted.
+  const subscribed = new Set(formData.getAll("subscribed").filter((v): v is string => typeof v === "string"));
+  const muted = Object.keys(NOTIFICATION_TYPE_LABELS).filter((type) => !subscribed.has(type));
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { mutedNotificationTypes: muted.length > 0 ? muted : Prisma.JsonNull },
+  });
+
+  return { success: "Notification preferences saved." };
 }
 
 export type UpdateProfileDetailsState = { error?: string; success?: string } | undefined;

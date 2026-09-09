@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { SuggestedTimesPanel } from "@/components/schedule/suggested-times-panel";
+import { VenueConflictWarning } from "@/components/schedule/venue-conflict-warning";
 
 const FORMATS = ["BO1", "BO3", "BO5", "BO7", "OTHER"] as const;
 
@@ -20,12 +21,15 @@ export function MatchForm({
   venues,
   defaultValues,
   lockTeam = false,
+  excludeMatchId,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   teams: { id: string; name: string }[];
   opponents: { id: string; name: string }[];
   venues: { id: string; name: string }[];
   lockTeam?: boolean;
+  /** The match being edited, so its own booking doesn't trigger the venue-conflict warning against itself. */
+  excludeMatchId?: string;
   defaultValues?: {
     teamId?: string;
     opponentId?: string;
@@ -45,6 +49,8 @@ export function MatchForm({
   const [locationType, setLocationType] = useState(defaultValues?.locationType ?? "ONLINE");
   const [isStreamed, setIsStreamed] = useState(defaultValues?.isStreamed ?? false);
   const [useNewOpponent, setUseNewOpponent] = useState(opponents.length === 0);
+  const [venueId, setVenueId] = useState(defaultValues?.venueId ?? "");
+  const [scheduledAt, setScheduledAt] = useState(defaultValues?.scheduledAt ?? "");
 
   return (
     <form action={formAction} className="max-w-xl space-y-4">
@@ -114,6 +120,7 @@ export function MatchForm({
             name="scheduledAt"
             type="datetime-local"
             defaultValue={defaultValues?.scheduledAt}
+            onChange={(e) => setScheduledAt(e.target.value)}
             required
           />
         </div>
@@ -150,7 +157,7 @@ export function MatchForm({
         {locationType === "LAN" ? (
           <div className="space-y-1.5">
             <Label htmlFor="venueId">Venue</Label>
-            <Select name="venueId" defaultValue={defaultValues?.venueId}>
+            <Select name="venueId" value={venueId} onValueChange={setVenueId}>
               <SelectTrigger id="venueId" className="w-full">
                 <SelectValue placeholder="Choose a venue" />
               </SelectTrigger>
@@ -165,6 +172,10 @@ export function MatchForm({
           </div>
         ) : null}
       </div>
+
+      {locationType === "LAN" && venueId && scheduledAt ? (
+        <VenueConflictWarning venueId={venueId} scheduledAt={scheduledAt} durationMinutes={120} excludeMatchId={excludeMatchId} />
+      ) : null}
 
       <div className="flex items-center gap-2">
         <Checkbox

@@ -13,7 +13,7 @@ export const roleSchema = z.object({
   permissions: z.array(z.enum(Permission)).default([]),
 });
 
-export const inviteMemberSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Enter a valid email address."),
+export const inviteMembersSchema = z.object({
+  emails: z.string().trim().min(1, "Enter at least one email address."),
   roleId: z.string().min(1, "Choose a role."),
 });

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { SuggestedTimesPanel } from "@/components/schedule/suggested-times-panel";
+import { VenueConflictWarning } from "@/components/schedule/venue-conflict-warning";
 
 export function PracticeForm({
   action,
@@ -17,6 +18,7 @@ export function PracticeForm({
   venues,
   defaultValues,
   lockTeam = false,
+  excludePracticeId,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   teams: { id: string; name: string }[];
@@ -24,6 +26,8 @@ export function PracticeForm({
   venues: { id: string; name: string }[];
   /** Also controls whether the "repeat weekly" option shows — only offered when creating, not editing. */
   lockTeam?: boolean;
+  /** The session being edited, so its own booking doesn't trigger the venue-conflict warning against itself. */
+  excludePracticeId?: string;
   defaultValues?: {
     teamId?: string;
     type?: string;
@@ -40,6 +44,9 @@ export function PracticeForm({
   const [type, setType] = useState(defaultValues?.type ?? "PRACTICE");
   const [locationType, setLocationType] = useState(defaultValues?.locationType ?? "ONLINE");
   const [useNewOpponent, setUseNewOpponent] = useState(opponents.length === 0);
+  const [venueId, setVenueId] = useState(defaultValues?.venueId ?? "");
+  const [scheduledAt, setScheduledAt] = useState(defaultValues?.scheduledAt ?? "");
+  const [durationMinutes, setDurationMinutes] = useState(defaultValues?.durationMinutes ?? 60);
 
   return (
     <form action={formAction} className="max-w-xl space-y-4">
@@ -120,7 +127,14 @@ export function PracticeForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="scheduledAt">Date &amp; time</Label>
-          <DateField id="scheduledAt" name="scheduledAt" type="datetime-local" defaultValue={defaultValues?.scheduledAt} required />
+          <DateField
+            id="scheduledAt"
+            name="scheduledAt"
+            type="datetime-local"
+            defaultValue={defaultValues?.scheduledAt}
+            onChange={(e) => setScheduledAt(e.target.value)}
+            required
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="durationMinutes">Duration (minutes)</Label>
@@ -131,6 +145,7 @@ export function PracticeForm({
             min={15}
             step={15}
             defaultValue={defaultValues?.durationMinutes ?? 60}
+            onChange={(e) => setDurationMinutes(Number(e.target.value) || 60)}
             required
           />
         </div>
@@ -152,7 +167,7 @@ export function PracticeForm({
         {locationType === "LAN" ? (
           <div className="space-y-1.5">
             <Label htmlFor="venueId">Venue</Label>
-            <Select name="venueId" defaultValue={defaultValues?.venueId}>
+            <Select name="venueId" value={venueId} onValueChange={setVenueId}>
               <SelectTrigger id="venueId" className="w-full">
                 <SelectValue placeholder="Choose a venue" />
               </SelectTrigger>
@@ -167,6 +182,15 @@ export function PracticeForm({
           </div>
         ) : null}
       </div>
+
+      {locationType === "LAN" && venueId && scheduledAt ? (
+        <VenueConflictWarning
+          venueId={venueId}
+          scheduledAt={scheduledAt}
+          durationMinutes={durationMinutes}
+          excludePracticeId={excludePracticeId}
+        />
+      ) : null}
 
       <div className="space-y-1.5">
         <Label htmlFor="notes">Notes</Label>

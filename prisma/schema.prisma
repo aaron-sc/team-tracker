@@ -276,6 +276,10 @@ model User {
   discordDmReminders Boolean @default(true)
   timezone        String?
   timeFormat      String    @default("12h") // "12h" | "24h"
+  // JSON array of notification `type` strings (see lib/notifications/create.ts) the user has
+  // muted — null/absent means nothing is muted. Json rather than a native array since this
+  // schema deliberately avoids SQLite-only array columns.
+  mutedNotificationTypes Json?
   emailVerifiedAt DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
