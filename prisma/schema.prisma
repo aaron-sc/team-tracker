@@ -45,6 +45,25 @@ enum LocationType {
   LAN
 }
 
+enum ScrimListingStatus {
+  OPEN
+  MATCHED
+  CANCELLED
+  EXPIRED
+}
+
+enum ScrimRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  WITHDRAWN
+}
+
+enum ScrimVisibility {
+  OPEN
+  PARTNERS_ONLY
+}
+
 enum MatchStatus {
   SCHEDULED
   LIVE
@@ -114,6 +133,7 @@ enum Permission {
   practice_edit
   practice_delete
   attendance_manage
+  scrim_manage
 
   availability_manage_self
   availability_manage_others
@@ -185,6 +205,8 @@ model Organization {
   polls           Poll[]
   gearItems       GearItem[]
   expenses        Expense[]
+  scrimListings         ScrimListing[]
+  scrimRequestsSent     ScrimRequest[]
 }
 
 model Team {
@@ -227,6 +249,12 @@ model Team {
   polls            Poll[]
   gearItems        GearItem[]
   expenses         Expense[]
+  scrimListings         ScrimListing[]
+  scrimRequestsSent     ScrimRequest[]
+  // Reverse side of Opponent.linkedTeamId — every Opponent stub elsewhere in Formation that has
+  // been linked to this real team via a matched scrim. Not used for display, just required by
+  // Prisma for the relation; query Opponent directly when you need "who's linked to me."
+  linkedAsOpponentBy    Opponent[]     @relation("OpponentLinkedTeam")
 
   @@unique([orgId, slug])
 }
@@ -454,6 +482,11 @@ model Opponent {
   logoUrl   String?
   contact   String?
   notes     String?
+  // Set once this opponent stub is the result of a matched scrim via the scrim finder — a real
+  // link to the other org's team, instead of just a free-text name. Null for every
+  // manually-entered opponent (the vast majority), so nothing about existing data changes.
+  linkedTeamId String?
+  linkedTeam   Team?   @relation("OpponentLinkedTeam", fields: [linkedTeamId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -539,6 +572,82 @@ model PracticeSession {
 
   attendances SessionAttendance[]
   comments    PracticeComment[]
+}
+
+// ---------- Scrim finder (org-vs-org matchmaking) ----------
+
+// A team's public "looking for a scrim" post. Posting one is the entire opt-in mechanism for
+// cross-org visibility — nothing about an org is visible to another org until it affirmatively
+// creates one of these (or accepts a match), and even then only what's on the listing itself.
+model ScrimListing {
+  id            String   @id @default(cuid())
+  orgId         String
+  org           Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  teamId        String
+  team          Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  game          String              // copied from team.game at creation, so the board can filter without a join
+  region        String?
+  skillTier     String?             // free text ("Immortal+", "Diamond-Masters") — ranks aren't uniform across games
+  format        MatchFormat @default(BO1)
+  proposedStart DateTime
+  proposedEnd   DateTime
+  timezone      String              // snapshot of org timezone at creation, like PracticeSession does
+  notes         String?
+  // PARTNERS_ONLY listings are only visible to orgs this org has already completed a matched
+  // scrim with (see lib/actions/scrims.ts's partner-lookup query) — no separate partner-request
+  // flow, it's a natural consequence of having actually played.
+  visibility    ScrimVisibility @default(OPEN)
+  status        ScrimListingStatus @default(OPEN)
+  createdById   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  requests ScrimRequest[]
+
+  @@index([status, game])
+}
+
+model ScrimRequest {
+  id               String   @id @default(cuid())
+  listingId        String
+  listing          ScrimListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  requestingOrgId  String
+  requestingOrg    Organization @relation(fields: [requestingOrgId], references: [id], onDelete: Cascade)
+  requestingTeamId String
+  requestingTeam   Team @relation(fields: [requestingTeamId], references: [id], onDelete: Cascade)
+  proposedStart    DateTime?    // counter-offer; null = "I accept the listed time as-is"
+  proposedEnd      DateTime?
+  message          String?
+  status           ScrimRequestStatus @default(PENDING)
+  createdById      String
+  respondedAt      DateTime?
+  // Set once accepted — the two PracticeSessions (one per side) created for the matched scrim,
+  // so a "view the scrim" link works reliably from either the listing or this request.
+  homeSessionId    String?
+  awaySessionId    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  messages ScrimMessage[]
+
+  @@index([listingId, status])
+}
+
+// Cross-org chat scoped to one matched scrim — deliberately not a general cross-org DM, so the
+// only orgs that can ever message each other are ones that actually matched a scrim together.
+// Bridged to Discord both ways (see lib/integrations/discord-bot.ts's /scrimreply command and
+// lib/actions/scrim-messages.ts's post-to-webhook call).
+model ScrimMessage {
+  id                 String   @id @default(cuid())
+  requestId          String
+  request            ScrimRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  senderOrgId        String
+  senderMembershipId String?  // null when the message originated on Discord via /scrimreply
+  body               String
+  source             String   @default("formation") // "formation" | "discord"
+  createdAt          DateTime @default(now())
+
+  @@index([requestId, createdAt])
 }
 
 model SessionAttendance {

@@ -30,6 +30,13 @@ export const CHANGELOG: ChangelogEntry[] = [
           "A setup checklist on the dashboard for new orgs — create your first team, invite your roster, and connect Discord, with live progress and a dismiss option once you've got it covered.",
         ],
       },
+      {
+        title: "Scrim Finder",
+        items: [
+          "A new Scrim Finder — post that a team is looking for a scrim (game, region, skill tier, format, proposed time), other organizations browse and request, and once you accept it lands on both calendars automatically with your current roster invited.",
+          "Listings are opt-in and visible to other Formation organizations only once posted — post to the open board, or mark a listing partners-only so it's only visible to orgs you've already scrimmed via Formation.",
+        ],
+      },
     ],
   },
   {

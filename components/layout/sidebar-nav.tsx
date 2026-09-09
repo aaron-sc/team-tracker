@@ -20,6 +20,7 @@ import {
   Package,
   Receipt,
   Swords,
+  Handshake,
 } from "lucide-react";
 
 const SETTINGS_PERMISSIONS: Permission[] = [
@@ -53,6 +54,7 @@ export function SidebarNav({
     { href: `${base}/teams`, label: "Teams", icon: Shield, show: true, tour: "nav-teams" },
     { href: `${base}/strategies`, label: "Strategies", icon: Swords, show: true, tour: undefined },
     { href: `${base}/schedule`, label: "Schedule", icon: CalendarClock, show: true, tour: "nav-schedule" },
+    { href: `${base}/scrims`, label: "Scrim Finder", icon: Handshake, show: true, tour: undefined },
     { href: `${base}/availability`, label: "Availability", icon: ClipboardList, show: true, tour: undefined },
     {
       href: `${base}/analytics`,

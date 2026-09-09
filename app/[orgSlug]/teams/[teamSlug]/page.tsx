@@ -35,6 +35,7 @@ export default async function TeamDetailPage({
   const canEditTeam = membership.permissions.includes(Permission.team_edit);
   const canManageResources = membership.permissions.includes(Permission.team_resources_manage);
   const canManagePolls = membership.permissions.includes(Permission.poll_manage);
+  const canManageScrims = membership.permissions.includes(Permission.scrim_manage);
   const canInviteToTeam =
     membership.permissions.includes(Permission.org_members_invite) ||
     (membership.permissions.includes(Permission.team_members_invite) && membership.teamIds.includes(team.id));
@@ -182,6 +183,20 @@ export default async function TeamDetailPage({
           </Button>
         ) : null}
       </div>
+
+      {canManageScrims ? (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+            <span className="flex items-center gap-2">
+              <Swords className="size-4 shrink-0 text-primary" />
+              Looking for a scrim? Post {team.name}&apos;s availability to Formation&apos;s scrim finder.
+            </span>
+            <Button size="sm" variant="outline" asChild>
+              <Link href={`/${orgSlug}/scrims/new`}>Post a listing</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>
