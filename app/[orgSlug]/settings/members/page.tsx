@@ -155,7 +155,9 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
                       orgSlug={orgSlug}
                       orgId={org.id}
                       membershipId={m.id}
+                      memberName={m.user.name}
                       roleId={m.roleId}
+                      roleName={m.role.name}
                       roles={roles}
                     />
                   ) : (

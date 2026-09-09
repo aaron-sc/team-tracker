@@ -37,6 +37,12 @@ export const CHANGELOG: ChangelogEntry[] = [
           "Listings are opt-in and visible to other Formation organizations only once posted — post to the open board, or mark a listing partners-only so it's only visible to orgs you've already scrimmed via Formation.",
         ],
       },
+      {
+        title: "Safety",
+        items: [
+          "Changing a member's role now asks you to confirm the change first, since it takes effect immediately.",
+        ],
+      },
     ],
   },
   {
