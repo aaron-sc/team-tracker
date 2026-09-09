@@ -269,16 +269,18 @@ export async function updateRosterEntryAction(
     trackerSmash: formData.get("trackerSmash") ?? "",
     trackerLeagueOfLegends: formData.get("trackerLeagueOfLegends") ?? "",
     isStarter: formData.get("isStarter") === "on",
+    rank: formData.get("rank") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
+  const rank = parsed.data.rank && parsed.data.rank !== "UNRANKED" ? parsed.data.rank : null;
 
   await prisma.teamMembership.update({
     where: { id: teamMembershipId },
     data: {
-      // A player editing their own entry can only touch their bio/trackers — roster-assignment
-      // fields (jersey, position, IGN, starter) stay coach-controlled.
+      // A player editing their own entry can only touch their bio/trackers/rank — roster-
+      // assignment fields (jersey, position, IGN, starter) stay coach-controlled.
       ...(isManager
         ? {
             jerseyNumber: parsed.data.jerseyNumber || null,
@@ -287,6 +289,7 @@ export async function updateRosterEntryAction(
             isStarter: parsed.data.isStarter,
           }
         : {}),
+      rank,
       bio: parsed.data.bio || null,
       trackerLink: parsed.data.trackerLink || null,
       trackerValorant: parsed.data.trackerValorant || null,

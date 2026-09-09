@@ -7,9 +7,10 @@ import { DateField } from "@/components/ui/date-field";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RegionSelect } from "@/components/ui/region-select";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { SuggestedTimesPanel } from "@/components/schedule/suggested-times-panel";
-import { Megaphone } from "lucide-react";
+import { Megaphone, Gauge } from "lucide-react";
 
 const FORMATS = ["BO1", "BO3", "BO5", "BO7", "OTHER"] as const;
 
@@ -18,11 +19,12 @@ export function ScrimListingForm({
   teams,
 }: {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
-  teams: { id: string; name: string; game: string }[];
+  teams: { id: string; name: string; game: string; averageRank: string | null }[];
 }) {
   const [state, formAction] = useActionState<ActionState, FormData>(action, undefined);
   const [teamId, setTeamId] = useState(teams[0]?.id ?? "");
   const [visibility, setVisibility] = useState("OPEN");
+  const selectedTeam = teams.find((t) => t.id === teamId);
 
   return (
     <form action={formAction} className="max-w-xl space-y-4">
@@ -45,11 +47,26 @@ export function ScrimListingForm({
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-1.5">
           <Label htmlFor="region">Region</Label>
-          <Input id="region" name="region" placeholder="NA East" maxLength={60} />
+          <RegionSelect id="region" />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="skillTier">Skill tier</Label>
           <Input id="skillTier" name="skillTier" placeholder="Immortal+" maxLength={60} />
+          {selectedTeam?.averageRank ? (
+            <button
+              type="button"
+              className="flex items-center gap-1 text-xs text-primary underline underline-offset-4"
+              onClick={() => {
+                const input = document.getElementById("skillTier") as HTMLInputElement | null;
+                if (!input || !selectedTeam.averageRank) return;
+                input.value = selectedTeam.averageRank;
+                input.dispatchEvent(new Event("input", { bubbles: true }));
+              }}
+            >
+              <Gauge className="size-3" />
+              Use team&apos;s average rank ({selectedTeam.averageRank})
+            </button>
+          ) : null}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="format">Format</Label>

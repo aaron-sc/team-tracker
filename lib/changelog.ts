@@ -43,6 +43,13 @@ export const CHANGELOG: ChangelogEntry[] = [
           "Changing a member's role now asks you to confirm the change first, since it takes effect immediately.",
         ],
       },
+      {
+        title: "Rosters",
+        items: [
+          "Set each player's competitive rank from your game's actual tier list — the team page shows a computed average rank for the roster, and it's one click to carry that average into a new scrim listing's skill tier.",
+          "Scrim Finder's region field is now a fixed dropdown of real regions instead of free text, so listings are easier to filter and compare.",
+        ],
+      },
     ],
   },
   {

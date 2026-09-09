@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { RankSelect } from "@/components/ui/rank-select";
 import { Pencil, Loader2 } from "lucide-react";
 
 export function EditRosterEntryDialog({
@@ -15,12 +16,15 @@ export function EditRosterEntryDialog({
   orgId,
   teamMembershipId,
   playerName,
+  game,
   defaultValues,
 }: {
   orgSlug: string;
   orgId: string;
   teamMembershipId: string;
   playerName: string;
+  /** The team's game — picks which rank ladder RankSelect offers. */
+  game: string;
   defaultValues: {
     position: string;
     jerseyNumber: string;
@@ -32,6 +36,7 @@ export function EditRosterEntryDialog({
     trackerSmash: string;
     trackerLeagueOfLegends: string;
     isStarter: boolean;
+    rank: string;
   };
 }) {
   const [open, setOpen] = useState(false);
@@ -75,6 +80,10 @@ export function EditRosterEntryDialog({
           <div className="space-y-1.5">
             <Label htmlFor="edit-jerseyNumber">Jersey #</Label>
             <Input id="edit-jerseyNumber" name="jerseyNumber" defaultValue={defaultValues.jerseyNumber} className="w-20" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-rank">Rank</Label>
+            <RankSelect id="edit-rank" game={game} defaultValue={defaultValues.rank} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="edit-bio">Bio</Label>

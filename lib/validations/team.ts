@@ -29,6 +29,7 @@ const rosterProfileFields = {
   trackerSmash: trackerUrl,
   trackerLeagueOfLegends: trackerUrl,
   isStarter: z.boolean().default(false),
+  rank: z.string().trim().max(60).optional().or(z.literal("")),
 };
 
 export const rosterEntrySchema = z.object({

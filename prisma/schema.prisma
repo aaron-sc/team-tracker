@@ -431,6 +431,11 @@ model TeamMembership {
   // provider) — fetched on demand, not live, to stay within external API rate limits.
   gameStatsCache     Json?
   gameStatsUpdatedAt DateTime?
+  // Self-reported rank tier (e.g. "Diamond 2") — a manual player-entered value, distinct from the
+  // gameStatsCache sync above (which only covers LoL/Steam). Free text so it works for any game,
+  // but the UI populates it from a fixed per-game ladder (lib/constants/ranks.ts) so averaging a
+  // team's ranks (below) has consistent tiers to work with.
+  rank String?
 
   playerActions PlayerAction[]
 

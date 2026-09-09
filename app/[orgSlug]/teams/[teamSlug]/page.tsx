@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { RoleBadge } from "@/components/ui/role-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AddRosterForm } from "@/components/teams/add-roster-form";
 import { RemoveRosterButton } from "@/components/teams/remove-roster-button";
@@ -15,8 +16,9 @@ import { TeamInviteLinkPanel } from "@/components/teams/team-invite-link-panel";
 import { TeamResourcesPanel } from "@/components/teams/team-resources-panel";
 import { TeamPollsPanel } from "@/components/teams/team-polls-panel";
 import { addToRosterAction } from "@/lib/actions/teams";
-import { Pencil, Star, Calendar, Swords, ExternalLink } from "lucide-react";
+import { Pencil, Star, Calendar, Swords, ExternalLink, Gauge } from "lucide-react";
 import { formatDateTimeShort } from "@/lib/utils/format-time";
+import { averageRank } from "@/lib/constants/ranks";
 
 export default async function TeamDetailPage({
   params,
@@ -72,6 +74,8 @@ export default async function TeamDetailPage({
       take: 5,
     }),
   ]);
+
+  const teamAverageRank = averageRank(team.game, roster.map((r) => r.rank));
 
   const [resourceLinks, polls] = await Promise.all([
     prisma.teamResourceLink.findMany({ where: { teamId: team.id }, orderBy: { createdAt: "desc" } }),
@@ -233,8 +237,14 @@ export default async function TeamDetailPage({
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Roster</CardTitle>
+          {teamAverageRank ? (
+            <Badge variant="secondary" className="gap-1">
+              <Gauge className="size-3" />
+              Average rank: {teamAverageRank}
+            </Badge>
+          ) : null}
         </CardHeader>
         <CardContent>
           <Table>
@@ -244,6 +254,7 @@ export default async function TeamDetailPage({
                 <TableHead>Role</TableHead>
                 <TableHead>Position</TableHead>
                 <TableHead>In-game name</TableHead>
+                <TableHead>Rank</TableHead>
                 <TableHead>Tracker</TableHead>
                 <TableHead>#</TableHead>
                 <TableHead>Starter</TableHead>
@@ -266,6 +277,7 @@ export default async function TeamDetailPage({
                   </TableCell>
                   <TableCell className="text-muted-foreground">{entry.position ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{entry.inGameName ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{entry.rank ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {(() => {
                       const primaryTracker =
@@ -309,7 +321,9 @@ export default async function TeamDetailPage({
                           trackerSmash: entry.trackerSmash ?? "",
                           trackerLeagueOfLegends: entry.trackerLeagueOfLegends ?? "",
                           isStarter: entry.isStarter,
+                          rank: entry.rank ?? "",
                         }}
+                        game={team.game}
                       />
                       <RemoveRosterButton orgSlug={orgSlug} orgId={org.id} teamMembershipId={entry.id} />
                     </TableCell>
