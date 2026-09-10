@@ -105,9 +105,7 @@ export default async function HomePage() {
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
-                <Link href={FORMATION_DOCS_URL} target="_blank" rel="noreferrer">
-                  See how it works
-                </Link>
+                <Link href={FORMATION_DOCS_URL}>See how it works</Link>
               </Button>
             </div>
           </div>
@@ -318,9 +316,9 @@ export default async function HomePage() {
             <Link href="/terms" className="hover:text-foreground hover:underline">
               Terms
             </Link>
-            <a href={FORMATION_DOCS_URL} target="_blank" rel="noreferrer" className="hover:text-foreground hover:underline">
-              Docs
-            </a>
+            <Link href={FORMATION_DOCS_URL} className="hover:text-foreground hover:underline">
+              User guide
+            </Link>
             <a href={FORMATION_BOT_TERMS_URL} target="_blank" rel="noreferrer" className="hover:text-foreground hover:underline">
               Bot terms
             </a>

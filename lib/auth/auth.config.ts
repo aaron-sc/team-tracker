@@ -39,6 +39,7 @@ export const authConfig = {
         pathname.startsWith("/privacy") ||
         pathname.startsWith("/terms") ||
         pathname.startsWith("/contact") ||
+        pathname.startsWith("/guide") ||
         pathname === "/robots.txt" ||
         pathname === "/sitemap.xml";
       return isPublic || isLoggedIn;

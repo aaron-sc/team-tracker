@@ -13,7 +13,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronsUpDown, ShieldCheck, LogOut, Check, UserCog, Compass, Plus, Sparkles } from "lucide-react";
+import { ChevronsUpDown, ShieldCheck, LogOut, Check, UserCog, Compass, Plus, Sparkles, BookOpen } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationBell } from "@/components/layout/notification-bell";
@@ -206,6 +206,12 @@ export function TopNav({
             <DropdownMenuItem onClick={() => openWhatsNew()}>
               <Sparkles className="size-4" />
               What&apos;s new
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/guide">
+                <BookOpen className="size-4" />
+                User guide
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <form action={logoutAction} className="w-full">

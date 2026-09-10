@@ -82,8 +82,8 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ o
         <CardContent className="space-y-4 text-sm">
           <p className="text-muted-foreground">
             Full setup guides and the complete API reference live in the{" "}
-            <a href={FORMATION_DOCS_URL} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-4">
-              Formation docs
+            <a href={`${FORMATION_DOCS_URL}#api-access`} className="text-primary underline underline-offset-4">
+              user guide
             </a>
             . Send the key as a bearer token on every request:
           </p>
