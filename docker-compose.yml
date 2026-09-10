@@ -29,12 +29,23 @@ services:
     environment:
       - DOMAIN=${DOMAIN}
       - APEX_DOMAIN=${APEX_DOMAIN}
+      - VAULT_DOMAIN=${VAULT_DOMAIN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
+    networks:
+      - default
+      # Vault (a separate app/repo/container on this VM) has no Caddy of its own — this joins
+      # its compose project's external network so this Caddy can reach "vault-app" by name.
+      # Create once with: docker network create esports-tools-shared
+      - esports-tools-shared
     depends_on:
       - app
+
+networks:
+  esports-tools-shared:
+    external: true
 
 volumes:
   app-data:

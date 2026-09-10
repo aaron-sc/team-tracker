@@ -5,3 +5,11 @@
 {$APEX_DOMAIN} {
 	redir https://{$DOMAIN}{uri} permanent
 }
+
+# Vault (sponsorship/finance suite) — a separate app/repo/container sharing this VM and this one
+# Caddy instance. Its own compose file joins the "esports-tools-shared" external network
+# (created once via `docker network create esports-tools-shared`) so it's reachable here by
+# service name; that repo has no Caddy of its own.
+{$VAULT_DOMAIN} {
+	reverse_proxy vault-app:3400
+}
