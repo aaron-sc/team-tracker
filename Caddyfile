@@ -2,8 +2,15 @@
 	reverse_proxy app:3300
 }
 
+# The bare domain now serves the product hub — a separate app/repo/container (see the "Vault"
+# comment below for the pattern) rather than just redirecting to Formation. "www." still redirects
+# to the apex, same as before.
 {$APEX_DOMAIN} {
-	redir https://{$DOMAIN}{uri} permanent
+	reverse_proxy hub-app:3500
+}
+
+www.{$APEX_DOMAIN} {
+	redir https://{$APEX_DOMAIN}{uri} permanent
 }
 
 # Vault (sponsorship/finance suite) — a separate app/repo/container sharing this VM and this one
