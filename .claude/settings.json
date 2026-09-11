@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"C:\\\\Users\\\\Aaron\\\\Documents\\\\GitHub\" | head -30)",
+      "Read(//c/Users/Aaron/Documents/GitHub/**)"
+    ]
+  }
+}

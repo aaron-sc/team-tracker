@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { validateAuthorizeParams } from "@/lib/oauth/validate";
 import { hasExistingGrant, issueAuthorizationCode } from "@/lib/oauth/service";
+import { getBaseUrl } from "@/lib/utils/base-url";
 
 /**
  * The OIDC authorization endpoint — the front door of Formation-as-identity-provider. A client
@@ -24,7 +25,10 @@ export async function GET(request: NextRequest) {
 
   const session = await auth();
   if (!session?.user) {
-    const loginUrl = new URL("/login", request.nextUrl.origin);
+    // request.nextUrl.origin isn't reliable behind this VM's proxy (see lib/utils/base-url.ts) —
+    // it can resolve to the app's internal address rather than the public domain, which would
+    // send the browser to a Location header nothing outside the container can reach.
+    const loginUrl = new URL("/login", await getBaseUrl());
     loginUrl.searchParams.set("redirectTo", request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
@@ -46,7 +50,7 @@ export async function GET(request: NextRequest) {
 
   // First time this user's been asked about this client — the consent screen re-validates
   // everything itself from this same query string rather than trusting this redirect.
-  const consentUrl = new URL("/oauth/authorize/consent", request.nextUrl.origin);
+  const consentUrl = new URL("/oauth/authorize/consent", await getBaseUrl());
   consentUrl.search = request.nextUrl.search;
   return NextResponse.redirect(consentUrl);
 }
