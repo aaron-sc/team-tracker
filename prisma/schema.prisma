@@ -281,6 +281,16 @@ model User {
   // schema deliberately avoids SQLite-only array columns.
   mutedNotificationTypes Json?
   emailVerifiedAt DateTime?
+  // AES-256-GCM ciphertext (base64url, iv+authTag+data packed together — see
+  // lib/auth/totp.ts) of the TOTP secret, never stored in plaintext: unlike a bcrypt password
+  // hash, a raw TOTP secret is fully reusable by whoever reads it, so a DB leak alone would
+  // otherwise be enough to defeat every account's 2FA at once.
+  totpSecret      String?
+  totpEnabledAt   DateTime?
+  // Bumped to "now" by "sign out everywhere" (see lib/actions/account-security.ts) — any JWT
+  // issued before this instant is treated as invalid going forward (see auth.ts's jwt callback).
+  // Null means "never revoked," not "epoch zero," so ordinary accounts pay no extra check cost.
+  sessionsValidFrom DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   lastLoginAt     DateTime?
@@ -292,6 +302,8 @@ model User {
   pushSubscriptions       PushSubscription[]
   oauthAuthCodes          OAuthAuthCode[]
   oauthGrants             OAuthGrant[]
+  recoveryCodes           RecoveryCode[]
+  loginEvents             LoginEvent[]
 }
 
 model PasswordResetToken {
@@ -1158,4 +1170,31 @@ model OAuthGrant {
   updatedAt DateTime    @updatedAt
 
   @@unique([userId, clientId])
+}
+
+// ---------- Two-factor auth & session security ----------
+
+// One-time backup codes for signing in if the authenticator app is unavailable — generated as a
+// batch of 10 the moment 2FA is enabled (see lib/actions/account-security.ts), each usable once.
+// Stored hashed for the same reason OAuthClient secrets are (see lib/oauth/crypto.ts): a fast
+// hash of a high-entropy random value, not a slow password hash.
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// A record of each successful sign-in (password or SSO-equivalent... this is Formation itself, so
+// just password + 2FA) — surfaced on the account page as "Recent sign-ins" so a user can notice
+// one they don't recognize and use "sign out everywhere".
+model LoginEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
 }

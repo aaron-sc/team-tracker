@@ -4,7 +4,9 @@ import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { auth, signIn, signOut } from "@/auth";
+import { createPending2faToken } from "@/lib/auth/pending-2fa";
 import { prisma } from "@/lib/db/prisma";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { ROLE_PRESETS } from "@/lib/permissions";
@@ -48,6 +50,7 @@ async function notifyInviterOfAcceptance(invite: { orgId: string; invitedById: s
 export type ActionState = { error?: string } | undefined;
 
 const RESET_TOKEN_EXPIRY_HOURS = 1;
+const PENDING_2FA_COOKIE = "formation_pending_2fa";
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const allowed = await checkRateLimit("login", 10, 5 * 60 * 1000);
@@ -65,6 +68,27 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
     ? (formData.get("redirectTo") as string)
     : "/orgs";
 
+  // Checked here rather than solely inside the "credentials" provider's authorize() (which also
+  // rejects a 2FA account, as defense in depth) because we need to know *before* calling signIn()
+  // whether to route to the /login/2fa interstitial instead of completing sign-in outright.
+  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  const passwordValid = user ? await bcrypt.compare(parsed.data.password, user.passwordHash) : false;
+  if (!user || !passwordValid) {
+    return { error: "Invalid email or password." };
+  }
+
+  if (user.totpEnabledAt) {
+    const cookieStore = await cookies();
+    cookieStore.set(PENDING_2FA_COOKIE, createPending2faToken(user.id), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 5 * 60,
+      path: "/",
+    });
+    redirect(`/login/2fa?redirectTo=${encodeURIComponent(redirectTo)}`);
+  }
+
   try {
     await signIn("credentials", {
       email: parsed.data.email,
@@ -74,6 +98,34 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   } catch (error) {
     if (error instanceof AuthError) {
       return { error: "Invalid email or password." };
+    }
+    throw error;
+  }
+}
+
+/** The second step for a 2FA account — see loginAction above and lib/auth/pending-2fa.ts. Reads
+ *  the short-lived cookie loginAction set (proof the password already checked out) rather than
+ *  ever asking for the password again here. */
+export async function verifyTwoFactorAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const allowed = await checkRateLimit("2fa_verify", 10, 5 * 60 * 1000);
+  if (!allowed) return { error: "Too many attempts. Try again in a few minutes." };
+
+  const cookieStore = await cookies();
+  const pendingToken = cookieStore.get(PENDING_2FA_COOKIE)?.value;
+  if (!pendingToken) return { error: "That took too long — log in again." };
+
+  const code = String(formData.get("code") ?? "").trim();
+  if (!code) return { error: "Enter a code." };
+
+  const redirectTo = typeof formData.get("redirectTo") === "string" && formData.get("redirectTo")
+    ? (formData.get("redirectTo") as string)
+    : "/orgs";
+
+  try {
+    await signIn("totp", { pendingToken, code, redirectTo });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return { error: "Incorrect code." };
     }
     throw error;
   }
