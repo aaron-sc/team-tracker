@@ -51,3 +51,6 @@ next-env.d.ts
 # user-uploaded files (local disk storage)
 /public/uploads/*
 !/public/uploads/.gitkeep
+
+# local Claude Code settings (machine-specific permissions, not shared)
+/.claude/
