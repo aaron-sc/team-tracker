@@ -40,6 +40,11 @@ export const authConfig = {
         pathname.startsWith("/terms") ||
         pathname.startsWith("/contact") ||
         pathname.startsWith("/guide") ||
+        // OIDC provider endpoints (Formation is the identity provider for the hub and Vault — see
+        // lib/oauth/) — each does its own session/credential check internally rather than relying
+        // on this proxy gate, the same way /api/v1's bearer-token auth already works above.
+        pathname.startsWith("/oauth") ||
+        pathname.startsWith("/.well-known") ||
         pathname === "/robots.txt" ||
         pathname === "/sitemap.xml";
       return isPublic || isLoggedIn;

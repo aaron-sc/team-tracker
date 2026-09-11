@@ -290,6 +290,8 @@ model User {
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   pushSubscriptions       PushSubscription[]
+  oauthAuthCodes          OAuthAuthCode[]
+  oauthGrants             OAuthGrant[]
 }
 
 model PasswordResetToken {
@@ -1095,4 +1097,65 @@ model PlayerAction {
   createdBy        Membership?      @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+}
+
+// ---------- OAuth / OIDC identity provider ----------
+// Formation acts as the identity provider for the esports-tools.com product family (the hub and
+// Vault are OAuth clients — see lib/oauth/). Account-wide, not org-scoped, unlike the rest of this
+// schema — a person authorizes "Vault" once for their whole account, not per-organization.
+
+// A registered first-party client (currently just "hub" and "vault") — there's no self-service
+// registration UI; rows are created once via a direct DB insert on deploy (see lib/oauth/README
+// or the deploy notes) and there are only ever a handful of these.
+model OAuthClient {
+  id               String   @id @default(cuid())
+  clientId         String   @unique
+  // sha256 hex of the actual secret — never store the raw value. High-entropy random secret, not
+  // a user password, so a fast hash is appropriate (see lib/oauth/crypto.ts).
+  clientSecretHash String
+  name             String
+  // JSON string[] — exact-match allowlist checked on every /oauth/authorize and /oauth/token call.
+  redirectUris     Json
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  authCodes OAuthAuthCode[]
+  grants    OAuthGrant[]
+}
+
+// A single-use authorization code from the /oauth/authorize -> /oauth/token handoff. Rows are
+// deleted the moment they're redeemed (or once expired) rather than flagged "consumed" — deleting
+// is what actually makes reuse impossible, a flag would still need the same race-free lookup.
+model OAuthAuthCode {
+  id            String      @id @default(cuid())
+  // sha256 hex of the actual code carried in the redirect URL.
+  codeHash      String      @unique
+  clientId      String
+  client        OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  redirectUri   String
+  codeChallenge String
+  scope         String
+  // Passed through unchanged from the authorize request into the eventual id_token, per the OIDC
+  // spec's replay-protection contract — optional since plain OAuth (no "openid" scope) omits it.
+  nonce         String?
+  expiresAt     DateTime
+  createdAt     DateTime    @default(now())
+}
+
+// Remembered consent — once a user approves a client, later /oauth/authorize calls for the same
+// (user, client) skip the consent screen. Revoking (Settings -> Connected apps, added in a later
+// batch) deletes this row, which puts the consent screen back the next time that client asks.
+model OAuthGrant {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId  String
+  client    OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  scope     String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([userId, clientId])
 }
