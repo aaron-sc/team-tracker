@@ -13,7 +13,8 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronsUpDown, ShieldCheck, LogOut, Check, UserCog, Compass, Plus, Sparkles, BookOpen } from "lucide-react";
+import { ChevronsUpDown, LogOut, Check, UserCog, Compass, Plus, Sparkles, BookOpen } from "lucide-react";
+import { Logo } from "@/components/brand/logo";
 import { logoutAction } from "@/lib/actions/auth";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationBell } from "@/components/layout/notification-bell";
@@ -77,14 +78,13 @@ export function TopNav({
 
   return (
     <header
-      className="flex h-14 items-center justify-between border-b bg-background px-4"
+      className="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-background/70 px-4 backdrop-blur-md supports-backdrop-filter:bg-background/60"
       style={{ viewTransitionName: "site-header" } as React.CSSProperties}
     >
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <MobileNav orgSlug={orgSlug} permissions={permissions} />
-        <Link href="/" className="hidden items-center gap-2 font-semibold sm:flex">
-          <ShieldCheck className="size-5 text-primary" />
-          <span className="hidden sm:inline">Formation</span>
+        <Link href="/" className="hidden font-semibold sm:flex">
+          <Logo size="size-5" />
         </Link>
         {/* Org logo + the full switch-organization dropdown — desktop only. The dropdown's
             trigger button can't shrink below its label, so on a narrow phone header it just

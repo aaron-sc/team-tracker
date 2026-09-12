@@ -4,7 +4,7 @@ import { validateAuthorizeParams } from "@/lib/oauth/validate";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { approveConsentAction, denyConsentAction } from "@/lib/actions/oauth";
-import { ShieldCheck } from "lucide-react";
+import { LogoMark } from "@/components/brand/logo";
 
 const SCOPE_DESCRIPTIONS: Record<string, string> = {
   openid: "Confirm it's you",
@@ -53,7 +53,7 @@ export default async function OAuthConsentPage({
   return (
     <AuthShell title={`${client.name} wants to access your account`} description={session.user.email ?? undefined}>
       <div className="mb-5 flex items-center justify-center gap-3 text-sm text-muted-foreground">
-        <ShieldCheck className="size-5 text-primary" />
+        <LogoMark className="size-5" />
         <span>Signed in to Formation as {session.user.name}</span>
       </div>
       <p className="mb-2 text-sm font-medium">This will let {client.name} see:</p>

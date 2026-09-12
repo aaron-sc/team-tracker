@@ -131,7 +131,7 @@ export default async function PublicRosterEmbedPage({
                         href={t.url}
                         target="_blank"
                         rel="noreferrer"
-                        style={{ fontSize: 10, color: "#6366f1", textDecoration: "underline" }}
+                        style={{ fontSize: 10, color: "#EA580C", textDecoration: "underline" }}
                       >
                         {t.label}
                       </a>

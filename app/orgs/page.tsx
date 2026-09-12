@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { logoutAction } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { CreateOrgDialog } from "@/components/auth/create-org-dialog";
-import { ShieldCheck } from "lucide-react";
+import { Logo } from "@/components/brand/logo";
 import { requireVerifiedEmailPage } from "@/lib/auth/require-verified-page";
 
 export default async function OrgsPage() {
@@ -22,9 +22,8 @@ export default async function OrgsPage() {
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-16">
       <div className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-lg font-semibold">
-          <ShieldCheck className="size-6 text-primary" />
-          Formation
+        <div className="text-lg font-semibold">
+          <Logo />
         </div>
         <form action={logoutAction}>
           <Button variant="ghost" size="sm" type="submit">

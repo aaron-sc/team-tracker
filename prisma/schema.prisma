@@ -177,7 +177,7 @@ model Organization {
   slug        String   @unique
   logoUrl     String?
   timezone    String   @default("America/Chicago")
-  themeColor  String   @default("#6366f1")
+  themeColor  String   @default("#EA580C")
   apiKey      String?  @unique
   discordWebhookUrl String?
   // Set once an org owner/manager completes the "Add Formation to Discord" invite flow — lets

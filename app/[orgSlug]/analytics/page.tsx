@@ -147,7 +147,7 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ orgS
                     <span className="font-medium">{team.name}</span>
                     <span className="text-muted-foreground">{pct !== null ? `${pct}%` : "No history yet"}</span>
                   </div>
-                  <Bar pct={pct ?? 0} className="bg-emerald-500" />
+                  <Bar pct={pct ?? 0} className="bg-success" />
                 </div>
               );
             })

@@ -9,7 +9,6 @@ import {
   CalendarClock,
   Users,
   MapPinned,
-  ShieldCheck,
   BellRing,
   UserPlus,
   Globe,
@@ -21,6 +20,7 @@ import {
   Check,
   X,
 } from "lucide-react";
+import { Logo } from "@/components/brand/logo";
 import { FORMATION_DOCS_URL, FORMATION_BOT_TERMS_URL, FORMATION_BOT_PRIVACY_URL } from "@/lib/links";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { StickyMobileCta } from "@/components/marketing/sticky-mobile-cta";
@@ -57,9 +57,8 @@ export default async function HomePage() {
       />
       <header className="border-b">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2 text-lg font-semibold">
-            <ShieldCheck className="size-6 text-primary" />
-            Formation
+          <div className="text-lg font-semibold">
+            <Logo />
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" asChild>
@@ -75,14 +74,21 @@ export default async function HomePage() {
       <main className="flex-1">
         {/* ---------- Hero ---------- */}
         <section className="relative overflow-hidden">
-          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+          {/* A soft brand-colored glow plus a faint dot-grid, both static — no blurred rotating
+              blobs. Grounded, not generated. */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
             <div
-              className="fx-aurora absolute -left-24 -top-32 size-[34rem] rounded-full bg-[oklch(0.62_0.16_262)] opacity-[0.14] blur-3xl dark:opacity-[0.22]"
-              style={{ animationDuration: "22s" }}
+              className="absolute inset-x-0 top-0 h-[32rem]"
+              style={{ background: "radial-gradient(640px circle at 50% -10%, oklch(from var(--primary) l c h / 0.16), transparent 65%)" }}
             />
             <div
-              className="fx-aurora absolute -right-24 top-10 size-[30rem] rounded-full bg-[oklch(0.75_0.13_190)] opacity-[0.12] blur-3xl dark:opacity-[0.2]"
-              style={{ animationDuration: "26s", animationDelay: "-8s" }}
+              className="absolute inset-0 opacity-[0.05] dark:opacity-[0.08]"
+              style={{
+                backgroundImage: "radial-gradient(var(--foreground) 1px, transparent 1px)",
+                backgroundSize: "28px 28px",
+                maskImage: "radial-gradient(ellipse 60% 50% at 50% 0%, black, transparent 70%)",
+                WebkitMaskImage: "radial-gradient(ellipse 60% 50% at 50% 0%, black, transparent 70%)",
+              }}
             />
           </div>
 

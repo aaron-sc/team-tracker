@@ -21,7 +21,8 @@ import { RevokeConnectedAppButton } from "@/components/account/revoke-connected-
 import { SignOutEverywhereButton } from "@/components/account/sign-out-everywhere-button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { Logo } from "@/components/brand/logo";
 import { requireVerifiedEmailPage } from "@/lib/auth/require-verified-page";
 import { getTimezones } from "@/lib/utils/timezones";
 
@@ -62,9 +63,8 @@ export default async function AccountPage() {
   return (
     <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
       <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-lg font-semibold">
-          <ShieldCheck className="size-6 text-primary" />
-          Formation
+        <div className="text-lg font-semibold">
+          <Logo />
         </div>
         <Button variant="ghost" size="sm" asChild>
           <Link href="/orgs">

@@ -18,7 +18,7 @@ const STATUS_LABEL: Record<string, string> = {
   RETIRED: "Retired",
 };
 const STATUS_CLASS: Record<string, string> = {
-  AVAILABLE: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  AVAILABLE: "border-success/30 bg-success/10 text-success",
   ASSIGNED: "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-400",
   MAINTENANCE: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400",
   LOST: "border-destructive/30 bg-destructive/10 text-destructive",

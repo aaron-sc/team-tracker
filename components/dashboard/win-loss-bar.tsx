@@ -22,10 +22,10 @@ export function WinLossBar({
       {total > 0 ? (
         <div className="flex h-2 gap-0.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={`${teamName}: ${wins} wins, ${losses} losses, ${draws} draws`}>
           {wins > 0 ? (
-            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${(wins / total) * 100}%` }} title={`${wins} wins`} />
+            <div className="h-full rounded-full bg-success" style={{ width: `${(wins / total) * 100}%` }} title={`${wins} wins`} />
           ) : null}
           {losses > 0 ? (
-            <div className="h-full rounded-full bg-red-500" style={{ width: `${(losses / total) * 100}%` }} title={`${losses} losses`} />
+            <div className="h-full rounded-full bg-destructive" style={{ width: `${(losses / total) * 100}%` }} title={`${losses} losses`} />
           ) : null}
           {draws > 0 ? (
             <div

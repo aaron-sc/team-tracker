@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ShieldCheck, CheckCircle2, ArrowRight } from "lucide-react";
+import { CheckCircle2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/brand/logo";
 import { Breadcrumbs } from "@/components/marketing/breadcrumbs";
 
 export const metadata: Metadata = {
@@ -15,9 +16,8 @@ export default function ContactThankYouPage() {
     <div className="flex flex-1 flex-col">
       <header className="border-b">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
-            <ShieldCheck className="size-6 text-primary" />
-            Formation
+          <Link href="/" className="text-lg font-semibold">
+            <Logo />
           </Link>
         </div>
       </header>
