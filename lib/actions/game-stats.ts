@@ -5,10 +5,13 @@ import { prisma } from "@/lib/db/prisma";
 import { requireMembership } from "@/lib/auth/authorize";
 import { getLeagueRank } from "@/lib/integrations/riot";
 import { getSteamProfile } from "@/lib/integrations/steam";
+import { getValorantStats } from "@/lib/integrations/henrikdev";
+import { checkRateLimit } from "@/lib/utils/rate-limit";
 import type { ActionState } from "@/lib/actions/types";
 
 const RIOT_GAMES = new Set(["League of Legends"]);
 const STEAM_GAMES = new Set(["Counter-Strike 2", "Dota 2"]);
+const VALORANT_GAMES = new Set(["Valorant"]);
 
 /** Fetches fresh stats for one roster slot from whichever provider matches the team's game, and
  *  caches the result (TeamMembership.gameStatsCache) — fetched on demand rather than kept live,
@@ -41,6 +44,19 @@ export async function syncPlayerGameStatsAction(
       await prisma.teamMembership.update({
         where: { id: teamMembershipId },
         data: { gameStatsCache: { provider: "steam", ...profile }, gameStatsUpdatedAt: new Date() },
+      });
+    } else if (VALORANT_GAMES.has(entry.team.game)) {
+      if (!process.env.HENRIKDEV_API_KEY) return { error: "Valorant API isn't configured for this deployment." };
+      // HenrikDev's Basic tier is a shared 30 req/min across this whole deployment (each sync
+      // costs two calls) — a per-org limiter here keeps one org's syncing from starving everyone
+      // else's, on top of the API's own 429 if the shared budget is actually exhausted.
+      const allowed = await checkRateLimit(`valorant_sync:${orgId}`, 10, 60 * 1000);
+      if (!allowed) return { error: "Too many Valorant syncs right now — try again in a minute." };
+      const stats = await getValorantStats(entry.inGameName);
+      if (!stats) return { error: `No Valorant account found for "${entry.inGameName}".` };
+      await prisma.teamMembership.update({
+        where: { id: teamMembershipId },
+        data: { gameStatsCache: { provider: "valorant", ...stats }, gameStatsUpdatedAt: new Date() },
       });
     } else {
       return { error: `Stats sync isn't available for ${entry.team.game} yet.` };

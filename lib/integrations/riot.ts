@@ -8,8 +8,8 @@ import "server-only";
 //
 // NOTE: this has not been exercised against a live RIOT_API_KEY — verify it once one is
 // configured. Also note Riot's official API does not expose ranked data for VALORANT to
-// personal/development keys in practice, so this only covers League of Legends for now; the
-// existing tracker-link fields remain the way to surface Valorant stats.
+// personal/development keys in practice, so this only covers League of Legends — see
+// lib/integrations/henrikdev.ts (an unofficial third-party API) for Valorant's real stats sync.
 
 const ACCOUNT_ROUTE = "americas";
 

@@ -8,7 +8,8 @@ import { RefreshCw, Loader2, Gamepad2 } from "lucide-react";
 
 type RiotStats = { provider: "riot"; tier: string; rank: string; leaguePoints: number; wins: number; losses: number };
 type SteamStats = { provider: "steam"; personaName: string; status: string; profileUrl: string };
-type GameStats = RiotStats | SteamStats;
+type ValorantStats = { provider: "valorant"; tier: string; rr: number; accountLevel: number; peakTier: string | null };
+type GameStats = RiotStats | SteamStats | ValorantStats;
 
 export function GameStatsPanel({
   orgSlug,
@@ -44,6 +45,12 @@ export function GameStatsPanel({
           <Gamepad2 className="size-3" />
           {stats.personaName} · {stats.status}
         </a>
+      ) : stats?.provider === "valorant" ? (
+        <span className="flex items-center gap-1 text-muted-foreground">
+          <Gamepad2 className="size-3" />
+          {stats.tier} {stats.tier !== "Unrated" ? `· ${stats.rr} RR ` : ""}· Level {stats.accountLevel}
+          {stats.peakTier ? ` · Peak ${stats.peakTier}` : ""}
+        </span>
       ) : null}
       <Button
         type="button"
