@@ -35,11 +35,26 @@ services:
       - caddy-data:/data
       - caddy-config:/config
     networks:
-      - default
-      # Vault (a separate app/repo/container on this VM) has no Caddy of its own — this joins
-      # its compose project's external network so this Caddy can reach "vault-app" by name.
-      # Create once with: docker network create esports-tools-shared
-      - esports-tools-shared
+      default: {}
+      # Vault/hub (separate apps/repos/containers on this VM) have no Caddy of their own — this
+      # joins their compose projects' external network so this Caddy can reach "vault-app"/
+      # "hub-app" by name. Create once with: docker network create esports-tools-shared
+      #
+      # The aliases below make this Caddy ALSO answer to its own public hostnames on this network
+      # — so when Vault's or hub's container looks up formation.esports-tools.com (for the
+      # server-to-server leg of the OIDC dance), Docker's embedded DNS resolves it to this
+      # container instead of doing a real lookup out to Cloudflare. Caddy then reverse-proxies it
+      # to "app" exactly as it does for real browser traffic, presenting the same real cert, so
+      # TLS validation on the caller's end still succeeds — the request just never leaves the VM,
+      # which is what actually matters: Cloudflare's bot protection was blocking these
+      # machine-to-machine calls (a JS challenge a non-browser can never solve). See the OIDC
+      # broker plan for why this route was chosen over pointing those calls at "app:3300" directly
+      # (that would drop TLS, which is the only thing actually authenticating the token issuer in
+      # this Auth.js version — jwks-based signature verification isn't performed for this flow).
+      esports-tools-shared:
+        aliases:
+          - formation.esports-tools.com
+          - esports-tools.com
     depends_on:
       - app
 
