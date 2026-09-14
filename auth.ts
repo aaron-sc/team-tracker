@@ -17,7 +17,7 @@ function clientInfo(request?: Request) {
   return { ip, userAgent };
 }
 
-async function recordLoginEvent(userId: string, request?: Request) {
+export async function recordLoginEvent(userId: string, request?: Request) {
   const { ip, userAgent } = clientInfo(request);
   await prisma.loginEvent.create({ data: { userId, ip, userAgent } });
 }

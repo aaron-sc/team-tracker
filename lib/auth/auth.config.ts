@@ -45,6 +45,10 @@ export const authConfig = {
         // on this proxy gate, the same way /api/v1's bearer-token auth already works above.
         pathname.startsWith("/oauth") ||
         pathname.startsWith("/.well-known") ||
+        // Server-to-server only (see app/api/internal/*, lib/auth/internal-api.ts) — the hub
+        // calls these directly to check a user's Formation credentials without the browser ever
+        // loading a Formation page. Guarded by its own bearer-secret check, not a session.
+        pathname.startsWith("/api/internal") ||
         pathname === "/robots.txt" ||
         pathname === "/sitemap.xml";
       return isPublic || isLoggedIn;

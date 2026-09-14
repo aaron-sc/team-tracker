@@ -74,10 +74,12 @@ export async function verifySecondFactor(userId: string, rawCode: string): Promi
   const trimmed = rawCode.trim();
   if (await verifyTotpCode(decryptTotpSecret(user.totpSecret), trimmed)) return true;
 
-  const recoveryCode = await prisma.recoveryCode.findUnique({ where: { codeHash: hashRecoveryCode(trimmed) } });
-  if (recoveryCode && recoveryCode.userId === userId && !recoveryCode.usedAt) {
-    await prisma.recoveryCode.update({ where: { id: recoveryCode.id }, data: { usedAt: new Date() } });
-    return true;
-  }
-  return false;
+  // A single conditional update, not a read-then-write — two concurrent requests with the same
+  // recovery code must not both be able to consume it (the old find-then-update here had exactly
+  // that TOCTOU race).
+  const result = await prisma.recoveryCode.updateMany({
+    where: { codeHash: hashRecoveryCode(trimmed), userId, usedAt: null },
+    data: { usedAt: new Date() },
+  });
+  return result.count === 1;
 }

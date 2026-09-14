@@ -20,7 +20,7 @@ export function createPending2faToken(userId: string): string {
 export function verifyPending2faToken(token: string): { userId: string } | null {
   const [payloadB64, sig] = token.split(".");
   if (!payloadB64 || !sig) return null;
-  if (sign(payloadB64) !== sig) return null;
+  if (!signaturesMatch(sign(payloadB64), sig)) return null;
 
   try {
     const { userId, exp } = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
@@ -34,4 +34,14 @@ export function verifyPending2faToken(token: string): { userId: string } | null 
 function sign(payloadB64: string): string {
   const secret = process.env.AUTH_SECRET ?? "";
   return crypto.createHmac("sha256", secret).update(payloadB64).digest("base64url");
+}
+
+/** Constant-time comparison — a plain `!==` here would leak timing information about a valid
+ *  signature to an attacker probing this token cross an app boundary (see esports-hub's
+ *  lib/auth/login-proof.ts, which hands a similar token across that exact boundary). */
+function signaturesMatch(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
 }
