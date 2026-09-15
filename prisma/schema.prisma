@@ -280,6 +280,10 @@ model User {
   // muted — null/absent means nothing is muted. Json rather than a native array since this
   // schema deliberately avoids SQLite-only array columns.
   mutedNotificationTypes Json?
+  // JSON array of navbar item keys (see lib/constants/nav-items.ts) this user has personally
+  // hidden from their own top nav — null/absent means everything is shown. Same Json-not-array
+  // reasoning as mutedNotificationTypes above.
+  hiddenNavItems Json?
   emailVerifiedAt DateTime?
   // AES-256-GCM ciphertext (base64url, iv+authTag+data packed together — see
   // lib/auth/totp.ts) of the TOTP secret, never stored in plaintext: unlike a bcrypt password

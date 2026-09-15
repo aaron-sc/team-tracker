@@ -29,6 +29,7 @@ import {
 } from "@/lib/validations/auth";
 import { createNotification } from "@/lib/notifications/create";
 import { NOTIFICATION_TYPE_LABELS } from "@/lib/constants/notification-types";
+import { NAV_ITEM_LABELS } from "@/lib/constants/nav-items";
 import { MAX_USER_INVITES } from "@/lib/constants/invites";
 import { sendVerificationEmail } from "@/lib/actions/email-verification";
 import { saveUploadedImage, deleteUploadedFile, UploadError } from "@/lib/storage/local";
@@ -722,6 +723,31 @@ export async function updateNotificationPreferencesAction(
   });
 
   return { success: "Notification preferences saved." };
+}
+
+export type UpdateNavItemsState = { error?: string; success?: string } | undefined;
+
+export async function updateHiddenNavItemsAction(
+  _prev: UpdateNavItemsState,
+  formData: FormData,
+): Promise<UpdateNavItemsState> {
+  const session = await auth();
+  if (!session?.user) {
+    return { error: "You must be logged in." };
+  }
+
+  // Same "checkboxes submit what's still shown" inversion as notification preferences above — an
+  // item introduced after a user last saved defaults to shown, not silently hidden.
+  const shown = new Set(formData.getAll("shown").filter((v): v is string => typeof v === "string"));
+  const hidden = Object.keys(NAV_ITEM_LABELS).filter((key) => !shown.has(key));
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { hiddenNavItems: hidden.length > 0 ? hidden : Prisma.JsonNull },
+  });
+
+  revalidatePath("/[orgSlug]", "layout");
+  return { success: "Navbar updated." };
 }
 
 export type UpdateProfileDetailsState = { error?: string; success?: string } | undefined;

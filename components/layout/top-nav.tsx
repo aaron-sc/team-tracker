@@ -13,7 +13,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronsUpDown, LogOut, Check, UserCog, Compass, Plus, Sparkles, BookOpen, Bot } from "lucide-react";
+import { ChevronsUpDown, LogOut, Check, UserCog, Compass, Plus, Sparkles, BookOpen, Bot, SlidersHorizontal } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { logoutAction } from "@/lib/actions/auth";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -26,6 +26,7 @@ import { startProductTour } from "@/components/onboarding/product-tour";
 import { openWhatsNew } from "@/components/layout/whats-new-dialog";
 import { FeatureRequestDialog } from "@/components/layout/feature-request-dialog";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { NavbarCustomizeDialog } from "@/components/layout/navbar-customize-dialog";
 import { Permission } from "@/lib/generated/prisma/enums";
 
 type OrgOption = { orgId: string; orgSlug: string; orgName: string; orgLogoUrl: string | null; roleName: string };
@@ -53,6 +54,7 @@ export function TopNav({
   orgOptions,
   initialNotifications,
   initialUnreadCount,
+  hiddenNavItems,
 }: {
   orgName: string;
   orgSlug: string;
@@ -67,6 +69,9 @@ export function TopNav({
   orgOptions: OrgOption[];
   initialNotifications: NotificationItem[];
   initialUnreadCount: number;
+  /** Navbar icon keys (see lib/constants/nav-items.ts) this specific user has personally hidden
+   *  from their own top nav — see NavbarCustomizeDialog. */
+  hiddenNavItems: string[];
 }) {
   const initials = userName
     .split(" ")
@@ -75,6 +80,8 @@ export function TopNav({
     .join("")
     .toUpperCase();
   const [createOrgOpen, setCreateOrgOpen] = useState(false);
+  const [navCustomizeOpen, setNavCustomizeOpen] = useState(false);
+  const isShown = (key: string) => !hiddenNavItems.includes(key);
 
   return (
     <header
@@ -154,40 +161,49 @@ export function TopNav({
         <span className="min-w-0 truncate text-sm font-medium sm:hidden">{orgName}</span>
       </div>
       <CreateOrgDialog open={createOrgOpen} onOpenChange={setCreateOrgOpen} />
+      <NavbarCustomizeDialog hiddenItems={hiddenNavItems} open={navCustomizeOpen} onOpenChange={setNavCustomizeOpen} />
 
       <div className="flex items-center gap-3">
         <KeyboardNav orgSlug={orgSlug} />
-        <span data-tour="search" className="contents">
-          <CommandPalette orgId={orgId} />
-        </span>
-        <FeatureRequestDialog orgName={orgName} />
-        <Badge variant="secondary" className="hidden sm:inline-flex">
-          {roleName}
-        </Badge>
-        <span data-tour="notifications" className="contents">
-          <NotificationBell orgId={orgId} initialNotifications={initialNotifications} initialUnreadCount={initialUnreadCount} />
-        </span>
-        <KeyboardShortcutsDialog />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" title="Discord">
-              <Bot className="size-4.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Discord</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/account#connect-discord">Connect your Discord account</Link>
-            </DropdownMenuItem>
-            {permissions.includes(Permission.org_settings_manage) ? (
+        {isShown("search") ? (
+          <span data-tour="search" className="contents">
+            <CommandPalette orgId={orgId} />
+          </span>
+        ) : null}
+        {isShown("featureRequest") ? <FeatureRequestDialog orgName={orgName} /> : null}
+        {isShown("roleBadge") ? (
+          <Badge variant="secondary" className="hidden sm:inline-flex">
+            {roleName}
+          </Badge>
+        ) : null}
+        {isShown("notifications") ? (
+          <span data-tour="notifications" className="contents">
+            <NotificationBell orgId={orgId} initialNotifications={initialNotifications} initialUnreadCount={initialUnreadCount} />
+          </span>
+        ) : null}
+        {isShown("shortcuts") ? <KeyboardShortcutsDialog /> : null}
+        {isShown("discord") ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" title="Discord">
+                <Bot className="size-4.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Discord</DropdownMenuLabel>
+              <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href={`/${orgSlug}/settings/integrations`}>Connect this server&apos;s Discord bot</Link>
+                <Link href="/account#connect-discord">Connect your Discord account</Link>
               </DropdownMenuItem>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <ThemeToggle />
+              {permissions.includes(Permission.org_settings_manage) ? (
+                <DropdownMenuItem asChild>
+                  <Link href={`/${orgSlug}/settings/integrations`}>Connect this server&apos;s Discord bot</Link>
+                </DropdownMenuItem>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+        {isShown("themeToggle") ? <ThemeToggle /> : null}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full" data-tour="user-menu">
@@ -231,6 +247,15 @@ export function TopNav({
                 <BookOpen className="size-4" />
                 User guide
               </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                setNavCustomizeOpen(true);
+              }}
+            >
+              <SlidersHorizontal className="size-4" />
+              Customize navbar
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <form action={logoutAction} className="w-full">

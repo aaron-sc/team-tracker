@@ -17,14 +17,16 @@ export default async function OrgLayout({
   const { orgSlug } = await params;
   const { session, membership, org } = await getOrgContext(orgSlug);
 
-  const [notifications, unreadCount] = await Promise.all([
+  const [notifications, unreadCount, userNavPrefs] = await Promise.all([
     prisma.notification.findMany({
       where: { membershipId: membership.membershipId },
       orderBy: { createdAt: "desc" },
       take: 15,
     }),
     prisma.notification.count({ where: { membershipId: membership.membershipId, isRead: false } }),
+    prisma.user.findUnique({ where: { id: session.user.id }, select: { hiddenNavItems: true } }),
   ]);
+  const hiddenNavItems = Array.isArray(userNavPrefs?.hiddenNavItems) ? (userNavPrefs.hiddenNavItems as string[]) : [];
 
   const accentStyle = {
     "--primary": org.themeColor,
@@ -68,6 +70,7 @@ export default async function OrgLayout({
             createdAt: n.createdAt.toISOString(),
           }))}
           initialUnreadCount={unreadCount}
+          hiddenNavItems={hiddenNavItems}
         />
       </div>
       <div className="flex flex-1">
