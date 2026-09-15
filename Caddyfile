@@ -20,3 +20,10 @@ www.{$APEX_DOMAIN} {
 {$VAULT_DOMAIN} {
 	reverse_proxy vault-app:3400
 }
+
+# The personal admin console (see esports-hub's app/admin/*) — same container as the bare apex
+# domain above, just a second hostname answering it. The hub's own /admin/layout.tsx is what
+# actually restricts this to one person; there's nothing subdomain-specific happening here.
+{$ADMIN_DOMAIN} {
+	reverse_proxy hub-app:3500
+}

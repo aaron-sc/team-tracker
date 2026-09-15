@@ -42,6 +42,7 @@ services:
       - DOMAIN=${DOMAIN}
       - APEX_DOMAIN=${APEX_DOMAIN}
       - VAULT_DOMAIN=${VAULT_DOMAIN}
+      - ADMIN_DOMAIN=${ADMIN_DOMAIN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
