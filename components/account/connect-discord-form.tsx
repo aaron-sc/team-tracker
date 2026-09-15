@@ -1,15 +1,20 @@
 "use client";
 
 import { useActionState, useTransition } from "react";
-import { redeemDiscordLinkCodeAction, disconnectDiscordAction } from "@/lib/actions/discord-bot";
+import {
+  redeemDiscordLinkCodeAction,
+  disconnectDiscordAction,
+  testDiscordAccountConnectionAction,
+} from "@/lib/actions/discord-bot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot } from "lucide-react";
+import { Bot, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export function ConnectDiscordForm({ discordUserId, discordHandle }: { discordUserId: string | null; discordHandle: string | null }) {
   const [state, formAction, pending] = useActionState(redeemDiscordLinkCodeAction, undefined);
   const [disconnectPending, startDisconnect] = useTransition();
+  const [testPending, startTest] = useTransition();
 
   if (discordUserId) {
     return (
@@ -18,20 +23,38 @@ export function ConnectDiscordForm({ discordUserId, discordHandle }: { discordUs
           <Bot className="size-4 text-muted-foreground" />
           Connected as <span className="font-medium">{discordHandle}</span>
         </p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disconnectPending}
-          onClick={() =>
-            startDisconnect(async () => {
-              await disconnectDiscordAction();
-              toast.success("Disconnected.");
-            })
-          }
-        >
-          Disconnect
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={testPending}
+            onClick={() =>
+              startTest(async () => {
+                const result = await testDiscordAccountConnectionAction();
+                if (result?.error) toast.error(result.error);
+                else toast.success(result?.success ?? "Sent.");
+              })
+            }
+          >
+            <Send className="size-4" />
+            Send test DM
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={disconnectPending}
+            onClick={() =>
+              startDisconnect(async () => {
+                await disconnectDiscordAction();
+                toast.success("Disconnected.");
+              })
+            }
+          >
+            Disconnect
+          </Button>
+        </div>
       </div>
     );
   }

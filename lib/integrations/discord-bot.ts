@@ -638,6 +638,25 @@ export function isDiscordBotConnected(): boolean {
   return !!client?.isReady();
 }
 
+/** DMs a one-off test message to confirm the bot is connected and can actually reach this
+ *  person — backs the "test" buttons on both the personal (Account) and org-level (Settings →
+ *  Integrations) Discord connection panels. Unlike dmReminderToRoster, this always attempts the
+ *  send regardless of discordDmReminders, since the whole point is a connectivity check. */
+export async function sendTestDm(discordUserId: string, message: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!client?.isReady()) return { ok: false, error: "The Discord bot isn't connected right now." };
+  try {
+    const discordUser = await client.users.fetch(discordUserId);
+    await discordUser.send(message);
+    return { ok: true };
+  } catch (err) {
+    console.error("[discord-bot] Test DM failed:", err);
+    return {
+      ok: false,
+      error: "Couldn't send a DM — check that you allow direct messages from server members, and that you share a server with the bot.",
+    };
+  }
+}
+
 /** Lists text channels in a guild (for the reminder-channel picker) — empty if the bot can't see it. */
 export async function listGuildTextChannels(guildId: string): Promise<{ id: string; name: string }[]> {
   if (!client?.isReady()) return [];

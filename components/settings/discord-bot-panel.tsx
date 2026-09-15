@@ -1,10 +1,14 @@
 "use client";
 
 import { useActionState, useTransition } from "react";
-import { redeemDiscordGuildLinkCodeAction, disconnectDiscordGuildAction } from "@/lib/actions/discord-bot";
+import {
+  redeemDiscordGuildLinkCodeAction,
+  disconnectDiscordGuildAction,
+  testDiscordBotConnectionAction,
+} from "@/lib/actions/discord-bot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, ExternalLink } from "lucide-react";
+import { Bot, ExternalLink, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export function DiscordBotPanel({
@@ -21,6 +25,7 @@ export function DiscordBotPanel({
   const redeemAction = redeemDiscordGuildLinkCodeAction.bind(null, orgSlug, orgId);
   const [state, formAction, pending] = useActionState(redeemAction, undefined);
   const [disconnectPending, startDisconnect] = useTransition();
+  const [testPending, startTest] = useTransition();
 
   if (!inviteUrl) {
     return (
@@ -39,21 +44,39 @@ export function DiscordBotPanel({
           Connected — <code className="text-xs text-muted-foreground">/available</code> and{" "}
           <code className="text-xs text-muted-foreground">/link</code> are live in your server.
         </p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disconnectPending}
-          onClick={() => {
-            if (!confirm("Disconnect the Discord bot from this org? Slash commands will stop working there.")) return;
-            startDisconnect(async () => {
-              await disconnectDiscordGuildAction(orgSlug, orgId);
-              toast.success("Disconnected.");
-            });
-          }}
-        >
-          Disconnect
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={testPending}
+            onClick={() =>
+              startTest(async () => {
+                const result = await testDiscordBotConnectionAction(orgId);
+                if (result?.error) toast.error(result.error);
+                else toast.success(result?.success ?? "Sent.");
+              })
+            }
+          >
+            <Send className="size-4" />
+            Send test message
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={disconnectPending}
+            onClick={() => {
+              if (!confirm("Disconnect the Discord bot from this org? Slash commands will stop working there.")) return;
+              startDisconnect(async () => {
+                await disconnectDiscordGuildAction(orgSlug, orgId);
+                toast.success("Disconnected.");
+              });
+            }}
+          >
+            Disconnect
+          </Button>
+        </div>
       </div>
     );
   }

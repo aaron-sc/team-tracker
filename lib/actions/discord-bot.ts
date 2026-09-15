@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireSession, requirePermission } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
 import { Permission } from "@/lib/generated/prisma/enums";
-import { listGuildTextChannels, listGuildRoles } from "@/lib/integrations/discord-bot";
+import { listGuildTextChannels, listGuildRoles, sendTestDm } from "@/lib/integrations/discord-bot";
 import type { ActionState } from "@/lib/actions/types";
 
 /** For the reminder-channel / role-sync pickers on a team's edit page — empty arrays if the bot
@@ -61,6 +61,20 @@ export async function disconnectDiscordAction(): Promise<ActionState> {
   return { success: "Discord account disconnected." };
 }
 
+/** Sends a one-off DM to confirm the bot can actually reach this person's own linked account —
+ *  the personal counterpart to testDiscordBotConnectionAction below. */
+export async function testDiscordAccountConnectionAction(): Promise<ActionState> {
+  const session = await requireSession();
+  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (!user?.discordUserId) return { error: "Connect your Discord account first." };
+
+  const result = await sendTestDm(
+    user.discordUserId,
+    "**Formation test message** — your Discord account is linked correctly. If you can read this, everything's working.",
+  );
+  return result.ok ? { success: "Sent — check your Discord DMs." } : { error: result.error };
+}
+
 /** Redeems a /connect code from Discord, attaching that guild to this org. */
 export async function redeemDiscordGuildLinkCodeAction(
   orgSlug: string,
@@ -113,4 +127,27 @@ export async function disconnectDiscordGuildAction(orgSlug: string, orgId: strin
 
   revalidatePath(`/${orgSlug}/settings/integrations`);
   return { success: "Discord bot disconnected." };
+}
+
+/** Sends a one-off DM to the clicking admin to confirm the org's bot connection actually works
+ *  end-to-end — there's no single "default" org channel to post to instead (only teams have one,
+ *  see testTeamDiscordWebhookAction in lib/actions/team-discord.ts), so this DMs the admin
+ *  directly, same as testDiscordAccountConnectionAction above. Requires the admin to have linked
+ *  their own Discord account first. */
+export async function testDiscordBotConnectionAction(orgId: string): Promise<ActionState> {
+  const { session } = await requirePermission(orgId, Permission.org_settings_manage);
+
+  const org = await prisma.organization.findUnique({ where: { id: orgId } });
+  if (!org?.discordGuildId) return { error: "Not connected yet." };
+
+  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (!user?.discordUserId) {
+    return { error: "Link your own Discord account first (Account → Connect Discord), then test again." };
+  }
+
+  const result = await sendTestDm(
+    user.discordUserId,
+    "**Formation test message** — the bot is connected to your org's Discord server. If you can read this, everything's working.",
+  );
+  return result.ok ? { success: "Sent — check your Discord DMs." } : { error: result.error };
 }
