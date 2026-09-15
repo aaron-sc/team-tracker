@@ -28,6 +28,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.callbacks,
     async jwt({ token, user }) {
       if (user?.id) {
+        console.log("[SSO-DEBUG] jwt() initial sign-in, user param", JSON.stringify(user));
         token.userId = user.id;
         // Baked in once, right here, at sign-in — not derived from `iat` (see next-auth.d.ts for
         // why that doesn't work in this fork). Everything after this block only ever compares
@@ -65,6 +66,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         ]);
         session.memberships = memberships;
         session.user.hasVerifiedEmail = !!user?.emailVerifiedAt;
+        console.log(
+          "[SSO-DEBUG] session() computed hasVerifiedEmail",
+          JSON.stringify({ userId: token.userId, found: !!user, emailVerifiedAt: user?.emailVerifiedAt ?? null, hasVerifiedEmail: session.user.hasVerifiedEmail }),
+        );
         session.user.timezone = user?.timezone ?? null;
         session.user.timeFormat = user?.timeFormat === "24h" ? "24h" : "12h";
         if (user?.name) session.user.name = user.name;
@@ -169,7 +174,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       checks: ["pkce", "state", "nonce"],
       authorization: { params: { scope: "openid profile email" } },
       async profile(profile) {
+        console.log("[SSO-DEBUG] esports-tools profile() received", JSON.stringify(profile));
         const user = await prisma.user.findUnique({ where: { id: profile.sub as string } });
+        console.log(
+          "[SSO-DEBUG] esports-tools profile() user lookup",
+          JSON.stringify({ sub: profile.sub, found: !!user, emailVerifiedAt: user?.emailVerifiedAt ?? null }),
+        );
         // Should never happen — the hub only ever issues a `sub` that originated from this app's
         // own User.id in the first place. Throwing (not returning null, which this callback's
         // type doesn't accept) fails the sign-in cleanly if it somehow does.
