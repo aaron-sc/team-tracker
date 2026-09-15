@@ -10,6 +10,7 @@ export const onboardingTaskSchema = z
     url: z.string().trim().url("Enter a valid URL.").max(500).optional().or(z.literal("")),
     body: z.string().trim().max(20000).optional().or(z.literal("")),
     required: z.boolean().default(true),
+    roleId: z.string().trim().optional().or(z.literal("")),
   })
   .refine((data) => data.type !== "LINK" && data.type !== "VIDEO" ? true : !!data.url, {
     message: "A link or video task needs a URL.",

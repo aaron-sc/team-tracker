@@ -31,7 +31,7 @@ export default async function RecruitmentPage({
   const { orgSlug } = await params;
   const { level } = await searchParams;
   const { org, membership } = await getOrgContext(orgSlug);
-  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId);
   requirePagePermission(orgSlug, membership, Permission.recruitment_view);
 
   const canManage = membership.permissions.includes(Permission.recruitment_manage);

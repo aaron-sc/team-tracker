@@ -30,6 +30,7 @@ type Defaults = {
   body?: string;
   required?: boolean;
   fileName?: string | null;
+  roleId?: string | null;
 };
 
 export function TaskFormDialog({
@@ -37,16 +38,19 @@ export function TaskFormDialog({
   orgId,
   taskId,
   defaultValues,
+  roles,
 }: {
   orgSlug: string;
   orgId: string;
   taskId?: string;
   defaultValues?: Defaults;
+  roles: { id: string; name: string }[];
 }) {
   const isEdit = !!taskId;
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<TaskType>(defaultValues?.type ?? "ACKNOWLEDGE");
   const [required, setRequired] = useState(defaultValues?.required ?? true);
+  const [roleId, setRoleId] = useState(defaultValues?.roleId ?? "__all__");
   const [error, setError] = useState<string | undefined>();
   const [pending, startTransition] = useTransition();
 
@@ -161,6 +165,23 @@ export function TaskFormDialog({
               </div>
             </>
           ) : null}
+
+          <div className="space-y-1.5">
+            <Label htmlFor="roleId">Applies to</Label>
+            <Select name="roleId" value={roleId} onValueChange={setRoleId}>
+              <SelectTrigger id="roleId" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Everyone (all roles)</SelectItem>
+                {roles.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.name} only
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="flex items-center gap-2">
             <Checkbox id="required" name="required" checked={required} onCheckedChange={(v) => setRequired(!!v)} />

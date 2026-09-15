@@ -390,6 +390,7 @@ model Role {
   memberships Membership[]
   invites     Invite[]
   teamInviteLinks TeamInviteLink[]
+  onboardingTasks OnboardingTask[]
 
   @@unique([orgId, name])
 }
@@ -1054,6 +1055,11 @@ model OnboardingTask {
   required    Boolean            @default(true)
   order       Int                @default(0)
   active      Boolean            @default(true)
+  // Null = assigned to every role (org-wide). Set = only members holding this role see/must
+  // complete it. SetNull rather than Cascade so deleting a role reverts its tasks to org-wide
+  // instead of silently deleting them.
+  roleId      String?
+  role        Role?              @relation(fields: [roleId], references: [id], onDelete: SetNull)
   createdById String?
   createdBy   Membership?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt   DateTime           @default(now())

@@ -7,12 +7,18 @@ import { prisma } from "@/lib/db/prisma";
  * has any active, required task they haven't completed yet. An org with zero
  * onboarding tasks defined never gates anyone.
  */
-export async function requireOnboardingCompletePage(orgSlug: string, orgId: string, membershipId: string) {
+export async function requireOnboardingCompletePage(
+  orgSlug: string,
+  orgId: string,
+  membershipId: string,
+  roleId: string,
+) {
   const incompleteCount = await prisma.onboardingTask.count({
     where: {
       orgId,
       active: true,
       required: true,
+      OR: [{ roleId: null }, { roleId }],
       completions: { none: { membershipId } },
     },
   });

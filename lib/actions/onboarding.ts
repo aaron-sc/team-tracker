@@ -11,6 +11,7 @@ import { saveUploadedDocument, deleteUploadedFile, copyUploadedFile, UploadError
 import { notifyDiscord, FORMATION_EMBED_COLOR } from "@/lib/integrations/discord";
 
 function parseTaskForm(formData: FormData) {
+  const roleId = formData.get("roleId");
   return onboardingTaskSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description") ?? "",
@@ -18,7 +19,17 @@ function parseTaskForm(formData: FormData) {
     url: formData.get("url") ?? "",
     body: formData.get("body") ?? "",
     required: formData.get("required") === "on",
+    // "__all__" is the form's sentinel for "every role" — Radix's Select can't hold an empty
+    // string as an item value, so it's translated to null (org-wide) here instead.
+    roleId: roleId === "__all__" ? "" : (roleId ?? ""),
   });
+}
+
+async function resolveRoleId(orgId: string, roleId: string | undefined): Promise<{ roleId: string | null } | { error: string }> {
+  if (!roleId) return { roleId: null };
+  const role = await prisma.role.findUnique({ where: { id: roleId }, select: { orgId: true } });
+  if (!role || role.orgId !== orgId) return { error: "Invalid role." };
+  return { roleId };
 }
 
 export async function createOnboardingTaskAction(
@@ -51,6 +62,9 @@ export async function createOnboardingTaskAction(
     return { error: "A signature task needs document text and/or an uploaded file for people to sign." };
   }
 
+  const resolvedRole = await resolveRoleId(orgId, parsed.data.roleId);
+  if ("error" in resolvedRole) return { error: resolvedRole.error };
+
   const maxOrder = await prisma.onboardingTask.aggregate({ where: { orgId }, _max: { order: true } });
 
   const task = await prisma.onboardingTask.create({
@@ -64,6 +78,7 @@ export async function createOnboardingTaskAction(
       fileUrl,
       fileName,
       required: parsed.data.required,
+      roleId: resolvedRole.roleId,
       order: (maxOrder._max.order ?? 0) + 1,
       createdById: membership.membershipId,
     },
@@ -121,6 +136,9 @@ export async function updateOnboardingTaskAction(
     return { error: "A signature task needs document text and/or an uploaded file for people to sign." };
   }
 
+  const resolvedRole = await resolveRoleId(orgId, parsed.data.roleId);
+  if ("error" in resolvedRole) return { error: resolvedRole.error };
+
   await prisma.onboardingTask.update({
     where: { id: taskId },
     data: {
@@ -132,6 +150,7 @@ export async function updateOnboardingTaskAction(
       fileUrl,
       fileName,
       required: parsed.data.required,
+      roleId: resolvedRole.roleId,
     },
   });
 
@@ -216,6 +235,7 @@ export async function completeOnboardingTaskAction(
 
   const task = await prisma.onboardingTask.findUnique({ where: { id: taskId } });
   if (!task || task.orgId !== orgId || !task.active) return { error: "Task not found." };
+  if (task.roleId && task.roleId !== membership.roleId) return { error: "Task not found." };
 
   const parsed = completeTaskSchema.safeParse({ signatureName: formData.get("signatureName") ?? "" });
   if (!parsed.success) {
@@ -244,7 +264,13 @@ export async function completeOnboardingTaskAction(
 
   if (task.required) {
     const stillIncomplete = await prisma.onboardingTask.count({
-      where: { orgId, active: true, required: true, completions: { none: { membershipId: membership.membershipId } } },
+      where: {
+        orgId,
+        active: true,
+        required: true,
+        OR: [{ roleId: null }, { roleId: membership.roleId }],
+        completions: { none: { membershipId: membership.membershipId } },
+      },
     });
     if (stillIncomplete === 0) {
       const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { discordWebhookUrl: true } });

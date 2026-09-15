@@ -15,11 +15,14 @@ export default async function OnboardingSettingsPage({ params }: { params: Promi
   const { org, membership } = await getOrgContext(orgSlug);
   requirePagePermission(orgSlug, membership, Permission.onboarding_manage);
 
-  const tasks = await prisma.onboardingTask.findMany({
-    where: { orgId: org.id },
-    include: { _count: { select: { completions: true } } },
-    orderBy: { order: "asc" },
-  });
+  const [tasks, roles] = await Promise.all([
+    prisma.onboardingTask.findMany({
+      where: { orgId: org.id },
+      include: { _count: { select: { completions: true } }, role: { select: { id: true, name: true } } },
+      orderBy: { order: "asc" },
+    }),
+    prisma.role.findMany({ where: { orgId: org.id }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+  ]);
 
   return (
     <div className="max-w-2xl">
@@ -37,7 +40,7 @@ export default async function OnboardingSettingsPage({ params }: { params: Promi
               View records
             </Link>
           </Button>
-          <TaskFormDialog orgSlug={orgSlug} orgId={org.id} />
+          <TaskFormDialog orgSlug={orgSlug} orgId={org.id} roles={roles} />
         </div>
       </div>
 
@@ -54,6 +57,7 @@ export default async function OnboardingSettingsPage({ params }: { params: Promi
               key={task.id}
               orgSlug={orgSlug}
               orgId={org.id}
+              roles={roles}
               task={{
                 id: task.id,
                 title: task.title,
@@ -66,6 +70,8 @@ export default async function OnboardingSettingsPage({ params }: { params: Promi
                 required: task.required,
                 active: task.active,
                 completionCount: task._count.completions,
+                roleId: task.roleId,
+                roleName: task.role?.name ?? null,
               }}
             />
           ))}

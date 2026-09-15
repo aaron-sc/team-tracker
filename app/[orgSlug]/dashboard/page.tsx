@@ -71,7 +71,7 @@ const STAGE_LABELS: Record<string, string> = {
 export default async function DashboardPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { session, org, membership, teams } = await getOrgContext(orgSlug);
-  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId);
   const viewerTz = session.user.timezone ?? org.timezone;
   const viewerHour12 = session.user.timeFormat !== "24h";
 

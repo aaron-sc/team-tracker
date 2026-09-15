@@ -20,7 +20,7 @@ function initials(name: string) {
 export default async function MessagesPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { org, membership } = await getOrgContext(orgSlug);
-  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId);
   const canViewEmails = membership.permissions.includes(Permission.org_members_contact_view);
 
   const [conversations, members] = await Promise.all([

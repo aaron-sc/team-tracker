@@ -24,7 +24,7 @@ const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export default async function AvailabilityPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { session, org, membership } = await getOrgContext(orgSlug);
-  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId);
   const myTimezone = session.user.timezone ?? org.timezone;
   const viewerHour12 = session.user.timeFormat !== "24h";
 

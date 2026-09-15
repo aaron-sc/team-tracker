@@ -21,11 +21,23 @@ type Task = {
   required: boolean;
   active: boolean;
   completionCount: number;
+  roleId: string | null;
+  roleName: string | null;
 };
 
 const TYPE_ICON = { ACKNOWLEDGE: ClipboardCheck, DOCUMENT: FileText, LINK: Link2, VIDEO: Video, SIGNATURE: PenLine };
 
-export function TaskRow({ orgSlug, orgId, task }: { orgSlug: string; orgId: string; task: Task }) {
+export function TaskRow({
+  orgSlug,
+  orgId,
+  task,
+  roles,
+}: {
+  orgSlug: string;
+  orgId: string;
+  task: Task;
+  roles: { id: string; name: string }[];
+}) {
   const [pending, startTransition] = useTransition();
   const Icon = TYPE_ICON[task.type];
 
@@ -39,6 +51,7 @@ export function TaskRow({ orgSlug, orgId, task }: { orgSlug: string; orgId: stri
               {task.title}
               {task.required ? <Badge variant="secondary">Required</Badge> : <Badge variant="outline">Optional</Badge>}
               {!task.active ? <Badge variant="outline">Inactive</Badge> : null}
+              <Badge variant="outline">{task.roleName ?? "All roles"}</Badge>
             </p>
             <p className="flex items-center gap-2 text-xs text-muted-foreground">
               <span>{task.completionCount} completed</span>
@@ -72,6 +85,7 @@ export function TaskRow({ orgSlug, orgId, task }: { orgSlug: string; orgId: stri
             orgSlug={orgSlug}
             orgId={orgId}
             taskId={task.id}
+            roles={roles}
             defaultValues={{
               title: task.title,
               description: task.description ?? "",
@@ -80,6 +94,7 @@ export function TaskRow({ orgSlug, orgId, task }: { orgSlug: string; orgId: stri
               body: task.body ?? "",
               required: task.required,
               fileName: task.fileName,
+              roleId: task.roleId,
             }}
           />
           <Button
