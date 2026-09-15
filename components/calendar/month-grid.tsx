@@ -1,7 +1,7 @@
 import { eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth, startOfMonth, startOfWeek } from "date-fns";
 import { cn } from "@/lib/utils";
 import { EventChip } from "@/components/calendar/event-chip";
-import { isSameDayInTz } from "@/lib/utils/format-time";
+import { isInstantOnCalendarDay } from "@/lib/utils/format-time";
 import type { CalendarEvent } from "@/lib/calendar/types";
 
 const MAX_VISIBLE = 3;
@@ -35,7 +35,7 @@ export function MonthGrid({
       <div className="grid grid-cols-7">
         {days.map((day) => {
           const dayEvents = events
-            .filter((e) => isSameDayInTz(e.start, day, timeZone))
+            .filter((e) => isInstantOnCalendarDay(e.start, day, timeZone))
             .sort((a, b) => a.start.getTime() - b.start.getTime());
           const visible = dayEvents.slice(0, MAX_VISIBLE);
           const overflow = dayEvents.length - visible.length;
@@ -51,7 +51,7 @@ export function MonthGrid({
               <div
                 className={cn(
                   "text-xs",
-                  isSameDayInTz(day, today, timeZone) && "flex size-5 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground",
+                  isInstantOnCalendarDay(today, day, timeZone) && "flex size-5 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground",
                 )}
               >
                 {format(day, "d")}

@@ -1,7 +1,7 @@
 import { eachDayOfInterval, endOfWeek, format, startOfWeek } from "date-fns";
 import { cn } from "@/lib/utils";
 import { EventChip } from "@/components/calendar/event-chip";
-import { isSameDayInTz } from "@/lib/utils/format-time";
+import { isInstantOnCalendarDay } from "@/lib/utils/format-time";
 import type { CalendarEvent } from "@/lib/calendar/types";
 
 export function WeekAgenda({
@@ -22,7 +22,7 @@ export function WeekAgenda({
     <div className="grid gap-3 sm:grid-cols-7">
       {days.map((day) => {
         const dayEvents = events
-          .filter((e) => isSameDayInTz(e.start, day, timeZone))
+          .filter((e) => isInstantOnCalendarDay(e.start, day, timeZone))
           .sort((a, b) => a.start.getTime() - b.start.getTime());
 
         return (
@@ -30,7 +30,7 @@ export function WeekAgenda({
             <div
               className={cn(
                 "mb-2 text-sm font-medium",
-                isSameDayInTz(day, today, timeZone) && "text-primary",
+                isInstantOnCalendarDay(today, day, timeZone) && "text-primary",
               )}
             >
               {format(day, "EEE d")}

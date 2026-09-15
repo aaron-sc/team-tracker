@@ -94,9 +94,26 @@ export function formatWallClockTime(time: string, hour12 = true): string {
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
-/** Timezone-aware replacement for date-fns `isSameDay` — compares calendar day within a given zone. */
-export function isSameDayInTz(a: Date, b: Date, timeZone: string): boolean {
-  const za = toZonedTime(a, timeZone);
-  const zb = toZonedTime(b, timeZone);
-  return za.getFullYear() === zb.getFullYear() && za.getMonth() === zb.getMonth() && za.getDate() === zb.getDate();
+/**
+ * Whether the real-world instant `instant` (e.g. a match's scheduledAt, or "now") falls on
+ * `calendarDay` once projected into `timeZone` — for placing events on a month/week grid built by
+ * date-fns' `eachDayOfInterval`. Only `instant` gets zoned; `calendarDay` is NOT a real instant (it
+ * carries no meaningful absolute-time value of its own — eachDayOfInterval builds each one at
+ * server-local midnight) and is compared using its own already-local Y/M/D, the same values
+ * `format(calendarDay, ...)` renders as the cell's visible label.
+ *
+ * Zoning `calendarDay` too (as an earlier version of this helper did, calling it on both sides)
+ * is a real bug, not just imprecise: server-local midnight for "the 15th" re-zoned through any
+ * timeZone behind UTC (all of the continental US) rolls back to the evening of the 14th, so every
+ * event whose own instant genuinely zones to "the 15th" fails to match the cell labeled 15 and
+ * instead matches the cell labeled 16 — every event silently renders one day later than it
+ * actually happens, for every US-timezone viewer.
+ */
+export function isInstantOnCalendarDay(instant: Date, calendarDay: Date, timeZone: string): boolean {
+  const zoned = toZonedTime(instant, timeZone);
+  return (
+    zoned.getFullYear() === calendarDay.getFullYear() &&
+    zoned.getMonth() === calendarDay.getMonth() &&
+    zoned.getDate() === calendarDay.getDate()
+  );
 }
