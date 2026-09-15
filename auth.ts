@@ -26,14 +26,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   callbacks: {
     ...authConfig.callbacks,
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user?.id) {
-        console.log("[SSO-DEBUG] jwt() initial sign-in, user param", JSON.stringify(user));
-        token.userId = user.id;
+        // This fork's OAuth/OIDC callback handler (getUserAndAccount in @auth/core's oauth/
+        // callback.ts) intentionally discards whatever `id` a provider's profile() callback
+        // returns and replaces it with a fresh crypto.randomUUID() — it expects a database
+        // Adapter to resolve the real user via account.providerAccountId (which DOES preserve
+        // the real id: for "esports-tools" that's Formation's own real User.id, since profile()
+        // returns it as `id`). This app has no Adapter, so `user.id` alone would be a random,
+        // unbacked UUID for every esports-tools sign-in. account.providerAccountId is the real
+        // id in all three providers here — for "credentials"/"totp" Auth.js sets it to the exact
+        // same value authorize() returned as `user.id` (see @auth/core's credentials callback),
+        // so preferring it is a no-op for those and the actual fix for "esports-tools".
+        const realUserId = account?.providerAccountId ?? user.id;
+        token.userId = realUserId;
         // Baked in once, right here, at sign-in — not derived from `iat` (see next-auth.d.ts for
         // why that doesn't work in this fork). Everything after this block only ever compares
         // against this stored value, never re-stamps it.
-        const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { sessionsValidFrom: true } });
+        const dbUser = await prisma.user.findUnique({ where: { id: realUserId }, select: { sessionsValidFrom: true } });
         token.sessionEpoch = dbUser?.sessionsValidFrom?.getTime() ?? 0;
         return token;
       }
@@ -66,10 +76,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         ]);
         session.memberships = memberships;
         session.user.hasVerifiedEmail = !!user?.emailVerifiedAt;
-        console.log(
-          "[SSO-DEBUG] session() computed hasVerifiedEmail",
-          JSON.stringify({ userId: token.userId, found: !!user, emailVerifiedAt: user?.emailVerifiedAt ?? null, hasVerifiedEmail: session.user.hasVerifiedEmail }),
-        );
         session.user.timezone = user?.timezone ?? null;
         session.user.timeFormat = user?.timeFormat === "24h" ? "24h" : "12h";
         if (user?.name) session.user.name = user.name;
@@ -174,12 +180,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       checks: ["pkce", "state", "nonce"],
       authorization: { params: { scope: "openid profile email" } },
       async profile(profile) {
-        console.log("[SSO-DEBUG] esports-tools profile() received", JSON.stringify(profile));
         const user = await prisma.user.findUnique({ where: { id: profile.sub as string } });
-        console.log(
-          "[SSO-DEBUG] esports-tools profile() user lookup",
-          JSON.stringify({ sub: profile.sub, found: !!user, emailVerifiedAt: user?.emailVerifiedAt ?? null }),
-        );
         // Should never happen — the hub only ever issues a `sub` that originated from this app's
         // own User.id in the first place. Throwing (not returning null, which this callback's
         // type doesn't accept) fails the sign-in cleanly if it somehow does.
