@@ -199,7 +199,7 @@ export function TopNav({
                 Account &amp; password
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => startProductTour()}>
+            <DropdownMenuItem onClick={() => startProductTour(roleName)}>
               <Compass className="size-4" />
               Take a tour
             </DropdownMenuItem>

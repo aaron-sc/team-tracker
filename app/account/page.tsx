@@ -148,7 +148,7 @@ export default async function AccountPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card id="connect-discord" className="scroll-mt-6">
           <CardHeader>
             <CardTitle className="text-base">Connect Discord</CardTitle>
           </CardHeader>

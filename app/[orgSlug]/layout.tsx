@@ -37,7 +37,7 @@ export default async function OrgLayout({
 
   return (
     <div className="flex min-h-screen flex-1 flex-col" style={accentStyle}>
-      <ProductTourAutoStart />
+      <ProductTourAutoStart roleName={membership.roleName} />
       <WhatsNewDialog />
       <div className="no-print contents">
         <TopNav
