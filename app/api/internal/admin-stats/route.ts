@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { verifyInternalApiSecret } from "@/lib/auth/internal-api";
 import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { bucketByWeek } from "@/lib/utils/bucket-by-week";
 
 /**
  * Server-to-server only — read-only counts and recent activity for the admin console at
@@ -19,7 +20,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
-  const [organizations, users, teams, recentSignups, recentLogins] = await Promise.all([
+  const twelveWeeksAgo = new Date(Date.now() - 12 * 7 * 24 * 60 * 60 * 1000);
+
+  const [organizations, users, teams, recentSignups, recentLogins, recentUserDates] = await Promise.all([
     prisma.organization.count(),
     prisma.user.count(),
     prisma.team.count(),
@@ -33,11 +36,16 @@ export async function GET(request: NextRequest) {
       take: 8,
       select: { createdAt: true, user: { select: { name: true } } },
     }),
+    prisma.user.findMany({
+      where: { createdAt: { gte: twelveWeeksAgo } },
+      select: { createdAt: true },
+    }),
   ]);
 
   return NextResponse.json({
     counts: { organizations, users, teams },
     recentSignups,
     recentLogins: recentLogins.map((event) => ({ name: event.user.name, createdAt: event.createdAt })),
+    signupsByWeek: bucketByWeek(recentUserDates.map((u) => u.createdAt), 12),
   });
 }
