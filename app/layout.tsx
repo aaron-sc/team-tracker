@@ -3,8 +3,6 @@ import { Bricolage_Grotesque, Hanken_Grotesk, Geist_Mono } from "next/font/googl
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { CookieConsentBanner } from "@/components/marketing/cookie-consent-banner";
-import { GoogleAnalytics } from "@/components/marketing/google-analytics";
 import { SITE_URL } from "@/lib/utils/site-url";
 import "./globals.css";
 
@@ -34,6 +32,7 @@ export const metadata: Metadata = {
   title: { default: title, template: "%s | Formation" },
   description,
   robots: { index: true, follow: true },
+  verification: { google: "df53rr3W6bC3xnLTP38RRSQnsSSjqP27w7K21XiwuQk" },
   openGraph: {
     title,
     description,
@@ -66,10 +65,8 @@ export default function RootLayout({
           <TooltipProvider>
             {children}
             <Toaster richColors position="top-right" />
-            <CookieConsentBanner />
           </TooltipProvider>
         </ThemeProvider>
-        <GoogleAnalytics />
       </body>
     </html>
   );
