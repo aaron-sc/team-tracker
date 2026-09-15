@@ -153,7 +153,7 @@
   font-family: var(--font-sans);
 }
 .driver-popover-title {
-  color: var(--popover-foreground);
+  color: var(--primary);
   font-size: 0.9375rem;
 }
 .driver-popover-description {

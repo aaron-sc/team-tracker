@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState, useActionState, useTransition } from "react";
-import { updateTeamDiscordSettingsAction, testTeamDiscordWebhookAction } from "@/lib/actions/team-discord";
+import {
+  updateTeamDiscordSettingsAction,
+  testTeamDiscordWebhookAction,
+  testTeamDiscordReminderAction,
+} from "@/lib/actions/team-discord";
 import { getDiscordGuildOptionsAction } from "@/lib/actions/discord-bot";
 import type { ActionState } from "@/lib/actions/types";
 import { Input } from "@/components/ui/input";
@@ -63,6 +67,7 @@ export function TeamDiscordPanel({
   const action = updateTeamDiscordSettingsAction.bind(null, orgSlug, orgId, teamId);
   const [state, formAction] = useActionState<ActionState, FormData>(action, undefined);
   const [testing, startTest] = useTransition();
+  const [testingReminder, startReminderTest] = useTransition();
   const [guildChannels, setGuildChannels] = useState<{ id: string; name: string }[]>([]);
   const [guildRoles, setGuildRoles] = useState<{ id: string; name: string }[]>([]);
 
@@ -199,6 +204,23 @@ export function TeamDiscordPanel({
             >
               <Send className="size-4" />
               Send test message
+            </Button>
+          ) : null}
+          {botConnected && reminderChannelId ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={testingReminder}
+              onClick={() => {
+                startReminderTest(async () => {
+                  const result = await testTeamDiscordReminderAction(orgId, teamId);
+                  if (result?.error) toast.error(result.error);
+                  else toast.success(result?.success ?? "Sent.");
+                });
+              }}
+            >
+              <Send className="size-4" />
+              Send test reminder
             </Button>
           ) : null}
         </div>

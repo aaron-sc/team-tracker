@@ -13,7 +13,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronsUpDown, LogOut, Check, UserCog, Compass, Plus, Sparkles, BookOpen } from "lucide-react";
+import { ChevronsUpDown, LogOut, Check, UserCog, Compass, Plus, Sparkles, BookOpen, Bot } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { logoutAction } from "@/lib/actions/auth";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -26,7 +26,7 @@ import { startProductTour } from "@/components/onboarding/product-tour";
 import { openWhatsNew } from "@/components/layout/whats-new-dialog";
 import { FeatureRequestDialog } from "@/components/layout/feature-request-dialog";
 import { MobileNav } from "@/components/layout/mobile-nav";
-import type { Permission } from "@/lib/generated/prisma/enums";
+import { Permission } from "@/lib/generated/prisma/enums";
 
 type OrgOption = { orgId: string; orgSlug: string; orgName: string; orgLogoUrl: string | null; roleName: string };
 type NotificationItem = {
@@ -168,6 +168,25 @@ export function TopNav({
           <NotificationBell orgId={orgId} initialNotifications={initialNotifications} initialUnreadCount={initialUnreadCount} />
         </span>
         <KeyboardShortcutsDialog />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" title="Discord">
+              <Bot className="size-4.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Discord</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/account#connect-discord">Connect your Discord account</Link>
+            </DropdownMenuItem>
+            {permissions.includes(Permission.org_settings_manage) ? (
+              <DropdownMenuItem asChild>
+                <Link href={`/${orgSlug}/settings/integrations`}>Connect this server&apos;s Discord bot</Link>
+              </DropdownMenuItem>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -199,7 +218,7 @@ export function TopNav({
                 Account &amp; password
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => startProductTour(roleName)}>
+            <DropdownMenuItem onClick={() => startProductTour()}>
               <Compass className="size-4" />
               Take a tour
             </DropdownMenuItem>

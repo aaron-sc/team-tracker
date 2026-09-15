@@ -19,6 +19,7 @@ export function MatchForm({
   teams,
   opponents,
   venues,
+  orgTimezone,
   defaultValues,
   lockTeam = false,
   excludeMatchId,
@@ -27,6 +28,10 @@ export function MatchForm({
   teams: { id: string; name: string }[];
   opponents: { id: string; name: string }[];
   venues: { id: string; name: string }[];
+  /** The date/time field below is interpreted in the org's own timezone (see createMatchAction's
+   *  fromZonedTime call), not the visitor's browser timezone — shown next to the field so that
+   *  isn't a silent assumption for anyone whose own timezone differs from the org's. */
+  orgTimezone: string;
   lockTeam?: boolean;
   /** The match being edited, so its own booking doesn't trigger the venue-conflict warning against itself. */
   excludeMatchId?: string;
@@ -123,6 +128,7 @@ export function MatchForm({
             onChange={(e) => setScheduledAt(e.target.value)}
             required
           />
+          <p className="text-xs text-muted-foreground">Org timezone: {orgTimezone}</p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="format">Format</Label>

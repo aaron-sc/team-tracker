@@ -34,6 +34,7 @@ export default async function EditMatchPage({
         teams={teams}
         opponents={opponents}
         venues={venues}
+        orgTimezone={match.timezone}
         lockTeam
         excludeMatchId={match.id}
         defaultValues={{

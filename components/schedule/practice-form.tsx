@@ -16,6 +16,7 @@ export function PracticeForm({
   teams,
   opponents,
   venues,
+  orgTimezone,
   defaultValues,
   lockTeam = false,
   excludePracticeId,
@@ -24,6 +25,9 @@ export function PracticeForm({
   teams: { id: string; name: string }[];
   opponents: { id: string; name: string }[];
   venues: { id: string; name: string }[];
+  /** The date/time field below is interpreted in the org's own timezone, not the visitor's
+   *  browser timezone — shown next to the field for anyone whose own timezone differs. */
+  orgTimezone: string;
   /** Also controls whether the "repeat weekly" option shows — only offered when creating, not editing. */
   lockTeam?: boolean;
   /** The session being edited, so its own booking doesn't trigger the venue-conflict warning against itself. */
@@ -135,6 +139,7 @@ export function PracticeForm({
             onChange={(e) => setScheduledAt(e.target.value)}
             required
           />
+          <p className="text-xs text-muted-foreground">Org timezone: {orgTimezone}</p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="durationMinutes">Duration (minutes)</Label>

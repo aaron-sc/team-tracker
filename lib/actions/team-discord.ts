@@ -14,6 +14,7 @@ import {
   DISCORD_SNOWFLAKE_PATTERN,
   roleMentionPrefix,
 } from "@/lib/integrations/discord";
+import { postInteractiveReminder } from "@/lib/integrations/discord-bot";
 
 function parseReminderMinutes(value: string): number | null {
   return value === "off" ? null : Number(value);
@@ -103,4 +104,27 @@ export async function testTeamDiscordWebhookAction(orgId: string, teamId: string
   });
 
   return result.ok ? { success: "Test message sent — check your Discord channel." } : { error: result.error };
+}
+
+/** Posts a fake practice reminder — with the same ✅/❌ RSVP buttons a real match/practice
+ *  reminder gets — to confirm the bot's reminder channel (not just the plain webhook above)
+ *  actually works. Uses a sentinel eventId that can't match a real match/session, so clicking
+ *  the buttons just replies "no longer exists" (see handleRsvpButton) instead of touching real
+ *  attendance data. */
+export async function testTeamDiscordReminderAction(orgId: string, teamId: string): Promise<ActionState> {
+  await requirePermission(orgId, Permission.team_edit);
+
+  const team = await prisma.team.findUnique({ where: { id: teamId } });
+  if (!team || team.orgId !== orgId) return { error: "Team not found." };
+  if (!team.discordReminderChannelId) return { error: "No bot reminder channel configured yet." };
+
+  const result = await postInteractiveReminder(
+    team.discordReminderChannelId,
+    "PRACTICE",
+    "test",
+    "Practice — Test",
+    `Test reminder for **${team.name}**. The buttons below are just for show — this isn't tied to a real event, so RSVPing here won't affect anyone's real attendance.`,
+  );
+
+  return result.ok ? { success: "Test reminder sent — check your Discord channel." } : { error: result.error };
 }

@@ -20,7 +20,7 @@ export default async function NewMatchPage({ params }: { params: Promise<{ orgSl
   return (
     <div>
       <h1 className="mb-4 text-xl font-semibold">Schedule a match</h1>
-      <MatchForm action={action} teams={teams} opponents={opponents} venues={venues} />
+      <MatchForm action={action} teams={teams} opponents={opponents} venues={venues} orgTimezone={org.timezone} />
     </div>
   );
 }

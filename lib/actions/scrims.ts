@@ -288,7 +288,10 @@ export async function acceptScrimRequestAction(orgSlug: string, orgId: string, r
         opponentId: awayOpponentId,
         scheduledAt: scheduledStart,
         durationMinutes,
-        timezone: listing.timezone,
+        // The away side's own org timezone, not the listing's — they can differ, and this is
+        // what that org's own edit form later uses to reinterpret the datetime-local input
+        // (fromZonedTime(parsed.data.scheduledAt, session.timezone) in updatePracticeSessionAction).
+        timezone: request.requestingTeam.org.timezone,
         createdById: request.createdById,
         attendances: { create: awayRoster.map((r) => ({ membershipId: r.membershipId })) },
       },

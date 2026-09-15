@@ -13,6 +13,38 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "2026-09-15",
+    date: "September 15, 2026",
+    headline: "Invite your own teammates, and a lot more Discord polish",
+    groups: [
+      {
+        title: "Invites",
+        items: [
+          "Every account can now invite up to 3 people straight in from Account settings — no waitlist, and they create their own organization immediately.",
+        ],
+      },
+      {
+        title: "Discord",
+        items: [
+          "\"Send a test message\" buttons on both the personal (Account) and org-level (Settings → Integrations) Discord connections, so you can confirm the bot can actually reach you before relying on it.",
+          "A per-team \"send test reminder\" button that posts a real practice-style reminder with the same ✅/❌ RSVP buttons a live one gets, without touching real attendance.",
+          "A new Discord button in the top nav for quick access to connecting your own account or (for admins) the org's bot.",
+          "A teammate's Discord username now shows on their roster profile, once they've actually linked it.",
+        ],
+      },
+      {
+        title: "Getting started",
+        items: [
+          "The quick tour now covers linking Discord, and closes with a link to the full user guide for anyone who wants more depth.",
+        ],
+      },
+      {
+        title: "Scheduling",
+        items: ["Scheduling a match or practice now shows which timezone the time you enter will be saved in."],
+      },
+    ],
+  },
+  {
     version: "2026-09-08",
     date: "September 8, 2026",
     headline: "Invite-only signup and an org limit",

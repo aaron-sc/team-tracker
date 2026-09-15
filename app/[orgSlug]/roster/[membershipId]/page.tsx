@@ -106,7 +106,7 @@ export default async function MemberProfilePage({
               {membership.user.phone}
             </div>
           ) : null}
-          {membership.user.discordHandle ? (
+          {membership.user.discordUserId && membership.user.discordHandle ? (
             <div className="flex items-center gap-2">
               <MessageSquare className="size-4 text-muted-foreground" />
               {membership.user.discordHandle}

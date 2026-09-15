@@ -20,7 +20,7 @@ export default async function NewPracticeSessionPage({ params }: { params: Promi
   return (
     <div>
       <h1 className="mb-4 text-xl font-semibold">Schedule practice / scrim</h1>
-      <PracticeForm action={action} teams={teams} opponents={opponents} venues={venues} />
+      <PracticeForm action={action} teams={teams} opponents={opponents} venues={venues} orgTimezone={org.timezone} />
     </div>
   );
 }

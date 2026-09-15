@@ -34,6 +34,7 @@ export default async function EditPracticeSessionPage({
         teams={teams}
         opponents={opponents}
         venues={venues}
+        orgTimezone={session.timezone}
         lockTeam
         excludePracticeId={session.id}
         defaultValues={{

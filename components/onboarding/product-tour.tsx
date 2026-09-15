@@ -64,15 +64,22 @@ const STEPS: DriveStep[] = [
 ];
 
 // No `element` — renders as a plain centered popover instead of highlighting something on the
-// dashboard, since linking Discord actually happens on a different page (Account). Players are
-// the ones who get real value out of it day to day: DM reminders, and slash commands like
-// /available, /roster, and /schedule without leaving Discord — so it's appended only for them,
-// not every role, to keep the tour from feeling like it doesn't apply to a coach or manager.
-const PLAYER_DISCORD_STEP: DriveStep = {
+// dashboard, since linking Discord actually happens on a different page (Account).
+const DISCORD_STEP: DriveStep = {
   popover: {
     title: "Link your Discord",
     description:
-      'One more thing — connect your Discord account from <a href="/account#connect-discord">Account settings</a> to get reminders as a DM and use commands like <code>/available</code> right from Discord.',
+      'One more thing — connect your Discord account from <a href="/account#connect-discord">Account settings</a> to get reminders as a DM and use the bot\'s slash commands (like <code>/available</code>, <code>/roster</code>, <code>/schedule</code>) right from Discord.',
+  },
+};
+
+// Closing step — this quick tour is a fly-by of where things live, not a real explanation of any
+// of them; points at the full written guide for anyone who wants that.
+const WRAP_UP_STEP: DriveStep = {
+  popover: {
+    title: "That's the quick version",
+    description:
+      'For a more detailed walkthrough of everything Formation can do, see the <a href="/guide">full user guide</a> — also reachable anytime from your profile menu.',
   },
 };
 
@@ -83,9 +90,12 @@ function isVisible(selector: string): boolean {
   return el instanceof HTMLElement && el.offsetParent !== null;
 }
 
-function buildDriver(roleName?: string, { showReplayHint = false }: { showReplayHint?: boolean } = {}) {
-  const steps = STEPS.filter((s) => typeof s.element === "string" && isVisible(s.element));
-  if (roleName === "Player") steps.push(PLAYER_DISCORD_STEP);
+function buildDriver({ showReplayHint = false }: { showReplayHint?: boolean } = {}) {
+  const steps = [
+    ...STEPS.filter((s) => typeof s.element === "string" && isVisible(s.element)),
+    DISCORD_STEP,
+    WRAP_UP_STEP,
+  ];
 
   return driver({
     showProgress: true,
@@ -96,28 +106,29 @@ function buildDriver(roleName?: string, { showReplayHint = false }: { showReplay
       // Only on the auto-started run — someone who just replayed it manually (from the profile
       // menu) doesn't need to be told where the menu item lives.
       if (showReplayHint) {
-        toast("You can take this tour again anytime — click your profile in the top right, then \"Take a tour.\"");
+        toast("You can take this tour again anytime — click your profile in the top right, then \"Take a tour.\"", {
+          action: { label: "Open user guide", onClick: () => window.location.assign("/guide") },
+        });
       }
     },
   });
 }
 
-/** Manual replay — call from anywhere (e.g. the "Take a tour" menu item). `roleName` decides
- *  whether the Discord step is included, same as the auto-start version below. */
-export function startProductTour(roleName?: string) {
-  buildDriver(roleName).drive();
+/** Manual replay — call from anywhere (e.g. the "Take a tour" menu item). */
+export function startProductTour() {
+  buildDriver().drive();
 }
 
 /** Mounted once in the org layout; auto-starts on first dashboard visit. */
-export function ProductTourAutoStart({ roleName }: { roleName?: string }) {
+export function ProductTourAutoStart() {
   const pathname = usePathname();
 
   useEffect(() => {
     if (!pathname.endsWith("/dashboard")) return;
     if (localStorage.getItem(TOUR_STORAGE_KEY)) return;
-    const timer = setTimeout(() => buildDriver(roleName, { showReplayHint: true }).drive(), 600);
+    const timer = setTimeout(() => buildDriver({ showReplayHint: true }).drive(), 600);
     return () => clearTimeout(timer);
-  }, [pathname, roleName]);
+  }, [pathname]);
 
   return null;
 }

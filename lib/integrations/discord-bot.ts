@@ -563,25 +563,30 @@ export async function postAccessRequestForReview(
 }
 
 /** Posts a reminder with RSVP buttons to a team's configured channel (Team.discordReminderChannelId).
- *  No-ops if the bot isn't connected or the team hasn't set a channel. */
+ *  Real reminders (lib/integrations/discord-reminders.ts) fire-and-forget this and ignore the
+ *  result; the "send test reminder" button (testTeamDiscordReminderAction) uses it to report back. */
 export async function postInteractiveReminder(
   channelId: string,
   kind: "MATCH" | "PRACTICE",
   eventId: string,
   title: string,
   description: string,
-): Promise<void> {
-  if (!client?.isReady()) return;
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!client?.isReady()) return { ok: false, error: "The Discord bot isn't connected right now." };
   try {
     const channel = await client.channels.fetch(channelId);
-    if (!channel || !channel.isTextBased() || !("send" in channel)) return;
+    if (!channel || !channel.isTextBased() || !("send" in channel)) {
+      return { ok: false, error: "That channel doesn't exist, or the bot can't see it." };
+    }
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId(`rsvp:${kind}:${eventId}:CONFIRMED`).setLabel("I'm in").setStyle(ButtonStyle.Success).setEmoji("✅"),
       new ButtonBuilder().setCustomId(`rsvp:${kind}:${eventId}:DECLINED`).setLabel("Can't make it").setStyle(ButtonStyle.Danger).setEmoji("❌"),
     );
     await channel.send({ content: `**${title}**\n${description}`, components: [row] });
+    return { ok: true };
   } catch (err) {
     console.error("[discord-bot] Failed to post interactive reminder:", err);
+    return { ok: false, error: "Something went wrong posting to that channel." };
   }
 }
 
