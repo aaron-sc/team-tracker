@@ -21,6 +21,10 @@ export const authConfig = {
       const isPublic =
         pathname === "/" ||
         pathname.startsWith("/login") ||
+        // Always-redirect entry point for signing in via an existing esports-tools.com session —
+        // must be reachable while unauthenticated, since establishing that session is the point.
+        // See app/sso/route.ts.
+        pathname.startsWith("/sso") ||
         pathname.startsWith("/signup") ||
         pathname.startsWith("/invite") ||
         pathname.startsWith("/join") ||

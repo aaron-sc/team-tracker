@@ -144,5 +144,50 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
+    {
+      // Trusts an existing esports-tools.com (the hub) session — see app/sso/route.ts, which is
+      // what actually triggers this (never linked to directly from a bare hostname). The hub's
+      // `sub` claim IS this app's own real User.id (identity originates here — see that repo's
+      // lib/auth/formation-credentials.ts), so this just re-fetches the existing user rather than
+      // finding-or-creating one the way Vault's findOrCreateSsoUser does.
+      //
+      // Known, accepted trade-off: unlike the "credentials"/"totp" providers above, this one has
+      // no 2FA gate of its own — a live hub session (up to its own 2h maxAge) is enough to mint a
+      // fresh Formation session with no password/TOTP prompt. Not a new hole: the identity was
+      // already proven via password+2FA at the hub's own native-login time. Formation's
+      // sessionEpoch revocation ("sign out everywhere") still applies to sessions minted this way
+      // exactly as it does to any other, since the jwt callback above checks it unconditionally.
+      id: "esports-tools",
+      name: "esports-tools.com",
+      type: "oidc",
+      issuer: process.env.AUTH_ISSUER,
+      clientId: process.env.OIDC_CLIENT_ID,
+      clientSecret: process.env.OIDC_CLIENT_SECRET,
+      // The hub's /oauth/token only implements client_secret_post (see that repo's app/oauth/
+      // token/route.ts) — Auth.js defaults new OIDC providers to client_secret_basic.
+      client: { token_endpoint_auth_method: "client_secret_post" },
+      checks: ["pkce", "state", "nonce"],
+      authorization: { params: { scope: "openid profile email" } },
+      async profile(profile) {
+        const user = await prisma.user.findUnique({ where: { id: profile.sub as string } });
+        // Should never happen — the hub only ever issues a `sub` that originated from this app's
+        // own User.id in the first place. Throwing (not returning null, which this callback's
+        // type doesn't accept) fails the sign-in cleanly if it somehow does.
+        if (!user) throw new Error("No Formation account found for this esports-tools.com session.");
+
+        await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+        // No real Request object is available in an OIDC provider's profile() callback (unlike
+        // authorize() above) — recordLoginEvent handles a missing request fine, just logging a
+        // null ip/userAgent for this sign-in method.
+        await recordLoginEvent(user.id);
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.avatarUrl,
+        };
+      },
+    },
   ],
 });
