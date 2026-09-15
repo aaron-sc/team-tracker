@@ -193,14 +193,23 @@ async function resolveOrgAndMembership(guildId: string | null, discordUserId: st
   return { org, user, membership } as const;
 }
 
+/** Same teams_view_all rule the web app enforces (see lib/auth/authorize.ts's canSeeTeam) —
+ *  without it, a Team.findMany where clause restricted to this resolved membership's own
+ *  roster(s). */
+function visibleTeamsWhere(resolved: { org: { id: string }; membership: { id: string; role: { permissions: { permission: string }[] } } }) {
+  const canSeeAllTeams = resolved.membership.role.permissions.some((p) => p.permission === Permission.teams_view_all);
+  if (canSeeAllTeams) return { orgId: resolved.org.id };
+  return { orgId: resolved.org.id, teamMemberships: { some: { membershipId: resolved.membership.id } } };
+}
+
 async function handleTeamAutocomplete(interaction: AutocompleteInteraction) {
   const focused = interaction.options.getFocused(true);
   if (focused.name !== "team" || !interaction.guildId) return void interaction.respond([]);
 
-  const org = await prisma.organization.findUnique({ where: { discordGuildId: interaction.guildId } });
-  if (!org) return void interaction.respond([]);
+  const resolved = await resolveOrgAndMembership(interaction.guildId, interaction.user.id);
+  if ("error" in resolved) return void interaction.respond([]);
 
-  const teams = await prisma.team.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } });
+  const teams = await prisma.team.findMany({ where: visibleTeamsWhere(resolved), orderBy: { name: "asc" } });
   const q = String(focused.value).toLowerCase();
   const matches = teams.filter((t) => t.name.toLowerCase().includes(q)).slice(0, 25);
   await interaction.respond(matches.map((t) => ({ name: t.name, value: t.id })));
@@ -305,10 +314,13 @@ async function handleAvailable(interaction: ChatInputCommandInteraction) {
   await interaction.reply({ content: `✅ Added: **${dayLabel}s, ${start}–${end}** (${parsed.data.timezone})`, ephemeral: true });
 }
 
-async function resolveTeamOption(interaction: ChatInputCommandInteraction, orgId: string) {
+async function resolveTeamOption(
+  interaction: ChatInputCommandInteraction,
+  resolved: { org: { id: string }; membership: { id: string; role: { permissions: { permission: string }[] } } },
+) {
   const teamId = interaction.options.getString("team", true);
-  const team = await prisma.team.findUnique({ where: { id: teamId } });
-  if (!team || team.orgId !== orgId) {
+  const team = await prisma.team.findFirst({ where: { id: teamId, ...visibleTeamsWhere(resolved) } });
+  if (!team) {
     await interaction.reply({ content: "Team not found — pick one from the autocomplete list.", ephemeral: true });
     return null;
   }
@@ -318,7 +330,7 @@ async function resolveTeamOption(interaction: ChatInputCommandInteraction, orgId
 async function handleRoster(interaction: ChatInputCommandInteraction) {
   const resolved = await resolveOrgAndMembership(interaction.guildId, interaction.user.id);
   if ("error" in resolved) return void interaction.reply({ content: resolved.error, ephemeral: true });
-  const team = await resolveTeamOption(interaction, resolved.org.id);
+  const team = await resolveTeamOption(interaction, resolved);
   if (!team) return;
 
   const roster = await prisma.teamMembership.findMany({
@@ -343,7 +355,7 @@ async function handleRoster(interaction: ChatInputCommandInteraction) {
 async function handleSchedule(interaction: ChatInputCommandInteraction) {
   const resolved = await resolveOrgAndMembership(interaction.guildId, interaction.user.id);
   if ("error" in resolved) return void interaction.reply({ content: resolved.error, ephemeral: true });
-  const team = await resolveTeamOption(interaction, resolved.org.id);
+  const team = await resolveTeamOption(interaction, resolved);
   if (!team) return;
 
   const now = new Date();
@@ -382,7 +394,7 @@ async function handleBench(interaction: ChatInputCommandInteraction) {
     await interaction.reply({ content: "You don't have permission to view player conduct records.", ephemeral: true });
     return;
   }
-  const team = await resolveTeamOption(interaction, resolved.org.id);
+  const team = await resolveTeamOption(interaction, resolved);
   if (!team) return;
 
   const now = new Date();

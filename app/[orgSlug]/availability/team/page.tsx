@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { formatWallClockTime } from "@/lib/utils/format-time";
 import { convertWeeklyTime } from "@/lib/utils/availability-tz";
 import { computeTeamAvailabilityOverlap } from "@/lib/availability/overlap";
+import { IgnoreAvailabilityToggle } from "@/components/availability/ignore-availability-toggle";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -26,7 +27,10 @@ export default async function TeamAvailabilityPage({
   requirePagePermission(orgSlug, membership, Permission.availability_manage_others);
   const viewerHour12 = session.user.timeFormat !== "24h";
 
-  const activeTeamId = teamId ?? teams[0]?.id;
+  // `teams` is already scoped to what this viewer can see — validate the requested team against
+  // it rather than trusting the query param directly, since someone could otherwise type another
+  // team's id into the URL even though it's not one of the tabs actually shown.
+  const activeTeamId = (teamId && teams.some((t) => t.id === teamId) ? teamId : undefined) ?? teams[0]?.id;
 
   const [members, overlap] = await Promise.all([
     activeTeamId
@@ -139,11 +143,12 @@ export default async function TeamAvailabilityPage({
                 {DAYS.map((d) => (
                   <TableHead key={d}>{d}</TableHead>
                 ))}
+                <TableHead className="w-44" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {membersWithConvertedRules.map((m) => (
-                <TableRow key={m.id}>
+                <TableRow key={m.id} className={m.ignoreAvailability ? "opacity-60" : undefined}>
                   <TableCell className="font-medium">
                     <Link href={`/${orgSlug}/roster/${m.id}`} className="hover:underline">
                       {m.user.name}
@@ -164,11 +169,19 @@ export default async function TeamAvailabilityPage({
                       </TableCell>
                     );
                   })}
+                  <TableCell>
+                    <IgnoreAvailabilityToggle
+                      orgSlug={orgSlug}
+                      orgId={org.id}
+                      membershipId={m.id}
+                      ignored={m.ignoreAvailability}
+                    />
+                  </TableCell>
                 </TableRow>
               ))}
               {members.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">
                     No one on this team&apos;s roster yet.
                   </TableCell>
                 </TableRow>

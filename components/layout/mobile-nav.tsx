@@ -12,7 +12,15 @@ import type { Permission } from "@/lib/generated/prisma/enums";
  *  below the sm breakpoint — this is the only way to reach it on a phone. The header's own
  *  org-switcher dropdown is also desktop-only (it doesn't fit next to this menu button and the
  *  header's icons on a narrow phone), so its "switch/create an organization" job moves here too. */
-export function MobileNav({ orgSlug, permissions }: { orgSlug: string; permissions: Permission[] }) {
+export function MobileNav({
+  orgSlug,
+  permissions,
+  hiddenNavItems,
+}: {
+  orgSlug: string;
+  permissions: Permission[];
+  hiddenNavItems: string[];
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -27,7 +35,12 @@ export function MobileNav({ orgSlug, permissions }: { orgSlug: string; permissio
           <SheetTitle>Navigate</SheetTitle>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto">
-          <SidebarNav orgSlug={orgSlug} permissions={permissions} onNavigate={() => setOpen(false)} />
+          <SidebarNav
+            orgSlug={orgSlug}
+            permissions={permissions}
+            hiddenNavItems={hiddenNavItems}
+            onNavigate={() => setOpen(false)}
+          />
         </div>
         <div className="shrink-0 border-t p-3">
           <Link

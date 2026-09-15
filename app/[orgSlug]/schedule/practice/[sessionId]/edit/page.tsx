@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getOrgContext } from "@/lib/org/context";
+import { canSeeTeam } from "@/lib/auth/authorize";
 import { requirePagePermission } from "@/lib/org/require-permission-page";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
@@ -17,7 +18,7 @@ export default async function EditPracticeSessionPage({
   requirePagePermission(orgSlug, membership, Permission.practice_edit);
 
   const session = await prisma.practiceSession.findUnique({ where: { id: sessionId }, include: { team: true } });
-  if (!session || session.team.orgId !== org.id) notFound();
+  if (!session || session.team.orgId !== org.id || !canSeeTeam(membership, session.teamId)) notFound();
 
   const [opponents, venues] = await Promise.all([
     prisma.opponent.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } }),

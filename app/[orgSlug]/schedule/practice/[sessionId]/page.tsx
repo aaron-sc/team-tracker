@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOrgContext } from "@/lib/org/context";
+import { canSeeTeam } from "@/lib/auth/authorize";
 import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AttendanceStatusSelect } from "@/components/schedule/attendance-status-select";
+import { AddAttendeeControl } from "@/components/schedule/add-attendee-control";
+import { RemoveAttendeeButton } from "@/components/schedule/remove-attendee-button";
+import { addSessionAttendeeAction, removeSessionAttendeeAction } from "@/lib/actions/practice-sessions";
 import { DeletePracticeButton } from "@/components/schedule/delete-practice-button";
 import { DuplicatePracticeButton } from "@/components/schedule/duplicate-practice-button";
 import { TeamPlaybookPanel } from "@/components/schedule/team-playbook-panel";
@@ -38,7 +42,7 @@ export default async function PracticeSessionDetailPage({
       attendances: { include: { membership: { include: { user: true } } } },
     },
   });
-  if (!session || session.team.orgId !== org.id) notFound();
+  if (!session || session.team.orgId !== org.id || !canSeeTeam(membership, session.teamId)) notFound();
 
   const canEdit = membership.permissions.includes(Permission.practice_edit);
   const canDelete = membership.permissions.includes(Permission.practice_delete);
@@ -47,20 +51,26 @@ export default async function PracticeSessionDetailPage({
 
   const conflicts = await getConflictsForSession(session);
 
-  const isOnTeam = membership.teamIds.includes(session.teamId);
-  const canViewTeamStuff = isOnTeam || canEdit;
+  const roster = canManageAttendance
+    ? await prisma.teamMembership.findMany({
+        where: { teamId: session.teamId },
+        include: { membership: { include: { user: true } } },
+        orderBy: { membership: { user: { name: "asc" } } },
+      })
+    : [];
+  const attendingIds = new Set(session.attendances.map((a) => a.membershipId));
+  const addCandidates = roster
+    .filter((r) => !attendingIds.has(r.membershipId))
+    .map((r) => ({ membershipId: r.membershipId, name: r.membership.user.name }));
+  const addAttendeeAction = addSessionAttendeeAction.bind(null, orgSlug, org.id, session.id);
 
   const [strategies, comments] = await Promise.all([
-    canViewTeamStuff
-      ? prisma.strategy.findMany({ where: { teamId: session.teamId }, orderBy: [{ map: "asc" }, { createdAt: "desc" }] })
-      : Promise.resolve([]),
-    canViewTeamStuff
-      ? prisma.practiceComment.findMany({
-          where: { sessionId: session.id },
-          include: { membership: { include: { user: true } } },
-          orderBy: { createdAt: "asc" },
-        })
-      : Promise.resolve([]),
+    prisma.strategy.findMany({ where: { teamId: session.teamId }, orderBy: [{ map: "asc" }, { createdAt: "desc" }] }),
+    prisma.practiceComment.findMany({
+      where: { sessionId: session.id },
+      include: { membership: { include: { user: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
   ]);
   const strategyItems = strategies.map((s) => ({
     id: s.id,
@@ -132,13 +142,14 @@ export default async function PracticeSessionDetailPage({
             ) : null}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Player</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead />
+                {canManageAttendance ? <TableHead /> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -156,6 +167,7 @@ export default async function PracticeSessionDetailPage({
                           attendanceId={a.id}
                           status={a.status}
                           mode={mode}
+                          kind="practice"
                         />
                       ) : (
                         <Badge variant="secondary">{a.status}</Badge>
@@ -169,49 +181,51 @@ export default async function PracticeSessionDetailPage({
                         </span>
                       ) : null}
                     </TableCell>
+                    {canManageAttendance ? (
+                      <TableCell>
+                        <RemoveAttendeeButton onRemove={removeSessionAttendeeAction.bind(null, orgSlug, org.id, a.id)} />
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 );
               })}
               {session.attendances.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  <TableCell colSpan={canManageAttendance ? 4 : 3} className="text-center text-muted-foreground">
                     No one on the roster for this team yet.
                   </TableCell>
                 </TableRow>
               ) : null}
             </TableBody>
           </Table>
+          {canManageAttendance ? <AddAttendeeControl candidates={addCandidates} onAdd={addAttendeeAction} /> : null}
         </CardContent>
       </Card>
 
-      {canViewTeamStuff ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Team playbook</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TeamPlaybookPanel orgSlug={orgSlug} strategies={strategyItems} />
-          </CardContent>
-        </Card>
-      ) : null}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Team playbook</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TeamPlaybookPanel orgSlug={orgSlug} strategies={strategyItems} />
+        </CardContent>
+      </Card>
 
-      {canViewTeamStuff ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Discussion</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EventDiscussionPanel
-              comments={commentItems}
-              currentMembershipId={membership.membershipId}
-              canPost={canViewTeamStuff}
-              canModerate={canEdit}
-              onPost={postCommentAction}
-              onDelete={deleteCommentAction}
-            />
-          </CardContent>
-        </Card>
-      ) : null}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Discussion</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EventDiscussionPanel
+            comments={commentItems}
+            currentMembershipId={membership.membershipId}
+            canPost
+            canModerate={canEdit}
+            onPost={postCommentAction}
+            onDelete={deleteCommentAction}
+          />
+        </CardContent>
+      </Card>
 
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" asChild>

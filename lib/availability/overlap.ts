@@ -29,7 +29,13 @@ export type OverlapGrid = {
  * people free," not "who's free next Tuesday specifically."
  */
 export async function computeTeamAvailabilityOverlap(teamId: string, orgTimezone: string): Promise<OverlapGrid> {
-  const roster = await prisma.teamMembership.findMany({ where: { teamId }, select: { membershipId: true } });
+  // ignoreAvailability members (see Membership's doc comment) are excluded entirely — from the
+  // roster-size denominator as well as the counts — so someone inactive or never filling in
+  // availability doesn't silently drag every suggested-time slot down.
+  const roster = await prisma.teamMembership.findMany({
+    where: { teamId, membership: { ignoreAvailability: false } },
+    select: { membershipId: true },
+  });
   const rosterSize = roster.length;
   const membershipIds = roster.map((r) => r.membershipId);
 

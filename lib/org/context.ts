@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db/prisma";
 import { requireVerifiedEmailPage } from "@/lib/auth/require-verified-page";
+import { canSeeTeam } from "@/lib/auth/authorize";
 import type { SessionMembership } from "@/lib/auth/types";
 import type { Session } from "next-auth";
 
@@ -37,7 +38,7 @@ export const getOrgContext = cache(async (orgSlug: string): Promise<OrgContext> 
   const membership = session.memberships.find((m) => m.orgSlug === orgSlug);
   if (!membership) redirect("/orgs");
 
-  const [org, teams] = await Promise.all([
+  const [org, allTeams] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: membership.orgId },
       select: {
@@ -60,6 +61,11 @@ export const getOrgContext = cache(async (orgSlug: string): Promise<OrgContext> 
   ]);
 
   if (!org) redirect("/orgs");
+
+  // Own teams, plus every team for anyone holding teams_view_all (Owner always does — see
+  // ALL_PERMISSIONS in lib/permissions.ts) — the one place this app-wide visibility rule is
+  // applied for nav, team pickers, and anything else fed by this context's `teams`.
+  const teams = allTeams.filter((t) => canSeeTeam(membership, t.id));
 
   return { session, membership, org, teams };
 });

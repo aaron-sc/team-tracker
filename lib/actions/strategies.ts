@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-import { requirePermission } from "@/lib/auth/authorize";
+import { requirePermission, requireTeamScope } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
 import { strategySchema } from "@/lib/validations/strategy";
 import { Permission } from "@/lib/generated/prisma/enums";
@@ -35,6 +35,7 @@ export async function createStrategyAction(
   const { membership: actor } = await requirePermission(orgId, Permission.strategy_manage);
   const team = await prisma.team.findUnique({ where: { id: teamId } });
   if (!team || team.orgId !== orgId) return { error: "Team not found." };
+  requireTeamScope(actor, team.id);
 
   const parsed = parseStrategyForm(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -74,6 +75,7 @@ export async function updateStrategyAction(
   const { membership: actor } = await requirePermission(orgId, Permission.strategy_manage);
   const strategy = await prisma.strategy.findUnique({ where: { id: strategyId }, include: { team: true } });
   if (!strategy || strategy.team.orgId !== orgId) return { error: "Not found." };
+  requireTeamScope(actor, strategy.teamId);
 
   const parsed = parseStrategyForm(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -105,6 +107,7 @@ export async function duplicateStrategyAction(orgSlug: string, orgId: string, st
   const { membership: actor } = await requirePermission(orgId, Permission.strategy_manage);
   const strategy = await prisma.strategy.findUnique({ where: { id: strategyId }, include: { team: true } });
   if (!strategy || strategy.team.orgId !== orgId) return { error: "Not found." };
+  requireTeamScope(actor, strategy.teamId);
 
   await prisma.strategy.create({
     data: {
@@ -134,6 +137,7 @@ export async function deleteStrategyAction(orgSlug: string, orgId: string, strat
   const { membership: actor } = await requirePermission(orgId, Permission.strategy_manage);
   const strategy = await prisma.strategy.findUnique({ where: { id: strategyId }, include: { team: true } });
   if (!strategy || strategy.team.orgId !== orgId) return { error: "Not found." };
+  requireTeamScope(actor, strategy.teamId);
 
   await prisma.strategy.delete({ where: { id: strategyId } });
 

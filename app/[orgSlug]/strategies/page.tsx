@@ -8,15 +8,13 @@ import { Swords } from "lucide-react";
 
 export default async function StrategiesPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
-  const { org, membership } = await getOrgContext(orgSlug);
-
+  const { org, membership, teams } = await getOrgContext(orgSlug);
   const canManageStrategy = membership.permissions.includes(Permission.strategy_manage);
-  const teams = await prisma.team.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } });
 
-  // Same bar as before: a team's own roster, plus anyone who can manage strategy org-wide (e.g.
-  // a head coach overseeing several teams) — not the whole org, since this is competitively
-  // sensitive content.
-  const visibleTeams = teams.filter((t) => membership.teamIds.includes(t.id) || canManageStrategy);
+  // `teams` from getOrgContext is already scoped to what this viewer can see (own team(s), or
+  // every team with teams_view_all) — the same bar used everywhere else, replacing the old
+  // strategy_manage-specific fallback so cross-team visibility is governed by one permission.
+  const visibleTeams = teams;
 
   const strategiesByTeam = new Map<string, StrategyItem[]>();
   await Promise.all(

@@ -1,5 +1,20 @@
 {$DOMAIN} {
 	reverse_proxy app:3300
+
+	# Formation's own container briefly drops off the network during a deploy (the old one stops
+	# right before the new one starts — docker-entrypoint.sh then still has migrations + `next
+	# start` to get through). reverse_proxy surfaces that gap as 502/503/504; show something better
+	# than Caddy's bare error page for exactly those three, not real app-level errors (a genuine
+	# Next.js 500 shouldn't claim to be a deploy). See caddy/maintenance/index.html — update its
+	# feature bullets alongside any deploy you actually want described there.
+	handle_errors {
+		@deploying expression `{http.error.status_code} == 502 || {http.error.status_code} == 503 || {http.error.status_code} == 504`
+		handle @deploying {
+			root * /srv/maintenance
+			rewrite * /index.html
+			file_server
+		}
+	}
 }
 
 # The bare domain now serves the product hub — a separate app/repo/container (see the "Vault"

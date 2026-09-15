@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { canSeeTeam } from "@/lib/auth/authorize";
 import { prisma } from "@/lib/db/prisma";
 import { buildIcsCalendar, type IcsEvent } from "@/lib/calendar/ics";
 
@@ -17,7 +18,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ orgSlug
     where: { id: matchId },
     include: { team: true, opponent: true, venue: true },
   });
-  if (!match || match.team.orgId !== membership.orgId) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!match || match.team.orgId !== membership.orgId || !canSeeTeam(membership, match.teamId)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   const event: IcsEvent = {
     uid: `match-${match.id}@formation`,

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-import { requireMembership } from "@/lib/auth/authorize";
+import { requireMembership, requirePermission } from "@/lib/auth/authorize";
 import { availabilityRuleGroupSchema, availabilityExceptionSchema } from "@/lib/validations/availability";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
@@ -134,4 +134,25 @@ export async function deleteAvailabilityExceptionAction(
 
   await prisma.availabilityException.delete({ where: { id: exceptionId } });
   revalidatePath(`/${orgSlug}/availability`);
+}
+
+/** Managers/coaches only (not the member themselves, even with availability_manage_self) —
+ *  excludes targetMembershipId from every team it's on when computing suggested times, as if it
+ *  had no availability at all. See Membership.ignoreAvailability's doc comment. */
+export async function setIgnoreAvailabilityAction(
+  orgSlug: string,
+  orgId: string,
+  targetMembershipId: string,
+  ignore: boolean,
+): Promise<ActionState> {
+  await requirePermission(orgId, Permission.availability_manage_others);
+
+  const target = await prisma.membership.findUnique({ where: { id: targetMembershipId } });
+  if (!target || target.orgId !== orgId) return { error: "Not found." };
+
+  await prisma.membership.update({ where: { id: targetMembershipId }, data: { ignoreAvailability: ignore } });
+
+  revalidatePath(`/${orgSlug}/availability`);
+  revalidatePath(`/${orgSlug}/availability/team`);
+  return { success: ignore ? "Excluded from suggested times." : "Included in suggested times again." };
 }

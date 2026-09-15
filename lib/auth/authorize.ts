@@ -1,6 +1,6 @@
 import "server-only";
 import { auth } from "@/auth";
-import type { Permission } from "@/lib/generated/prisma/client";
+import { Permission } from "@/lib/generated/prisma/client";
 import type { Session } from "next-auth";
 import type { SessionMembership } from "@/lib/auth/types";
 
@@ -43,15 +43,26 @@ export async function requirePermission(
   return { session, membership };
 }
 
-/**
- * For roles below Coach/Owner, some actions should only apply to the actor's own team(s).
- * Throws unless the membership either holds `permission` org-wide via a role that also
- * has broader scope, or the target team is one of the membership's own teams.
- */
+/** Whether the membership can see `teamId` at all — its own team, or (holding `teams_view_all`,
+ *  see lib/permissions.ts) any team in the org. The one rule behind every "can this person see
+ *  that team" check in the app — page gates use this to redirect/404, requireTeamScope below
+ *  throws it for actions, and visibleTeamIds uses it to filter a list. */
+export function canSeeTeam(membership: SessionMembership, teamId: string): boolean {
+  return membership.teamIds.includes(teamId) || membership.permissions.includes(Permission.teams_view_all);
+}
+
+/** Throws unless canSeeTeam(membership, teamId) — the action-gating counterpart to canSeeTeam. */
 export function requireTeamScope(membership: SessionMembership, teamId: string) {
-  if (!membership.teamIds.includes(teamId)) {
+  if (!canSeeTeam(membership, teamId)) {
     throw new ForbiddenError("You don't have access to this team.");
   }
+}
+
+/** Filters `allTeamIds` (every team id in the org) down to the ones this membership can see —
+ *  for `WHERE teamId IN (...)`-style queries and list filtering. */
+export function visibleTeamIds(membership: SessionMembership, allTeamIds: string[]): string[] {
+  if (membership.permissions.includes(Permission.teams_view_all)) return allTeamIds;
+  return allTeamIds.filter((id) => membership.teamIds.includes(id));
 }
 
 export function hasPermission(membership: SessionMembership, permission: Permission): boolean {

@@ -23,8 +23,9 @@ export default async function TeamsPage({ params }: { params: Promise<{ orgSlug:
   const { org, membership } = await getOrgContext(orgSlug);
   await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId);
 
+  const canSeeAllTeams = membership.permissions.includes(Permission.teams_view_all);
   const teams = await prisma.team.findMany({
-    where: { orgId: org.id },
+    where: canSeeAllTeams ? { orgId: org.id } : { orgId: org.id, id: { in: membership.teamIds } },
     include: { _count: { select: { teamMemberships: true } } },
     orderBy: { name: "asc" },
   });

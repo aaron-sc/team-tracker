@@ -41,7 +41,15 @@ export default async function SchedulePage({
   const rangeStart = isWeek ? startOfWeek(anchor) : startOfWeek(startOfMonth(anchor));
   const rangeEnd = isWeek ? endOfWeek(anchor) : endOfWeek(endOfMonth(anchor));
 
-  const teamWhere = team ? { teamId: team, team: { orgId: org.id } } : { team: { orgId: org.id } };
+  // `teams` from getOrgContext is already scoped to what this viewer can see (own teams, or
+  // every team with teams_view_all) — re-derive the query filter from it rather than trusting
+  // the `team` query param on its own, since someone could otherwise type another team's id into
+  // the URL directly.
+  const visibleTeamIds = teams.map((t) => t.id);
+  const requestedTeam = team && visibleTeamIds.includes(team) ? team : undefined;
+  const teamWhere = requestedTeam
+    ? { teamId: requestedTeam, team: { orgId: org.id } }
+    : { teamId: { in: visibleTeamIds }, team: { orgId: org.id } };
 
   const [matches, sessions] = await Promise.all([
     prisma.match.findMany({

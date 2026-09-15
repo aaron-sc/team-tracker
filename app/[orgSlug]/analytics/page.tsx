@@ -15,13 +15,15 @@ function Bar({ pct, className }: { pct: number; className?: string }) {
 
 export default async function AnalyticsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
-  const { org, membership } = await getOrgContext(orgSlug);
+  const { org, membership, teams } = await getOrgContext(orgSlug);
   requirePagePermission(orgSlug, membership, Permission.analytics_view);
 
   const now = new Date();
   const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const teams = await prisma.team.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } });
+  // `teams` is already scoped to what this viewer can see — every query below filters by it
+  // instead of a bare org-wide `orgId`, so someone with analytics_view but not teams_view_all
+  // only ever sees performance/attendance numbers for their own team(s).
   const teamIds = teams.map((t) => t.id);
 
   const [matches, upcomingCount, sessionRows, memberCount] = await Promise.all([
@@ -30,12 +32,12 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ orgS
       select: { teamId: true, resultStatus: true, scheduledAt: true },
     }),
     prisma.match.count({
-      where: { team: { orgId: org.id }, scheduledAt: { gte: now, lte: weekFromNow } },
+      where: { teamId: { in: teamIds }, scheduledAt: { gte: now, lte: weekFromNow } },
     }),
     prisma.sessionAttendance.groupBy({
       by: ["sessionId"],
       _count: { _all: true },
-      where: { session: { team: { orgId: org.id } }, status: { in: ["ATTENDED", "ABSENT", "LATE"] } },
+      where: { session: { teamId: { in: teamIds } }, status: { in: ["ATTENDED", "ABSENT", "LATE"] } },
     }),
     prisma.membership.count({ where: { orgId: org.id } }),
   ]);
@@ -56,7 +58,7 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ orgS
   // Attendance rate per team, reusing the same ATTENDED/LATE-counts-as-attended definition used
   // on the roster page's reliability badge.
   const attendanceDetailRows = await prisma.sessionAttendance.findMany({
-    where: { session: { team: { orgId: org.id } }, status: { in: ["ATTENDED", "ABSENT", "LATE"] } },
+    where: { session: { teamId: { in: teamIds } }, status: { in: ["ATTENDED", "ABSENT", "LATE"] } },
     select: { status: true, session: { select: { teamId: true } } },
   });
   const attendanceByTeam = new Map<string, { attended: number; total: number }>();

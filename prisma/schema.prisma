@@ -124,6 +124,7 @@ enum Permission {
   team_delete
   roster_manage
   team_members_invite
+  teams_view_all
 
   match_create
   match_edit
@@ -417,6 +418,13 @@ model Membership {
   // (app/api/v1/[orgSlug]/me/calendar.ics) — deliberately separate from Organization.apiKey so a
   // player can get their own live calendar link without needing org-admin-granted API access.
   calendarToken String? @unique
+  // Set by a manager/coach (availability_manage_others), not the member themselves — excludes
+  // this membership from computeTeamAvailabilityOverlap's suggested-times grid and roster-size
+  // count entirely, as if they had no availability rules at all. For someone inactive, on leave,
+  // or who never fills in availability, so their absence stops silently dragging every
+  // suggested-time slot down. Their own AvailabilityRule rows are untouched — this only affects
+  // whether scheduling suggestions take them into account.
+  ignoreAvailability Boolean @default(false)
 
   teamMemberships        TeamMembership[]
   availabilityRules      AvailabilityRule[]

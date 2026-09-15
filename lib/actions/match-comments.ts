@@ -2,18 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-import { requireMembership } from "@/lib/auth/authorize";
+import { requireMembership, requireTeamScope } from "@/lib/auth/authorize";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
 
 const MAX_LENGTH = 2000;
 
-/** Anyone on the match's own team roster, or anyone who can edit matches org-wide (e.g. a head
- *  coach overseeing multiple teams), can post — same bar as viewing the discussion at all. */
+/** Anyone on the match's own team roster, or anyone holding teams_view_all, can post — same bar
+ *  as viewing the discussion (and the rest of the match page) at all. */
 async function requireMatchDiscussionAccess(orgId: string, teamId: string) {
   const { membership } = await requireMembership(orgId);
-  const allowed = membership.teamIds.includes(teamId) || membership.permissions.includes(Permission.match_edit);
-  if (!allowed) throw new Error("You don't have access to this team's discussion.");
+  requireTeamScope(membership, teamId);
   return membership;
 }
 

@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { fromZonedTime } from "date-fns-tz";
 import { prisma } from "@/lib/db/prisma";
-import { requirePermission } from "@/lib/auth/authorize";
+import { requirePermission, requireMembership, requireTeamScope } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
 import { matchSchema, matchResultSchema } from "@/lib/validations/match";
+import { attendanceStatusSchema } from "@/lib/validations/practice";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
 import { notifyDiscord, FORMATION_EMBED_COLOR, roleMentionPrefix } from "@/lib/integrations/discord";
@@ -43,11 +44,13 @@ export async function createMatchAction(orgSlug: string, orgId: string, _prev: A
 
   const team = await prisma.team.findUnique({ where: { id: parsed.data.teamId } });
   if (!team || team.orgId !== orgId) return { error: "Team not found." };
+  requireTeamScope(membership, team.id);
 
   const opponentId = await resolveOpponent(orgId, parsed.data.opponentId ?? "", parsed.data.newOpponentName ?? "");
   if (!opponentId) return { error: "Choose an opponent or enter a new one." };
 
   const org = await prisma.organization.findUniqueOrThrow({ where: { id: orgId } });
+  const roster = await prisma.teamMembership.findMany({ where: { teamId: team.id }, select: { membershipId: true } });
 
   const match = await prisma.match.create({
     data: {
@@ -64,6 +67,7 @@ export async function createMatchAction(orgSlug: string, orgId: string, _prev: A
       casterName: parsed.data.isStreamed ? parsed.data.casterName || null : null,
       notes: parsed.data.notes || null,
       createdById: membership.membershipId,
+      attendances: { create: roster.map((r) => ({ membershipId: r.membershipId })) },
     },
   });
 
@@ -76,19 +80,17 @@ export async function createMatchAction(orgSlug: string, orgId: string, _prev: A
     metadata: { teamId: team.id },
   });
 
-  const roster = await prisma.teamMembership.findMany({
-    where: { teamId: team.id, membershipId: { not: membership.membershipId } },
-    select: { membershipId: true },
-  });
   await Promise.all(
-    roster.map((r) =>
-      createNotification({
-        membershipId: r.membershipId,
-        type: "match_created",
-        title: `New match scheduled for ${team.name}`,
-        linkUrl: `/${orgSlug}/schedule/matches/${match.id}`,
-      }),
-    ),
+    roster
+      .filter((r) => r.membershipId !== membership.membershipId)
+      .map((r) =>
+        createNotification({
+          membershipId: r.membershipId,
+          type: "match_created",
+          title: `New match scheduled for ${team.name}`,
+          linkUrl: `/${orgSlug}/schedule/matches/${match.id}`,
+        }),
+      ),
   );
 
   revalidatePath(`/${orgSlug}/schedule`);
@@ -102,10 +104,11 @@ export async function updateMatchAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requirePermission(orgId, Permission.match_edit);
+  const { membership } = await requirePermission(orgId, Permission.match_edit);
 
   const match = await prisma.match.findUnique({ where: { id: matchId }, include: { team: true } });
   if (!match || match.team.orgId !== orgId) return { error: "Match not found." };
+  requireTeamScope(membership, match.teamId);
 
   const parsed = matchSchema.safeParse({
     teamId: formData.get("teamId") ?? match.teamId,
@@ -163,6 +166,7 @@ export async function recordMatchResultAction(
 
   const match = await prisma.match.findUnique({ where: { id: matchId }, include: { team: true, opponent: true } });
   if (!match || match.team.orgId !== orgId) return { error: "Match not found." };
+  requireTeamScope(membership, match.teamId);
 
   const parsed = matchResultSchema.safeParse({
     status: formData.get("status"),
@@ -240,7 +244,9 @@ export async function duplicateMatchAction(orgSlug: string, orgId: string, match
 
   const match = await prisma.match.findUnique({ where: { id: matchId }, include: { team: true } });
   if (!match || match.team.orgId !== orgId) return { error: "Match not found." };
+  requireTeamScope(membership, match.teamId);
 
+  const roster = await prisma.teamMembership.findMany({ where: { teamId: match.teamId }, select: { membershipId: true } });
   const nextWeek = new Date(match.scheduledAt.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const copy = await prisma.match.create({
@@ -258,6 +264,7 @@ export async function duplicateMatchAction(orgSlug: string, orgId: string, match
       casterName: match.casterName,
       notes: match.notes,
       createdById: membership.membershipId,
+      attendances: { create: roster.map((r) => ({ membershipId: r.membershipId })) },
     },
   });
 
@@ -279,6 +286,7 @@ export async function deleteMatchAction(orgSlug: string, orgId: string, matchId:
 
   const match = await prisma.match.findUnique({ where: { id: matchId }, include: { team: true } });
   if (!match || match.team.orgId !== orgId) return { error: "Match not found." };
+  requireTeamScope(membership, match.teamId);
 
   await prisma.match.delete({ where: { id: matchId } });
 
@@ -293,4 +301,102 @@ export async function deleteMatchAction(orgSlug: string, orgId: string, matchId:
 
   revalidatePath(`/${orgSlug}/schedule`);
   redirect(`/${orgSlug}/schedule`);
+}
+
+/** A member updating their own RSVP only needs org membership, not attendance_manage — same bar
+ *  as practice-sessions.ts's respondToAttendanceAction. */
+export async function respondToMatchAttendanceAction(
+  orgSlug: string,
+  orgId: string,
+  attendanceId: string,
+  status: string,
+): Promise<ActionState> {
+  const { membership } = await requireMembership(orgId);
+
+  const parsedStatus = attendanceStatusSchema.safeParse(status);
+  if (!parsedStatus.success) return { error: "Invalid status." };
+
+  const attendance = await prisma.matchAttendance.findUnique({ where: { id: attendanceId } });
+  if (!attendance) return { error: "Not found." };
+  if (attendance.membershipId !== membership.membershipId) {
+    return { error: "You can only update your own attendance." };
+  }
+
+  await prisma.matchAttendance.update({
+    where: { id: attendanceId },
+    data: { status: parsedStatus.data, respondedAt: new Date() },
+  });
+
+  revalidatePath(`/${orgSlug}/schedule/matches/${attendance.matchId}`);
+}
+
+/** Coaches/captains updating attendance on behalf of others. */
+export async function manageMatchAttendanceAction(
+  orgSlug: string,
+  orgId: string,
+  attendanceId: string,
+  status: string,
+): Promise<ActionState> {
+  const { membership } = await requirePermission(orgId, Permission.attendance_manage);
+
+  const parsedStatus = attendanceStatusSchema.safeParse(status);
+  if (!parsedStatus.success) return { error: "Invalid status." };
+
+  const attendance = await prisma.matchAttendance.findUnique({
+    where: { id: attendanceId },
+    include: { match: { include: { team: true } } },
+  });
+  if (!attendance || attendance.match.team.orgId !== orgId) return { error: "Not found." };
+  requireTeamScope(membership, attendance.match.teamId);
+
+  await prisma.matchAttendance.update({
+    where: { id: attendanceId },
+    data: { status: parsedStatus.data, respondedAt: new Date() },
+  });
+
+  revalidatePath(`/${orgSlug}/schedule/matches/${attendance.matchId}`);
+}
+
+/** Adds someone from the team's current roster to this match's attendance list — for a
+ *  substitute, or anyone who joined the roster after the match was originally created (the
+ *  attendance list is only auto-populated once, at creation time). Rejects anyone not actually
+ *  on the team's roster; upserts so re-adding someone already on the list is a harmless no-op. */
+export async function addMatchAttendeeAction(
+  orgSlug: string,
+  orgId: string,
+  matchId: string,
+  targetMembershipId: string,
+): Promise<ActionState> {
+  const { membership } = await requirePermission(orgId, Permission.attendance_manage);
+
+  const match = await prisma.match.findUnique({ where: { id: matchId }, include: { team: true } });
+  if (!match || match.team.orgId !== orgId) return { error: "Match not found." };
+  requireTeamScope(membership, match.teamId);
+
+  const onRoster = await prisma.teamMembership.findFirst({ where: { teamId: match.teamId, membershipId: targetMembershipId } });
+  if (!onRoster) return { error: "That person isn't on this team's roster." };
+
+  await prisma.matchAttendance.upsert({
+    where: { matchId_membershipId: { matchId, membershipId: targetMembershipId } },
+    create: { matchId, membershipId: targetMembershipId },
+    update: {},
+  });
+
+  revalidatePath(`/${orgSlug}/schedule/matches/${matchId}`);
+  return { success: "Added." };
+}
+
+/** Removes someone from this match's attendance list without touching their spot on the team's
+ *  actual roster — for someone benched or unavailable for this one match specifically. */
+export async function removeMatchAttendeeAction(orgSlug: string, orgId: string, attendanceId: string): Promise<ActionState> {
+  const { membership } = await requirePermission(orgId, Permission.attendance_manage);
+
+  const attendance = await prisma.matchAttendance.findUnique({ where: { id: attendanceId }, include: { match: { include: { team: true } } } });
+  if (!attendance || attendance.match.team.orgId !== orgId) return { error: "Not found." };
+  requireTeamScope(membership, attendance.match.teamId);
+
+  await prisma.matchAttendance.delete({ where: { id: attendanceId } });
+
+  revalidatePath(`/${orgSlug}/schedule/matches/${attendance.matchId}`);
+  return { success: "Removed." };
 }

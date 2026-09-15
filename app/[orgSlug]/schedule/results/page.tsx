@@ -27,7 +27,11 @@ export default async function MatchResultsPage({
   const { session, org, teams } = await getOrgContext(orgSlug);
   const viewerTz = session.user.timezone ?? org.timezone;
 
-  const teamWhere = team ? { teamId: team, team: { orgId: org.id } } : { team: { orgId: org.id } };
+  const visibleTeamIds = teams.map((t) => t.id);
+  const requestedTeam = team && visibleTeamIds.includes(team) ? team : undefined;
+  const teamWhere = requestedTeam
+    ? { teamId: requestedTeam, team: { orgId: org.id } }
+    : { teamId: { in: visibleTeamIds }, team: { orgId: org.id } };
 
   const matches = await prisma.match.findMany({
     where: { status: "COMPLETED", ...teamWhere },

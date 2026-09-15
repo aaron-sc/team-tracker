@@ -20,6 +20,8 @@ export async function GET(req: NextRequest) {
   const canViewRecruitment = membership.permissions.includes(Permission.recruitment_view);
   const canViewEmails = membership.permissions.includes(Permission.org_members_contact_view);
   const canViewScrims = membership.permissions.includes(Permission.scrim_manage);
+  const canSeeAllTeams = membership.permissions.includes(Permission.teams_view_all);
+  const teamWhere = canSeeAllTeams ? { orgId } : { orgId, id: { in: membership.teamIds } };
 
   const [members, teams, venues, prospects, scrimListings, matches, sessions, announcements] = await Promise.all([
     prisma.membership.findMany({
@@ -31,7 +33,7 @@ export async function GET(req: NextRequest) {
       take: 6,
     }),
     prisma.team.findMany({
-      where: { orgId, OR: [{ name: { contains: q } }, { game: { contains: q } }] },
+      where: { ...teamWhere, OR: [{ name: { contains: q } }, { game: { contains: q } }] },
       take: 6,
     }),
     prisma.venue.findMany({
@@ -49,13 +51,13 @@ export async function GET(req: NextRequest) {
         })
       : Promise.resolve([]),
     prisma.match.findMany({
-      where: { team: { orgId }, OR: [{ opponent: { name: { contains: q } } }, { team: { name: { contains: q } } }] },
+      where: { team: teamWhere, OR: [{ opponent: { name: { contains: q } } }, { team: { name: { contains: q } } }] },
       include: { team: true, opponent: true },
       orderBy: { scheduledAt: "desc" },
       take: 6,
     }),
     prisma.practiceSession.findMany({
-      where: { team: { orgId }, OR: [{ opponent: { name: { contains: q } } }, { team: { name: { contains: q } } }] },
+      where: { team: teamWhere, OR: [{ opponent: { name: { contains: q } } }, { team: { name: { contains: q } } }] },
       include: { team: true, opponent: true },
       orderBy: { scheduledAt: "desc" },
       take: 6,

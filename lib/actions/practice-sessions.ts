@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { fromZonedTime } from "date-fns-tz";
 import { prisma } from "@/lib/db/prisma";
-import { requirePermission, requireMembership } from "@/lib/auth/authorize";
+import { requirePermission, requireMembership, requireTeamScope } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
 import { practiceSessionSchema, attendanceStatusSchema } from "@/lib/validations/practice";
 import { Permission } from "@/lib/generated/prisma/enums";
@@ -52,6 +52,7 @@ export async function createPracticeSessionAction(
 
   const team = await prisma.team.findUnique({ where: { id: parsed.data.teamId } });
   if (!team || team.orgId !== orgId) return { error: "Team not found." };
+  requireTeamScope(membership, team.id);
 
   let opponentId: string | null = null;
   if (parsed.data.type === "SCRIM") {
@@ -119,10 +120,11 @@ export async function updatePracticeSessionAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requirePermission(orgId, Permission.practice_edit);
+  const { membership } = await requirePermission(orgId, Permission.practice_edit);
 
   const session = await prisma.practiceSession.findUnique({ where: { id: sessionId }, include: { team: true } });
   if (!session || session.team.orgId !== orgId) return { error: "Session not found." };
+  requireTeamScope(membership, session.teamId);
 
   const parsed = parseSessionForm(formData, session.teamId);
   if (!parsed.success) {
@@ -161,6 +163,7 @@ export async function duplicatePracticeSessionAction(orgSlug: string, orgId: str
 
   const session = await prisma.practiceSession.findUnique({ where: { id: sessionId }, include: { team: true } });
   if (!session || session.team.orgId !== orgId) return { error: "Session not found." };
+  requireTeamScope(membership, session.teamId);
 
   const roster = await prisma.teamMembership.findMany({ where: { teamId: session.teamId }, select: { membershipId: true } });
   const nextWeek = new Date(session.scheduledAt.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -199,6 +202,7 @@ export async function deletePracticeSessionAction(orgSlug: string, orgId: string
 
   const session = await prisma.practiceSession.findUnique({ where: { id: sessionId }, include: { team: true } });
   if (!session || session.team.orgId !== orgId) return { error: "Session not found." };
+  requireTeamScope(membership, session.teamId);
 
   if (session.createdById !== membership.membershipId) {
     await createNotification({
@@ -268,13 +272,17 @@ export async function manageAttendanceAction(
   attendanceId: string,
   status: string,
 ): Promise<ActionState> {
-  await requirePermission(orgId, Permission.attendance_manage);
+  const { membership } = await requirePermission(orgId, Permission.attendance_manage);
 
   const parsedStatus = attendanceStatusSchema.safeParse(status);
   if (!parsedStatus.success) return { error: "Invalid status." };
 
-  const attendance = await prisma.sessionAttendance.findUnique({ where: { id: attendanceId } });
-  if (!attendance) return { error: "Not found." };
+  const attendance = await prisma.sessionAttendance.findUnique({
+    where: { id: attendanceId },
+    include: { session: { include: { team: true } } },
+  });
+  if (!attendance || attendance.session.team.orgId !== orgId) return { error: "Not found." };
+  requireTeamScope(membership, attendance.session.teamId);
 
   await prisma.sessionAttendance.update({
     where: { id: attendanceId },
@@ -282,4 +290,50 @@ export async function manageAttendanceAction(
   });
 
   revalidatePath(`/${orgSlug}/schedule`);
+}
+
+/** Adds someone from the team's current roster to this session's attendance list — for a
+ *  substitute, or anyone who joined after the session was originally created. Rejects anyone not
+ *  actually on the team's roster; upserts so re-adding someone already on the list is a no-op. */
+export async function addSessionAttendeeAction(
+  orgSlug: string,
+  orgId: string,
+  sessionId: string,
+  targetMembershipId: string,
+): Promise<ActionState> {
+  const { membership } = await requirePermission(orgId, Permission.attendance_manage);
+
+  const session = await prisma.practiceSession.findUnique({ where: { id: sessionId }, include: { team: true } });
+  if (!session || session.team.orgId !== orgId) return { error: "Session not found." };
+  requireTeamScope(membership, session.teamId);
+
+  const onRoster = await prisma.teamMembership.findFirst({ where: { teamId: session.teamId, membershipId: targetMembershipId } });
+  if (!onRoster) return { error: "That person isn't on this team's roster." };
+
+  await prisma.sessionAttendance.upsert({
+    where: { sessionId_membershipId: { sessionId, membershipId: targetMembershipId } },
+    create: { sessionId, membershipId: targetMembershipId },
+    update: {},
+  });
+
+  revalidatePath(`/${orgSlug}/schedule/practice/${sessionId}`);
+  return { success: "Added." };
+}
+
+/** Removes someone from this session's attendance list without touching their spot on the
+ *  team's actual roster — for someone benched or unavailable for this one session specifically. */
+export async function removeSessionAttendeeAction(orgSlug: string, orgId: string, attendanceId: string): Promise<ActionState> {
+  const { membership } = await requirePermission(orgId, Permission.attendance_manage);
+
+  const attendance = await prisma.sessionAttendance.findUnique({
+    where: { id: attendanceId },
+    include: { session: { include: { team: true } } },
+  });
+  if (!attendance || attendance.session.team.orgId !== orgId) return { error: "Not found." };
+  requireTeamScope(membership, attendance.session.teamId);
+
+  await prisma.sessionAttendance.delete({ where: { id: attendanceId } });
+
+  revalidatePath(`/${orgSlug}/schedule/practice/${attendance.sessionId}`);
+  return { success: "Removed." };
 }

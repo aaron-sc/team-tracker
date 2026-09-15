@@ -45,6 +45,7 @@ services:
       - ADMIN_DOMAIN=${ADMIN_DOMAIN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/maintenance:/srv/maintenance:ro
       - caddy-data:/data
       - caddy-config:/config
     networks:

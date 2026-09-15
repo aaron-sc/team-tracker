@@ -77,6 +77,10 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  // `teams` from getOrgContext is already scoped to what this viewer can see — every query below
+  // that would otherwise leak another team's name/schedule/results uses this instead of a bare
+  // org-wide `orgId` filter.
+  const visibleTeamIds = teams.map((t) => t.id);
   const canViewRecruitment = membership.permissions.includes(Permission.recruitment_view);
   const canViewAudit = membership.permissions.includes(Permission.audit_log_view);
   const canViewScrims = membership.permissions.includes(Permission.scrim_manage);
@@ -99,13 +103,13 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
     expensesThisMonth,
   ] = await Promise.all([
     prisma.match.findMany({
-      where: { team: { orgId: org.id }, scheduledAt: { gte: now }, status: "SCHEDULED" },
+      where: { teamId: { in: visibleTeamIds }, scheduledAt: { gte: now }, status: "SCHEDULED" },
       include: { team: true, opponent: true },
       orderBy: { scheduledAt: "asc" },
       take: 5,
     }),
     prisma.practiceSession.findMany({
-      where: { team: { orgId: org.id }, scheduledAt: { gte: now } },
+      where: { teamId: { in: visibleTeamIds }, scheduledAt: { gte: now } },
       include: { team: true, opponent: true },
       orderBy: { scheduledAt: "asc" },
       take: 5,
@@ -123,13 +127,13 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
       : Promise.resolve([]),
     prisma.match.groupBy({
       by: ["teamId", "resultStatus"],
-      where: { team: { orgId: org.id }, status: "COMPLETED" },
+      where: { teamId: { in: visibleTeamIds }, status: "COMPLETED" },
       _count: true,
     }),
     prisma.sessionAttendance.groupBy({
       by: ["status"],
       where: {
-        session: { team: { orgId: org.id }, scheduledAt: { lt: now } },
+        session: { teamId: { in: visibleTeamIds }, scheduledAt: { lt: now } },
         status: { in: ["ATTENDED", "ABSENT", "LATE"] },
       },
       _count: true,

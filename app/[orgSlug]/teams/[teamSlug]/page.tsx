@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOrgContext } from "@/lib/org/context";
+import { canSeeTeam } from "@/lib/auth/authorize";
 import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ export default async function TeamDetailPage({
   const viewerHour12 = session.user.timeFormat !== "24h";
 
   const team = await prisma.team.findUnique({ where: { orgId_slug: { orgId: org.id, slug: teamSlug } } });
-  if (!team) notFound();
+  if (!team || !canSeeTeam(membership, team.id)) notFound();
 
   const canManageRoster = membership.permissions.includes(Permission.roster_manage);
   const canEditTeam = membership.permissions.includes(Permission.team_edit);

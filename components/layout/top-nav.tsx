@@ -89,7 +89,7 @@ export function TopNav({
       style={{ viewTransitionName: "site-header" } as React.CSSProperties}
     >
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-        <MobileNav orgSlug={orgSlug} permissions={permissions} />
+        <MobileNav orgSlug={orgSlug} permissions={permissions} hiddenNavItems={hiddenNavItems} />
         <Link href="/" className="hidden font-semibold sm:flex">
           <Logo size="size-5" />
         </Link>

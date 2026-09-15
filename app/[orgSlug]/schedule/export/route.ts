@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { Permission } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
 import { toCsv } from "@/lib/csv";
 
@@ -11,14 +12,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ orgSlug
   const membership = session.memberships.find((m) => m.orgSlug === orgSlug);
   if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const teamWhere = membership.permissions.includes(Permission.teams_view_all)
+    ? { orgId: membership.orgId }
+    : { orgId: membership.orgId, id: { in: membership.teamIds } };
+
   const [matches, sessions] = await Promise.all([
     prisma.match.findMany({
-      where: { team: { orgId: membership.orgId } },
+      where: { team: teamWhere },
       include: { team: true, opponent: true },
       orderBy: { scheduledAt: "asc" },
     }),
     prisma.practiceSession.findMany({
-      where: { team: { orgId: membership.orgId } },
+      where: { team: teamWhere },
       include: { team: true, opponent: true },
       orderBy: { scheduledAt: "asc" },
     }),

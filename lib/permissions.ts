@@ -26,6 +26,7 @@ export const PERMISSION_GROUPS: { label: string; permissions: Permission[] }[] =
       Permission.team_delete,
       Permission.roster_manage,
       Permission.team_members_invite,
+      Permission.teams_view_all,
     ],
   },
   {
@@ -102,6 +103,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   team_delete: "Delete teams",
   roster_manage: "Manage roster (add/remove players, positions)",
   team_members_invite: "Invite players to own team(s) via link",
+  teams_view_all: "See teams you're not a member of (otherwise only your own team(s) are visible)",
   match_create: "Create matches",
   match_edit: "Edit matches",
   match_delete: "Delete matches",

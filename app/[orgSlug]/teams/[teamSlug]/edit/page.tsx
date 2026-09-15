@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getOrgContext } from "@/lib/org/context";
+import { canSeeTeam } from "@/lib/auth/authorize";
 import { requirePagePermission } from "@/lib/org/require-permission-page";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/db/prisma";
@@ -21,7 +22,7 @@ export default async function EditTeamPage({
   requirePagePermission(orgSlug, membership, Permission.team_edit);
 
   const team = await prisma.team.findUnique({ where: { orgId_slug: { orgId: org.id, slug: teamSlug } } });
-  if (!team) notFound();
+  if (!team || !canSeeTeam(membership, team.id)) notFound();
 
   const action = updateTeamAction.bind(null, orgSlug, org.id, team.id);
   const canDelete = membership.permissions.includes(Permission.team_delete);
