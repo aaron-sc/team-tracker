@@ -14,6 +14,7 @@ import { ConnectDiscordForm } from "@/components/account/connect-discord-form";
 import { UpdateProfileDetailsForm } from "@/components/account/update-profile-details-form";
 import { AvatarUploadForm } from "@/components/account/avatar-upload-form";
 import { LeaveOrgButton } from "@/components/account/leave-org-button";
+import { InviteFriendsCard } from "@/components/account/invite-friends-card";
 import { TwoFactorDialog } from "@/components/account/two-factor-dialog";
 import { DisableTwoFactorForm } from "@/components/account/disable-two-factor-form";
 import { RegenerateRecoveryCodesDialog } from "@/components/account/regenerate-recovery-codes-dialog";
@@ -25,13 +26,14 @@ import { ArrowLeft } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { requireVerifiedEmailPage } from "@/lib/auth/require-verified-page";
 import { getTimezones } from "@/lib/utils/timezones";
+import { MAX_USER_INVITES } from "@/lib/constants/invites";
 
 export default async function AccountPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
   requireVerifiedEmailPage(session);
 
-  const [user, oauthGrants, loginEvents] = await Promise.all([
+  const [user, oauthGrants, loginEvents, userInvites] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: session.user.id },
       select: {
@@ -55,6 +57,11 @@ export default async function AccountPage() {
       where: { userId: session.user.id },
       orderBy: { createdAt: "desc" },
       take: 10,
+    }),
+    prisma.userInvite.findMany({
+      where: { invitedById: session.user.id },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, token: true, consumedAt: true, consumedByEmail: true, expiresAt: true },
     }),
   ]);
 
@@ -185,6 +192,24 @@ export default async function AccountPage() {
                 </div>
               ))
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Invite friends</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <InviteFriendsCard
+              maxInvites={MAX_USER_INVITES}
+              invites={userInvites.map((invite) => ({
+                id: invite.id,
+                token: invite.token,
+                consumedAt: invite.consumedAt?.toISOString() ?? null,
+                consumedByEmail: invite.consumedByEmail,
+                expiresAt: invite.expiresAt.toISOString(),
+              }))}
+            />
           </CardContent>
         </Card>
 

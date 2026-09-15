@@ -297,6 +297,7 @@ model User {
 
   memberships             Membership[]
   invitesSent             Invite[]             @relation("InvitedBy")
+  userInvitesSent         UserInvite[]
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   pushSubscriptions       PushSubscription[]
@@ -351,6 +352,22 @@ model AccessRequest {
   consumedAt    DateTime?
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
+}
+
+// A word-of-mouth growth lever, separate from the AccessRequest flow above: an existing user can
+// hand a link straight to someone they know, who signs up and creates their own new org without
+// waiting on admin review. Capped at 3 per user (enforced in lib/actions/auth.ts by counting every
+// row ever created for that invitedById, not just unconsumed ones — so revoking/expiring one
+// doesn't free up a new slot).
+model UserInvite {
+  id              String    @id @default(cuid())
+  token           String    @unique
+  invitedById     String
+  invitedBy       User      @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+  consumedAt      DateTime?
+  consumedByEmail String?
+  expiresAt       DateTime
+  createdAt       DateTime  @default(now())
 }
 
 model Role {

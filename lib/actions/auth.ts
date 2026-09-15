@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { auth, signIn, signOut } from "@/auth";
 import { createPending2faToken } from "@/lib/auth/pending-2fa";
@@ -17,6 +18,7 @@ import {
   createOrgSchema,
   acceptInviteNewUserSchema,
   joinTeamNewUserSchema,
+  userInviteSignupSchema,
   requestPasswordResetSchema,
   resetPasswordSchema,
   changePasswordSchema,
@@ -27,6 +29,7 @@ import {
 } from "@/lib/validations/auth";
 import { createNotification } from "@/lib/notifications/create";
 import { NOTIFICATION_TYPE_LABELS } from "@/lib/constants/notification-types";
+import { MAX_USER_INVITES } from "@/lib/constants/invites";
 import { sendVerificationEmail } from "@/lib/actions/email-verification";
 import { saveUploadedImage, deleteUploadedFile, UploadError } from "@/lib/storage/local";
 import { sendEmail } from "@/lib/email/resend";
@@ -152,6 +155,35 @@ function countOwnedOrgs(userId: string): Promise<number> {
   });
 }
 
+/** Creates an org, its full set of system roles, and an Owner membership for `ownerUserId` —
+ *  the shared core of every "new organization" path (fresh signup, an existing user creating an
+ *  additional org, or a user-invite signup below). Must run inside the caller's transaction. */
+async function createOrgWithOwnerRoles(
+  tx: Prisma.TransactionClient,
+  { orgName, slug, ownerUserId }: { orgName: string; slug: string; ownerUserId: string },
+) {
+  const org = await tx.organization.create({ data: { name: orgName, slug } });
+
+  let ownerRoleId: string | null = null;
+  for (const [roleName, preset] of Object.entries(ROLE_PRESETS)) {
+    const role = await tx.role.create({
+      data: {
+        orgId: org.id,
+        name: roleName,
+        description: preset.description,
+        color: preset.color,
+        isSystem: true,
+        permissions: { create: preset.permissions.map((permission) => ({ permission })) },
+      },
+    });
+    if (roleName === "Owner") ownerRoleId = role.id;
+  }
+
+  await tx.membership.create({ data: { userId: ownerUserId, orgId: org.id, roleId: ownerRoleId! } });
+  return org;
+}
+
+
 /**
  * Creates the first account + org for someone who was approved through the access-request gate.
  * Only reachable with a valid, approved, unconsumed AccessRequest token (see /signup?token=… and
@@ -190,27 +222,8 @@ export async function signupAction(_prev: ActionState, formData: FormData): Prom
   const passwordHash = await bcrypt.hash(password, 12);
 
   const newUserId = await prisma.$transaction(async (tx) => {
-    const org = await tx.organization.create({ data: { name: orgName, slug } });
     const user = await tx.user.create({ data: { name, email, passwordHash } });
-
-    let ownerRoleId: string | null = null;
-    for (const [roleName, preset] of Object.entries(ROLE_PRESETS)) {
-      const role = await tx.role.create({
-        data: {
-          orgId: org.id,
-          name: roleName,
-          description: preset.description,
-          color: preset.color,
-          isSystem: true,
-          permissions: { create: preset.permissions.map((permission) => ({ permission })) },
-        },
-      });
-      if (roleName === "Owner") ownerRoleId = role.id;
-    }
-
-    await tx.membership.create({
-      data: { userId: user.id, orgId: org.id, roleId: ownerRoleId! },
-    });
+    await createOrgWithOwnerRoles(tx, { orgName, slug, ownerUserId: user.id });
 
     await tx.accessRequest.update({
       where: { id: accessRequest.id },
@@ -250,30 +263,94 @@ export async function createAdditionalOrgAction(_prev: ActionState, formData: Fo
 
   const slug = await generateUniqueOrgSlug(parsed.data.orgName);
 
-  await prisma.$transaction(async (tx) => {
-    const org = await tx.organization.create({ data: { name: parsed.data.orgName, slug } });
-
-    let ownerRoleId: string | null = null;
-    for (const [roleName, preset] of Object.entries(ROLE_PRESETS)) {
-      const role = await tx.role.create({
-        data: {
-          orgId: org.id,
-          name: roleName,
-          description: preset.description,
-          color: preset.color,
-          isSystem: true,
-          permissions: { create: preset.permissions.map((permission) => ({ permission })) },
-        },
-      });
-      if (roleName === "Owner") ownerRoleId = role.id;
-    }
-
-    await tx.membership.create({
-      data: { userId: session.user.id, orgId: org.id, roleId: ownerRoleId! },
-    });
-  });
+  await prisma.$transaction((tx) =>
+    createOrgWithOwnerRoles(tx, { orgName: parsed.data.orgName, slug, ownerUserId: session.user.id }),
+  );
 
   redirect(`/${slug}/dashboard`);
+}
+
+/** Generates one more invite link for the current user, up to MAX_USER_INVITES total (ever
+ *  created, not just unconsumed — see that constant's doc comment). Shown on /account; the
+ *  resulting link goes straight to /signup?invite=<token>, no admin review required. */
+export async function createUserInviteAction(): Promise<ActionState> {
+  const session = await auth();
+  if (!session?.user) return { error: "You must be logged in." };
+
+  const sentCount = await prisma.userInvite.count({ where: { invitedById: session.user.id } });
+  if (sentCount >= MAX_USER_INVITES) {
+    return { error: `You've already sent all ${MAX_USER_INVITES} of your invites.` };
+  }
+
+  await prisma.userInvite.create({
+    data: {
+      token: crypto.randomBytes(24).toString("base64url"),
+      invitedById: session.user.id,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  revalidatePath("/account");
+}
+
+/**
+ * Creates an account + a brand-new org for someone an existing user invited directly — the
+ * word-of-mouth counterpart to signupAction above. Unlike that flow, the email comes from the
+ * form (there's no pre-submitted request to trust it from), and the token is a UserInvite, not
+ * an AccessRequest, so completing this never touches the admin-review queue.
+ */
+export async function userInviteSignupAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const allowed = await checkRateLimit("signup", 5, 60 * 60 * 1000);
+  if (!allowed) return { error: "Too many attempts. Try again later." };
+
+  const token = String(formData.get("token") ?? "");
+  const invite = token ? await prisma.userInvite.findUnique({ where: { token } }) : null;
+  if (!invite || invite.consumedAt || invite.expiresAt < new Date()) {
+    return { error: "This invite link isn't valid anymore. Ask for a new one." };
+  }
+
+  const parsed = userInviteSignupSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+    orgName: formData.get("orgName"),
+    token,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+  const { name, email, password, orgName } = parsed.data;
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    return { error: "An account with that email already exists. Try logging in instead." };
+  }
+
+  const slug = await generateUniqueOrgSlug(orgName);
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  const newUserId = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({ data: { name, email, passwordHash } });
+    await createOrgWithOwnerRoles(tx, { orgName, slug, ownerUserId: user.id });
+
+    await tx.userInvite.update({
+      where: { id: invite.id },
+      data: { consumedAt: new Date(), consumedByEmail: email },
+    });
+
+    return user.id;
+  });
+
+  await sendVerificationEmail(newUserId, email, name);
+
+  try {
+    await signIn("credentials", { email, password, redirectTo: "/orgs" });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return { error: "Account created — but automatic sign-in failed. Please log in." };
+    }
+    throw error;
+  }
 }
 
 export async function acceptInviteAsNewUserAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
