@@ -19,6 +19,18 @@ services:
       - uploads:/app/public/uploads
     expose:
       - "3300"
+    networks:
+      # Explicit "default" here is required, not optional — an explicit `networks:` list that
+      # omitted it would drop this service off the default network entirely, breaking Caddy's own
+      # (default-network) route to it. Added alongside "esports-tools-shared" so THIS container can
+      # itself resolve esports-tools.com (the hub's issuer) internally to Caddy, the same way
+      # vault-app/hub-app already resolve formation.esports-tools.com — this app is now also an
+      # OIDC *client* of the hub (see auth.ts's "esports-tools" provider), and its token-exchange
+      # call to the hub's /oauth/token was going out over real public DNS/Cloudflare without this,
+      # which doesn't return JSON to a non-browser caller (the exact Batch 1 problem, on this new
+      # leg — see the OIDC broker plan).
+      - default
+      - esports-tools-shared
 
   caddy:
     image: caddy:2-alpine
