@@ -11,7 +11,6 @@ import { UpdateTimeFormatForm } from "@/components/account/update-time-format-fo
 import { PushNotificationsToggle } from "@/components/account/push-notifications-toggle";
 import { NotificationPreferencesForm } from "@/components/account/notification-preferences-form";
 import { ConnectDiscordForm } from "@/components/account/connect-discord-form";
-import { UpdateProfileDetailsForm } from "@/components/account/update-profile-details-form";
 import { AvatarUploadForm } from "@/components/account/avatar-upload-form";
 import { LeaveOrgButton } from "@/components/account/leave-org-button";
 import { InviteFriendsCard } from "@/components/account/invite-friends-card";
@@ -43,7 +42,6 @@ export default async function AccountPage() {
         timeFormat: true,
         discordHandle: true,
         discordUserId: true,
-        phone: true,
         mutedNotificationTypes: true,
         totpEnabledAt: true,
       },
@@ -85,6 +83,15 @@ export default async function AccountPage() {
       <p className="mb-6 text-muted-foreground">{session.user.name ?? session.user.email}</p>
 
       <div className="space-y-6">
+        <Card id="connect-discord" className="scroll-mt-6">
+          <CardHeader>
+            <CardTitle className="text-base">Connect Discord</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ConnectDiscordForm discordUserId={user.discordUserId} discordHandle={user.discordHandle} />
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Profile picture</CardTitle>
@@ -100,15 +107,6 @@ export default async function AccountPage() {
           </CardHeader>
           <CardContent>
             <UpdateNameForm currentName={session.user.name ?? ""} />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Contact &amp; gaming details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <UpdateProfileDetailsForm currentDiscordHandle={user.discordHandle ?? ""} currentPhone={user.phone ?? ""} />
           </CardContent>
         </Card>
 
@@ -145,15 +143,6 @@ export default async function AccountPage() {
           </CardHeader>
           <CardContent>
             <NotificationPreferencesForm mutedTypes={mutedTypes} />
-          </CardContent>
-        </Card>
-
-        <Card id="connect-discord" className="scroll-mt-6">
-          <CardHeader>
-            <CardTitle className="text-base">Connect Discord</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ConnectDiscordForm discordUserId={user.discordUserId} discordHandle={user.discordHandle} />
           </CardContent>
         </Card>
 

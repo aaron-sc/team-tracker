@@ -25,7 +25,6 @@ import {
   updateNameSchema,
   updateTimezoneSchema,
   updateTimeFormatSchema,
-  updateProfileDetailsSchema,
 } from "@/lib/validations/auth";
 import { createNotification } from "@/lib/notifications/create";
 import { NOTIFICATION_TYPE_LABELS } from "@/lib/constants/notification-types";
@@ -748,33 +747,6 @@ export async function updateHiddenNavItemsAction(
 
   revalidatePath("/[orgSlug]", "layout");
   return { success: "Navbar updated." };
-}
-
-export type UpdateProfileDetailsState = { error?: string; success?: string } | undefined;
-
-export async function updateProfileDetailsAction(
-  _prev: UpdateProfileDetailsState,
-  formData: FormData,
-): Promise<UpdateProfileDetailsState> {
-  const session = await auth();
-  if (!session?.user) {
-    return { error: "You must be logged in." };
-  }
-
-  const parsed = updateProfileDetailsSchema.safeParse({
-    discordHandle: formData.get("discordHandle") ?? "",
-    phone: formData.get("phone") ?? "",
-  });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
-  }
-
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { discordHandle: parsed.data.discordHandle || null, phone: parsed.data.phone || null },
-  });
-
-  return { success: "Profile updated." };
 }
 
 export type UpdateAvatarState = { error?: string; success?: string } | undefined;
