@@ -7,6 +7,7 @@ import { getLeagueRank } from "@/lib/integrations/riot";
 import { getSteamProfile } from "@/lib/integrations/steam";
 import { getValorantStats } from "@/lib/integrations/henrikdev";
 import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
 
 const RIOT_GAMES = new Set(["League of Legends"]);
@@ -22,10 +23,16 @@ export async function syncPlayerGameStatsAction(
   teamMembershipId: string,
   membershipPageId: string,
 ): Promise<ActionState> {
-  await requireMembership(orgId);
+  const { membership: actor } = await requireMembership(orgId);
 
   const entry = await prisma.teamMembership.findUnique({ where: { id: teamMembershipId }, include: { team: true, membership: true } });
   if (!entry || entry.membership.orgId !== orgId) return { error: "Roster entry not found." };
+  // A sync can autofill `rank` (see the Valorant branch below), which is otherwise subject to
+  // per-team self-edit permissions — so this needs the same "self or roster manager" gate as
+  // updateRosterEntryAction, not just any org membership.
+  const isSelf = actor.membershipId === entry.membershipId;
+  const isManager = actor.permissions.includes(Permission.roster_manage);
+  if (!isSelf && !isManager) return { error: "You don't have permission to sync this roster entry." };
   if (!entry.inGameName) return { error: "Set an in-game name on this roster entry first." };
 
   try {
@@ -56,7 +63,13 @@ export async function syncPlayerGameStatsAction(
       if (!stats) return { error: `No Valorant account found for "${entry.inGameName}".` };
       await prisma.teamMembership.update({
         where: { id: teamMembershipId },
-        data: { gameStatsCache: { provider: "valorant", ...stats }, gameStatsUpdatedAt: new Date() },
+        data: {
+          gameStatsCache: { provider: "valorant", ...stats },
+          gameStatsUpdatedAt: new Date(),
+          // Autofills the same `rank` field RankSelect/averageRank use — "Unrated" (no ranked
+          // games played yet) is deliberately left alone rather than clobbering a real rank.
+          ...(stats.tier !== "Unrated" ? { rank: stats.tier } : {}),
+        },
       });
     } else {
       return { error: `Stats sync isn't available for ${entry.team.game} yet.` };
@@ -66,5 +79,6 @@ export async function syncPlayerGameStatsAction(
   }
 
   revalidatePath(`/${orgSlug}/roster/${membershipPageId}`);
+  revalidatePath(`/${orgSlug}/teams`);
   return { success: "Stats synced." };
 }
