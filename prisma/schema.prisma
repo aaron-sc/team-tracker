@@ -239,6 +239,11 @@ model Team {
   publicRosterEnabled Boolean @default(false)
   publicRosterToken   String? @unique
 
+  // Which roster fields (a subset of jerseyNumber/position/inGameName/rank) a player can edit on
+  // their own TeamMembership row — see lib/constants/roster-fields.ts. Null = never configured,
+  // which falls back to that file's default set rather than an empty one.
+  playerEditableFields Json?
+
   teamMemberships  TeamMembership[]
   matches          Match[]
   practiceSessions PracticeSession[]

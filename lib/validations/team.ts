@@ -38,3 +38,10 @@ export const rosterEntrySchema = z.object({
 });
 
 export const updateRosterEntrySchema = z.object(rosterProfileFields);
+
+export const rosterFieldPermissionsSchema = z.object({
+  jerseyNumber: z.boolean().default(false),
+  position: z.boolean().default(false),
+  inGameName: z.boolean().default(false),
+  rank: z.boolean().default(false),
+});

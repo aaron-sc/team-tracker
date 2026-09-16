@@ -9,6 +9,7 @@ import { Mail, Phone, MessageSquare, Calendar, ExternalLink, ShieldAlert } from 
 import { formatDate } from "@/lib/utils/format-time";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { EditMyProfileDialog } from "@/components/roster/edit-my-profile-dialog";
+import { getPlayerEditableFields } from "@/lib/constants/roster-fields";
 import { Badge } from "@/components/ui/badge";
 import { PlayerActionDialog } from "@/components/roster/player-action-dialog";
 import { DeletePlayerActionButton } from "@/components/roster/delete-player-action-button";
@@ -180,7 +181,13 @@ export default async function MemberProfilePage({
                         orgId={org.id}
                         teamMembershipId={tm.id}
                         teamName={tm.team.name}
+                        game={tm.team.game}
+                        editableFields={Array.from(getPlayerEditableFields(tm.team.playerEditableFields))}
                         defaultValues={{
+                          position: tm.position ?? "",
+                          jerseyNumber: tm.jerseyNumber ?? "",
+                          inGameName: tm.inGameName ?? "",
+                          rank: tm.rank ?? "",
                           bio: tm.bio ?? "",
                           trackerLink: tm.trackerLink ?? "",
                           trackerValorant: tm.trackerValorant ?? "",

@@ -5,8 +5,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requirePermission, requireMembership } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
-import { teamSchema, rosterEntrySchema, updateRosterEntrySchema } from "@/lib/validations/team";
+import { teamSchema, rosterEntrySchema, updateRosterEntrySchema, rosterFieldPermissionsSchema } from "@/lib/validations/team";
 import { Permission } from "@/lib/generated/prisma/enums";
+import { SELF_EDITABLE_ROSTER_FIELDS, getPlayerEditableFields } from "@/lib/constants/roster-fields";
 import { isReservedSlug, slugify } from "@/lib/utils/slug";
 import { saveUploadedImage, deleteUploadedFile, UploadError } from "@/lib/storage/local";
 import { syncDiscordRoleForRosterChange } from "@/lib/integrations/discord-bot";
@@ -250,13 +251,19 @@ export async function updateRosterEntryAction(
 
   const entry = await prisma.teamMembership.findUnique({
     where: { id: teamMembershipId },
-    include: { membership: true },
+    include: { membership: true, team: { select: { playerEditableFields: true } } },
   });
   if (!entry || entry.membership.orgId !== orgId) return { error: "Roster entry not found." };
 
   const isSelf = actor.membershipId === entry.membershipId;
   const isManager = actor.permissions.includes(Permission.roster_manage);
   if (!isSelf && !isManager) return { error: "You don't have permission to edit this roster entry." };
+
+  // A manager can always touch every field; a player editing their own entry is limited to
+  // whatever this team has opted into (lib/constants/roster-fields.ts) — bio/trackers are always
+  // self-editable regardless, and isStarter stays coach-only always.
+  const editable = getPlayerEditableFields(entry.team.playerEditableFields);
+  const canEdit = (field: (typeof SELF_EDITABLE_ROSTER_FIELDS)[number]) => isManager || editable.has(field);
 
   const parsed = updateRosterEntrySchema.safeParse({
     jerseyNumber: formData.get("jerseyNumber") ?? "",
@@ -279,17 +286,11 @@ export async function updateRosterEntryAction(
   await prisma.teamMembership.update({
     where: { id: teamMembershipId },
     data: {
-      // A player editing their own entry can only touch their bio/trackers/rank — roster-
-      // assignment fields (jersey, position, IGN, starter) stay coach-controlled.
-      ...(isManager
-        ? {
-            jerseyNumber: parsed.data.jerseyNumber || null,
-            position: parsed.data.position || null,
-            inGameName: parsed.data.inGameName || null,
-            isStarter: parsed.data.isStarter,
-          }
-        : {}),
-      rank,
+      ...(canEdit("jerseyNumber") ? { jerseyNumber: parsed.data.jerseyNumber || null } : {}),
+      ...(canEdit("position") ? { position: parsed.data.position || null } : {}),
+      ...(canEdit("inGameName") ? { inGameName: parsed.data.inGameName || null } : {}),
+      ...(isManager ? { isStarter: parsed.data.isStarter } : {}),
+      ...(canEdit("rank") ? { rank } : {}),
       bio: parsed.data.bio || null,
       trackerLink: parsed.data.trackerLink || null,
       trackerValorant: parsed.data.trackerValorant || null,
@@ -301,6 +302,47 @@ export async function updateRosterEntryAction(
 
   revalidatePath(`/${orgSlug}/teams`);
   revalidatePath(`/${orgSlug}/roster/${entry.membershipId}`);
+}
+
+/** Lets a roster manager choose which fields (of jerseyNumber/position/inGameName/rank) players
+ *  on this team can edit on their own roster entry — see getPlayerEditableFields. */
+export async function updateRosterFieldPermissionsAction(
+  orgSlug: string,
+  orgId: string,
+  teamId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { membership: actor } = await requirePermission(orgId, Permission.roster_manage);
+
+  const team = await prisma.team.findUnique({ where: { id: teamId } });
+  if (!team || team.orgId !== orgId) return { error: "Team not found." };
+
+  const parsed = rosterFieldPermissionsSchema.safeParse({
+    jerseyNumber: formData.get("jerseyNumber") === "on",
+    position: formData.get("position") === "on",
+    inGameName: formData.get("inGameName") === "on",
+    rank: formData.get("rank") === "on",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  const enabledFields = SELF_EDITABLE_ROSTER_FIELDS.filter((field) => parsed.data[field]);
+
+  await prisma.team.update({ where: { id: teamId }, data: { playerEditableFields: enabledFields } });
+
+  await logAudit({
+    orgId,
+    actorMembershipId: actor.membershipId,
+    action: "team.player_editable_fields_updated",
+    targetType: "Team",
+    targetId: teamId,
+    metadata: { fields: enabledFields },
+  });
+
+  revalidatePath(`/${orgSlug}/teams/${team.slug}`);
+  return { success: "Saved." };
 }
 
 export async function removeFromRosterAction(orgSlug: string, orgId: string, teamMembershipId: string): Promise<ActionState> {

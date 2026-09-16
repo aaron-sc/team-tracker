@@ -13,6 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AddRosterForm } from "@/components/teams/add-roster-form";
 import { RemoveRosterButton } from "@/components/teams/remove-roster-button";
 import { EditRosterEntryDialog } from "@/components/teams/edit-roster-entry-dialog";
+import { RosterFieldPermissionsDialog } from "@/components/teams/roster-field-permissions-dialog";
+import { getPlayerEditableFields } from "@/lib/constants/roster-fields";
 import { TeamInviteLinkPanel } from "@/components/teams/team-invite-link-panel";
 import { TeamResourcesPanel } from "@/components/teams/team-resources-panel";
 import { TeamPollsPanel } from "@/components/teams/team-polls-panel";
@@ -240,12 +242,22 @@ export default async function TeamDetailPage({
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Roster</CardTitle>
-          {teamAverageRank ? (
-            <Badge variant="secondary" className="gap-1">
-              <Gauge className="size-3" />
-              Average rank: {teamAverageRank}
-            </Badge>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {teamAverageRank ? (
+              <Badge variant="secondary" className="gap-1">
+                <Gauge className="size-3" />
+                Average rank: {teamAverageRank}
+              </Badge>
+            ) : null}
+            {canManageRoster ? (
+              <RosterFieldPermissionsDialog
+                orgSlug={orgSlug}
+                orgId={org.id}
+                teamId={team.id}
+                editableFields={Array.from(getPlayerEditableFields(team.playerEditableFields))}
+              />
+            ) : null}
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
