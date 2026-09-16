@@ -11,7 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AttendanceStatusSelect } from "@/components/schedule/attendance-status-select";
 import { AddAttendeeControl } from "@/components/schedule/add-attendee-control";
 import { RemoveAttendeeButton } from "@/components/schedule/remove-attendee-button";
-import { addSessionAttendeeAction, removeSessionAttendeeAction } from "@/lib/actions/practice-sessions";
+import {
+  addSessionAttendeeAction,
+  removeSessionAttendeeAction,
+  recordSessionResultAction,
+} from "@/lib/actions/practice-sessions";
+import { SessionResultForm } from "@/components/schedule/session-result-form";
 import { DeletePracticeButton } from "@/components/schedule/delete-practice-button";
 import { DuplicatePracticeButton } from "@/components/schedule/duplicate-practice-button";
 import { TeamPlaybookPanel } from "@/components/schedule/team-playbook-panel";
@@ -22,6 +27,12 @@ import { venueDirectionsUrl } from "@/lib/utils/venue-directions";
 import { formatDateTimeLong } from "@/lib/utils/format-time";
 import { RefreshOnMount } from "@/components/ui/refresh-on-mount";
 import { Calendar, MapPin, Clock, Pencil, AlertTriangle, Navigation, CalendarPlus } from "lucide-react";
+
+const RESULT_VARIANT: Record<string, "default" | "destructive" | "secondary"> = {
+  WIN: "default",
+  LOSS: "destructive",
+  DRAW: "secondary",
+};
 
 export default async function PracticeSessionDetailPage({
   params,
@@ -63,6 +74,7 @@ export default async function PracticeSessionDetailPage({
     .filter((r) => !attendingIds.has(r.membershipId))
     .map((r) => ({ membershipId: r.membershipId, name: r.membership.user.name }));
   const addAttendeeAction = addSessionAttendeeAction.bind(null, orgSlug, org.id, session.id);
+  const recordResultAction = recordSessionResultAction.bind(null, orgSlug, org.id, session.id);
 
   const [strategies, comments] = await Promise.all([
     prisma.strategy.findMany({ where: { teamId: session.teamId }, orderBy: [{ map: "asc" }, { createdAt: "desc" }] }),
@@ -97,7 +109,14 @@ export default async function PracticeSessionDetailPage({
           <h1 className="text-xl font-semibold">
             {session.team.name} {session.type === "SCRIM" ? `vs ${session.opponent?.name}` : "Practice"}
           </h1>
-          <Badge variant="outline">{session.type}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline">{session.type}</Badge>
+            {session.type === "SCRIM" && session.resultStatus ? (
+              <Badge variant={RESULT_VARIANT[session.resultStatus]}>
+                {session.resultStatus} {session.scoreFor ?? "?"}–{session.scoreAgainst ?? "?"}
+              </Badge>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -129,6 +148,24 @@ export default async function PracticeSessionDetailPage({
           {session.notes ? <p className="whitespace-pre-wrap text-muted-foreground">{session.notes}</p> : null}
         </CardContent>
       </Card>
+
+      {session.type === "SCRIM" && canEdit ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Result</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SessionResultForm
+              action={recordResultAction}
+              defaultValues={{
+                resultStatus: session.resultStatus,
+                scoreFor: session.scoreFor,
+                scoreAgainst: session.scoreAgainst,
+              }}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

@@ -33,18 +33,55 @@ export default async function MatchResultsPage({
     ? { teamId: requestedTeam, team: { orgId: org.id } }
     : { teamId: { in: visibleTeamIds }, team: { orgId: org.id } };
 
-  const matches = await prisma.match.findMany({
-    where: { status: "COMPLETED", ...teamWhere },
-    include: { team: true, opponent: true },
-    orderBy: { scheduledAt: "desc" },
-    take: 100,
-  });
+  const [matches, scrims] = await Promise.all([
+    prisma.match.findMany({
+      where: { status: "COMPLETED", ...teamWhere },
+      include: { team: true, opponent: true },
+      orderBy: { scheduledAt: "desc" },
+      take: 100,
+    }),
+    prisma.practiceSession.findMany({
+      where: { type: "SCRIM", resultStatus: { not: null }, ...teamWhere },
+      include: { team: true, opponent: true },
+      orderBy: { scheduledAt: "desc" },
+      take: 100,
+    }),
+  ]);
 
-  const record = matches.reduce(
-    (acc, m) => {
-      if (m.resultStatus === "WIN") acc.wins += 1;
-      else if (m.resultStatus === "LOSS") acc.losses += 1;
-      else if (m.resultStatus === "DRAW") acc.draws += 1;
+  const results = [
+    ...matches.map((m) => ({
+      id: m.id,
+      kind: "match" as const,
+      href: `/${orgSlug}/schedule/matches/${m.id}`,
+      teamName: m.team.name,
+      opponentName: m.opponent.name,
+      scheduledAt: m.scheduledAt,
+      subtitle: m.format,
+      isStreamed: m.isStreamed,
+      resultStatus: m.resultStatus,
+      scoreFor: m.scoreFor,
+      scoreAgainst: m.scoreAgainst,
+    })),
+    ...scrims.map((s) => ({
+      id: s.id,
+      kind: "scrim" as const,
+      href: `/${orgSlug}/schedule/practice/${s.id}`,
+      teamName: s.team.name,
+      opponentName: s.opponent?.name ?? "Unknown opponent",
+      scheduledAt: s.scheduledAt,
+      subtitle: "Scrim",
+      isStreamed: false,
+      resultStatus: s.resultStatus,
+      scoreFor: s.scoreFor,
+      scoreAgainst: s.scoreAgainst,
+    })),
+  ].sort((a, b) => b.scheduledAt.getTime() - a.scheduledAt.getTime());
+
+  const record = results.reduce(
+    (acc, r) => {
+      if (r.resultStatus === "WIN") acc.wins += 1;
+      else if (r.resultStatus === "LOSS") acc.losses += 1;
+      else if (r.resultStatus === "DRAW") acc.draws += 1;
       return acc;
     },
     { wins: 0, losses: 0, draws: 0 },
@@ -60,10 +97,10 @@ export default async function MatchResultsPage({
             </Link>
           </Button>
           <div>
-            <h1 className="text-lg font-semibold">Match results</h1>
+            <h1 className="text-lg font-semibold">Results</h1>
             <p className="text-sm text-muted-foreground">
-              {matches.length === 0
-                ? "No completed matches yet."
+              {results.length === 0
+                ? "No completed matches or scrims yet."
                 : `${record.wins}W – ${record.losses}L${record.draws ? ` – ${record.draws}D` : ""}`}
             </p>
           </div>
@@ -96,31 +133,34 @@ export default async function MatchResultsPage({
         </div>
       </div>
 
-      {matches.length === 0 ? (
+      {results.length === 0 ? (
         <Card>
           <CardContent>
-            <EmptyState icon={Trophy} message="Nothing recorded yet — results are added from a match's detail page." />
+            <EmptyState
+              icon={Trophy}
+              message="Nothing recorded yet — results are added from a match's or scrim's detail page."
+            />
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
-          {matches.map((m) => (
-            <Link key={m.id} href={`/${orgSlug}/schedule/matches/${m.id}`}>
+          {results.map((r) => (
+            <Link key={`${r.kind}-${r.id}`} href={r.href}>
               <Card className="transition-colors hover:bg-accent">
                 <CardContent className="flex items-center justify-between py-3">
                   <div>
                     <p className="text-sm font-medium">
-                      {m.team.name} vs {m.opponent.name}
+                      {r.teamName} vs {r.opponentName}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDate(m.scheduledAt, viewerTz)} · {m.format}
+                      {formatDate(r.scheduledAt, viewerTz)} · {r.subtitle}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {m.isStreamed ? <Radio className="size-3.5 text-muted-foreground" /> : null}
-                    {m.resultStatus ? (
-                      <Badge variant={RESULT_VARIANT[m.resultStatus]}>
-                        {m.resultStatus} {m.scoreFor ?? "?"}–{m.scoreAgainst ?? "?"}
+                    {r.isStreamed ? <Radio className="size-3.5 text-muted-foreground" /> : null}
+                    {r.resultStatus ? (
+                      <Badge variant={RESULT_VARIANT[r.resultStatus]}>
+                        {r.resultStatus} {r.scoreFor ?? "?"}–{r.scoreAgainst ?? "?"}
                       </Badge>
                     ) : (
                       <Badge variant="outline">No score recorded</Badge>

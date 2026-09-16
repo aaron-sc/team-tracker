@@ -26,9 +26,13 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ orgS
   // only ever sees performance/attendance numbers for their own team(s).
   const teamIds = teams.map((t) => t.id);
 
-  const [matches, upcomingCount, sessionRows, memberCount] = await Promise.all([
+  const [matches, scrims, upcomingCount, sessionRows, memberCount] = await Promise.all([
     prisma.match.findMany({
       where: { teamId: { in: teamIds } },
+      select: { teamId: true, resultStatus: true, scheduledAt: true },
+    }),
+    prisma.practiceSession.findMany({
+      where: { type: "SCRIM", teamId: { in: teamIds } },
       select: { teamId: true, resultStatus: true, scheduledAt: true },
     }),
     prisma.match.count({
@@ -42,12 +46,16 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ orgS
     prisma.membership.count({ where: { orgId: org.id } }),
   ]);
 
-  const decided = matches.filter((m) => m.resultStatus === "WIN" || m.resultStatus === "LOSS");
+  // Win rate blends matches and scrims — both have the same resultStatus/scoreFor/scoreAgainst
+  // shape (see PracticeSession's doc comment), so a team's record reflects everything it's
+  // actually played, not just official matches.
+  const decidable = [...matches, ...scrims];
+  const decided = decidable.filter((m) => m.resultStatus === "WIN" || m.resultStatus === "LOSS");
   const wins = decided.filter((m) => m.resultStatus === "WIN").length;
   const orgWinRate = decided.length > 0 ? Math.round((wins / decided.length) * 100) : null;
 
   const byTeam = new Map<string, { wins: number; losses: number; total: number }>();
-  for (const m of matches) {
+  for (const m of decidable) {
     const entry = byTeam.get(m.teamId) ?? { wins: 0, losses: 0, total: 0 };
     if (m.resultStatus === "WIN") entry.wins += 1;
     if (m.resultStatus === "LOSS") entry.losses += 1;

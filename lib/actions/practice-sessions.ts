@@ -6,7 +6,7 @@ import { fromZonedTime } from "date-fns-tz";
 import { prisma } from "@/lib/db/prisma";
 import { requirePermission, requireMembership, requireTeamScope } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
-import { practiceSessionSchema, attendanceStatusSchema } from "@/lib/validations/practice";
+import { practiceSessionSchema, attendanceStatusSchema, sessionResultSchema } from "@/lib/validations/practice";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
 import { createNotification } from "@/lib/notifications/create";
@@ -156,6 +156,56 @@ export async function updatePracticeSessionAction(
 
   revalidatePath(`/${orgSlug}/schedule`);
   redirect(`/${orgSlug}/schedule/practice/${sessionId}`);
+}
+
+/** Only meaningful for SCRIM-type sessions — a plain PRACTICE has no opponent to record a result
+ *  against (see the SessionType check below and PracticeSession's own resultStatus doc comment). */
+export async function recordSessionResultAction(
+  orgSlug: string,
+  orgId: string,
+  sessionId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const { membership } = await requirePermission(orgId, Permission.practice_edit);
+
+  const session = await prisma.practiceSession.findUnique({ where: { id: sessionId }, include: { team: true } });
+  if (!session || session.team.orgId !== orgId) return { error: "Session not found." };
+  requireTeamScope(membership, session.teamId);
+  if (session.type !== "SCRIM") return { error: "Only scrims can have a result recorded." };
+
+  const parsed = sessionResultSchema.safeParse({
+    resultStatus: formData.get("resultStatus") ?? "",
+    scoreFor: formData.get("scoreFor") ?? "",
+    scoreAgainst: formData.get("scoreAgainst") ?? "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  await prisma.practiceSession.update({
+    where: { id: sessionId },
+    data: {
+      resultStatus: parsed.data.resultStatus || null,
+      scoreFor: parsed.data.scoreFor === "" || parsed.data.scoreFor === undefined ? null : parsed.data.scoreFor,
+      scoreAgainst:
+        parsed.data.scoreAgainst === "" || parsed.data.scoreAgainst === undefined ? null : parsed.data.scoreAgainst,
+    },
+  });
+
+  await logAudit({
+    orgId,
+    actorMembershipId: membership.membershipId,
+    action: "practice.result_recorded",
+    targetType: "PracticeSession",
+    targetId: sessionId,
+    metadata: { resultStatus: parsed.data.resultStatus },
+  });
+
+  revalidatePath(`/${orgSlug}/schedule`);
+  revalidatePath(`/${orgSlug}/schedule/practice/${sessionId}`);
+  revalidatePath(`/${orgSlug}/schedule/results`);
+  return { success: "Result saved." };
 }
 
 export async function duplicatePracticeSessionAction(orgSlug: string, orgId: string, sessionId: string): Promise<ActionState> {

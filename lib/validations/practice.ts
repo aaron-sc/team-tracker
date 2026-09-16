@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SessionType, LocationType } from "@/lib/generated/prisma/enums";
+import { SessionType, LocationType, ResultStatus } from "@/lib/generated/prisma/enums";
 
 export const practiceSessionSchema = z
   .object({
@@ -21,6 +21,12 @@ export const practiceSessionSchema = z
     message: "Choose a venue for LAN sessions.",
     path: ["venueId"],
   });
+
+export const sessionResultSchema = z.object({
+  resultStatus: z.enum(ResultStatus).optional().or(z.literal("")),
+  scoreFor: z.coerce.number().int().min(0).optional().or(z.literal("")),
+  scoreAgainst: z.coerce.number().int().min(0).optional().or(z.literal("")),
+});
 
 export const attendanceStatusSchema = z.enum([
   "INVITED",

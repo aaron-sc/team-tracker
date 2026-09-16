@@ -619,6 +619,11 @@ model PracticeSession {
   venue           Venue?       @relation(fields: [venueId], references: [id])
   notes           String?
   reminderSentAt  DateTime?
+  // Only ever set on SCRIM-type sessions — a plain PRACTICE has no opponent to record a result
+  // against (see practice-sessions.ts's recordSessionResultAction).
+  resultStatus    ResultStatus?
+  scoreFor        Int?
+  scoreAgainst    Int?
   createdById     String
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt

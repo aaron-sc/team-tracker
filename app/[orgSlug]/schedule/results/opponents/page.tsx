@@ -25,16 +25,23 @@ export default async function OpponentRecordsPage({
     ? { teamId: requestedTeam, team: { orgId: org.id } }
     : { teamId: { in: visibleTeamIds }, team: { orgId: org.id } };
 
-  const matches = await prisma.match.findMany({
-    where: { status: "COMPLETED", ...teamWhere },
-    include: { opponent: true },
-  });
+  const [matches, scrims] = await Promise.all([
+    prisma.match.findMany({
+      where: { status: "COMPLETED", ...teamWhere },
+      include: { opponent: true },
+    }),
+    prisma.practiceSession.findMany({
+      where: { type: "SCRIM", resultStatus: { not: null }, ...teamWhere },
+      include: { opponent: true },
+    }),
+  ]);
 
   const byOpponent = new Map<
     string,
     { name: string; wins: number; losses: number; draws: number; scoreFor: number; scoreAgainst: number }
   >();
-  for (const m of matches) {
+  for (const m of [...matches, ...scrims]) {
+    if (!m.opponentId || !m.opponent) continue;
     const entry = byOpponent.get(m.opponentId) ?? {
       name: m.opponent.name,
       wins: 0,
@@ -63,7 +70,7 @@ export default async function OpponentRecordsPage({
           </Button>
           <div>
             <h1 className="text-lg font-semibold">Head-to-head records</h1>
-            <p className="text-sm text-muted-foreground">Completed match results grouped by opponent.</p>
+            <p className="text-sm text-muted-foreground">Completed match and scrim results grouped by opponent.</p>
           </div>
         </div>
 
@@ -89,7 +96,7 @@ export default async function OpponentRecordsPage({
       {rows.length === 0 ? (
         <Card>
           <CardContent>
-            <EmptyState icon={Swords} message="No completed matches with recorded results yet." />
+            <EmptyState icon={Swords} message="No completed matches or scrims with recorded results yet." />
           </CardContent>
         </Card>
       ) : (
