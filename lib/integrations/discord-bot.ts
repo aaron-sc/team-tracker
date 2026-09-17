@@ -17,6 +17,7 @@ import {
   type ButtonInteraction,
   type SlashCommandStringOption,
 } from "discord.js";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { prisma } from "@/lib/db/prisma";
 import { Permission } from "@/lib/generated/prisma/enums";
 import { availabilityRuleGroupSchema } from "@/lib/validations/availability";
@@ -66,8 +67,17 @@ const commandDefinitions = [
     .addStringOption(teamOption),
   new SlashCommandBuilder()
     .setName("schedule")
-    .setDescription("Show a team's upcoming matches and practices")
-    .addStringOption(teamOption),
+    .setDescription("Show the schedule for the teams you're on")
+    .addStringOption((opt) =>
+      opt.setName("team").setDescription("Team name (defaults to all teams you're on)").setRequired(false).setAutocomplete(true),
+    )
+    .addStringOption((opt) =>
+      opt
+        .setName("range")
+        .setDescription("How far ahead to look (defaults to today)")
+        .setRequired(false)
+        .addChoices({ name: "Today", value: "day" }, { name: "Next 3 days", value: "3day" }, { name: "This week", value: "week" }),
+    ),
   new SlashCommandBuilder()
     .setName("bench")
     .setDescription("Show active bench/disciplinary records for a team (leadership only)")
@@ -352,38 +362,77 @@ async function handleRoster(interaction: ChatInputCommandInteraction) {
   await interaction.reply({ content: `**${team.name} roster**\n${lines.join("\n")}`, ephemeral: true });
 }
 
+const SCHEDULE_RANGE_LABELS: Record<string, string> = { day: "today", "3day": "next 3 days", week: "this week" };
+
+/** Calendar-day-aligned [start, end) window in `timeZone`, `days` long, starting "today" there. */
+function getScheduleRange(range: string, timeZone: string, now: Date): { start: Date; end: Date } {
+  const days = range === "week" ? 7 : range === "3day" ? 3 : 1;
+  const zonedNow = toZonedTime(now, timeZone);
+  const startOfToday = new Date(zonedNow.getFullYear(), zonedNow.getMonth(), zonedNow.getDate());
+  const endLocal = new Date(startOfToday);
+  endLocal.setDate(endLocal.getDate() + days);
+  return { start: fromZonedTime(startOfToday, timeZone), end: fromZonedTime(endLocal, timeZone) };
+}
+
 async function handleSchedule(interaction: ChatInputCommandInteraction) {
   const resolved = await resolveOrgAndMembership(interaction.guildId, interaction.user.id);
   if ("error" in resolved) return void interaction.reply({ content: resolved.error, ephemeral: true });
-  const team = await resolveTeamOption(interaction, resolved);
-  if (!team) return;
+  const { org, user, membership } = resolved;
 
-  const now = new Date();
+  const teamId = interaction.options.getString("team");
+  let teams: { id: string; name: string }[];
+  let scopeLabel: string;
+  if (teamId) {
+    const team = await prisma.team.findFirst({ where: { id: teamId, ...visibleTeamsWhere(resolved) } });
+    if (!team) return void interaction.reply({ content: "Team not found — pick one from the autocomplete list.", ephemeral: true });
+    teams = [team];
+    scopeLabel = team.name;
+  } else {
+    teams = await prisma.team.findMany({
+      where: { orgId: org.id, teamMemberships: { some: { membershipId: membership.id } } },
+      orderBy: { name: "asc" },
+    });
+    if (teams.length === 0) {
+      return void interaction.reply({ content: "You're not on any teams yet — pass `team` to check someone else's schedule.", ephemeral: true });
+    }
+    scopeLabel = teams.length === 1 ? teams[0].name : "your teams";
+  }
+
+  const range = interaction.options.getString("range") ?? "day";
+  const timeZone = user.timezone || org.timezone;
+  const { start, end } = getScheduleRange(range, timeZone, new Date());
+  const teamIds = teams.map((t) => t.id);
+  const showTeamName = teams.length > 1;
+
   const [matches, sessions] = await Promise.all([
-    prisma.match.findMany({ where: { teamId: team.id, scheduledAt: { gte: now } }, include: { opponent: true }, orderBy: { scheduledAt: "asc" }, take: 5 }),
-    prisma.practiceSession.findMany({
-      where: { teamId: team.id, scheduledAt: { gte: now } },
-      include: { opponent: true },
+    prisma.match.findMany({
+      where: { teamId: { in: teamIds }, scheduledAt: { gte: start, lt: end } },
+      include: { opponent: true, team: true },
       orderBy: { scheduledAt: "asc" },
-      take: 5,
+    }),
+    prisma.practiceSession.findMany({
+      where: { teamId: { in: teamIds }, scheduledAt: { gte: start, lt: end } },
+      include: { opponent: true, team: true },
+      orderBy: { scheduledAt: "asc" },
     }),
   ]);
 
   const items = [
-    ...matches.map((m) => ({ at: m.scheduledAt, label: `Match vs ${m.opponent.name}` })),
-    ...sessions.map((s) => ({ at: s.scheduledAt, label: s.type === "SCRIM" ? `Scrim vs ${s.opponent?.name ?? "TBD"}` : "Practice" })),
-  ]
-    .sort((a, b) => a.at.getTime() - b.at.getTime())
-    .slice(0, 5);
+    ...matches.map((m) => ({ at: m.scheduledAt, label: `Match vs ${m.opponent.name}${showTeamName ? ` (${m.team.name})` : ""}` })),
+    ...sessions.map((s) => ({
+      at: s.scheduledAt,
+      label: `${s.type === "SCRIM" ? `Scrim vs ${s.opponent?.name ?? "TBD"}` : "Practice"}${showTeamName ? ` (${s.team.name})` : ""}`,
+    })),
+  ].sort((a, b) => a.at.getTime() - b.at.getTime());
 
+  const rangeLabel = SCHEDULE_RANGE_LABELS[range] ?? "today";
   if (items.length === 0) {
-    await interaction.reply({ content: `**${team.name}** has nothing upcoming.`, ephemeral: true });
-    return;
+    return void interaction.reply({ content: `Nothing on the schedule for **${scopeLabel}** (${rangeLabel}).`, ephemeral: true });
   }
   // Discord's <t:UNIX:F> renders in each viewer's own local timezone client-side — no manual
   // timezone conversion needed here, unlike everywhere else in this app.
   const lines = items.map((i) => `• ${i.label} — <t:${Math.floor(i.at.getTime() / 1000)}:F>`);
-  await interaction.reply({ content: `**${team.name} — upcoming**\n${lines.join("\n")}`, ephemeral: true });
+  await interaction.reply({ content: `**${scopeLabel} — ${rangeLabel}**\n${lines.join("\n")}`, ephemeral: true });
 }
 
 async function handleBench(interaction: ChatInputCommandInteraction) {
@@ -408,6 +457,32 @@ async function handleBench(interaction: ChatInputCommandInteraction) {
   }
   const lines = actions.map((a) => `• ${a.teamMembership.membership.user.name} — ${a.reason}`);
   await interaction.reply({ content: `**${team.name} — active bench records**\n${lines.join("\n")}`, ephemeral: true });
+}
+
+// Separates the "**title**\ndescription" header from the live attendance block appended below it —
+// re-editing the message re-derives the header from the previous content and rebuilds the block
+// fresh, rather than appending onto whatever was there last time.
+const ATTENDANCE_BLOCK_DELIMITER = "\n\n**Attendance**\n";
+
+function stripAttendanceBlock(content: string): string {
+  const idx = content.indexOf(ATTENDANCE_BLOCK_DELIMITER);
+  return idx === -1 ? content : content.slice(0, idx);
+}
+
+async function buildAttendanceBlock(kind: "MATCH" | "PRACTICE", eventId: string): Promise<string> {
+  const rows =
+    kind === "MATCH"
+      ? await prisma.matchAttendance.findMany({ where: { matchId: eventId }, include: { membership: { include: { user: true } } } })
+      : await prisma.sessionAttendance.findMany({ where: { sessionId: eventId }, include: { membership: { include: { user: true } } } });
+
+  const confirmed = rows.filter((r) => r.status === "CONFIRMED").map((r) => r.membership.user.name);
+  const declined = rows.filter((r) => r.status === "DECLINED").map((r) => r.membership.user.name);
+
+  const lines = [
+    `✅ In (${confirmed.length}): ${confirmed.length ? confirmed.join(", ") : "—"}`,
+    `❌ Out (${declined.length}): ${declined.length ? declined.join(", ") : "—"}`,
+  ];
+  return `${ATTENDANCE_BLOCK_DELIMITER}${lines.join("\n")}`;
 }
 
 async function handleRsvpButton(interaction: ButtonInteraction) {
@@ -440,6 +515,16 @@ async function handleRsvpButton(interaction: ButtonInteraction) {
       create: { sessionId: eventId, membershipId: membership.id, status, respondedAt: new Date() },
       update: { status, respondedAt: new Date() },
     });
+  }
+
+  try {
+    if (interaction.message.editable) {
+      const header = stripAttendanceBlock(interaction.message.content);
+      const attendanceBlock = await buildAttendanceBlock(kind, eventId);
+      await interaction.message.edit({ content: `${header}${attendanceBlock}`, components: interaction.message.components });
+    }
+  } catch (err) {
+    console.error("[discord-bot] Failed to update RSVP message with attendance list:", err);
   }
 
   await interaction.reply({
