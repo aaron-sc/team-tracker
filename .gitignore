@@ -54,3 +54,5 @@ next-env.d.ts
 
 # local Claude Code settings (machine-specific permissions, not shared)
 /.claude/
+
+esports-website.ppk
