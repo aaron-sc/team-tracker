@@ -8,6 +8,7 @@ import { InviteForm } from "@/components/settings/invite-form";
 import { MemberRoleSelect } from "@/components/settings/member-role-select";
 import { RemoveMemberButton } from "@/components/settings/remove-member-button";
 import { CopyInviteLinkButton } from "@/components/settings/copy-invite-link-button";
+import { InviteQrDialog } from "@/components/settings/invite-qr-dialog";
 import { RevokeInviteButton } from "@/components/settings/revoke-invite-button";
 import { TeamInviteLinkPanel } from "@/components/teams/team-invite-link-panel";
 import { redirect } from "next/navigation";
@@ -95,6 +96,7 @@ export default async function MembersPage({ params }: { params: Promise<{ orgSlu
                   </div>
                   <div className="flex items-center gap-2">
                     <CopyInviteLinkButton token={invite.token} />
+                    <InviteQrDialog token={invite.token} />
                     <RevokeInviteButton orgSlug={orgSlug} orgId={org.id} inviteId={invite.id} />
                   </div>
                 </CardContent>
