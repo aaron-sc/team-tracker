@@ -22,6 +22,7 @@ function parseTaskForm(formData: FormData) {
     // "__all__" is the form's sentinel for "every role" — Radix's Select can't hold an empty
     // string as an item value, so it's translated to null (org-wide) here instead.
     roleId: roleId === "__all__" ? "" : (roleId ?? ""),
+    excludedMembershipIds: formData.getAll("excludedMembershipIds"),
   });
 }
 
@@ -30,6 +31,14 @@ async function resolveRoleId(orgId: string, roleId: string | undefined): Promise
   const role = await prisma.role.findUnique({ where: { id: roleId }, select: { orgId: true } });
   if (!role || role.orgId !== orgId) return { error: "Invalid role." };
   return { roleId };
+}
+
+async function resolveExclusions(orgId: string, membershipIds: string[]): Promise<{ membershipIds: string[] } | { error: string }> {
+  if (membershipIds.length === 0) return { membershipIds: [] };
+  const unique = [...new Set(membershipIds)];
+  const count = await prisma.membership.count({ where: { id: { in: unique }, orgId } });
+  if (count !== unique.length) return { error: "One of the excluded members is invalid." };
+  return { membershipIds: unique };
 }
 
 export async function createOnboardingTaskAction(
@@ -65,6 +74,9 @@ export async function createOnboardingTaskAction(
   const resolvedRole = await resolveRoleId(orgId, parsed.data.roleId);
   if ("error" in resolvedRole) return { error: resolvedRole.error };
 
+  const resolvedExclusions = await resolveExclusions(orgId, parsed.data.excludedMembershipIds);
+  if ("error" in resolvedExclusions) return { error: resolvedExclusions.error };
+
   const maxOrder = await prisma.onboardingTask.aggregate({ where: { orgId }, _max: { order: true } });
 
   const task = await prisma.onboardingTask.create({
@@ -81,6 +93,7 @@ export async function createOnboardingTaskAction(
       roleId: resolvedRole.roleId,
       order: (maxOrder._max.order ?? 0) + 1,
       createdById: membership.membershipId,
+      exclusions: { create: resolvedExclusions.membershipIds.map((membershipId) => ({ membershipId })) },
     },
   });
 
@@ -139,6 +152,9 @@ export async function updateOnboardingTaskAction(
   const resolvedRole = await resolveRoleId(orgId, parsed.data.roleId);
   if ("error" in resolvedRole) return { error: resolvedRole.error };
 
+  const resolvedExclusions = await resolveExclusions(orgId, parsed.data.excludedMembershipIds);
+  if ("error" in resolvedExclusions) return { error: resolvedExclusions.error };
+
   await prisma.onboardingTask.update({
     where: { id: taskId },
     data: {
@@ -151,6 +167,12 @@ export async function updateOnboardingTaskAction(
       fileName,
       required: parsed.data.required,
       roleId: resolvedRole.roleId,
+      // Full replace rather than a diff — the form always submits the complete current set of
+      // checked members, so whatever isn't in this list anymore should no longer be excluded.
+      exclusions: {
+        deleteMany: {},
+        create: resolvedExclusions.membershipIds.map((membershipId) => ({ membershipId })),
+      },
     },
   });
 
@@ -233,9 +255,13 @@ export async function completeOnboardingTaskAction(
 ): Promise<ActionState> {
   const { session, membership } = await requireMembership(orgId);
 
-  const task = await prisma.onboardingTask.findUnique({ where: { id: taskId } });
+  const task = await prisma.onboardingTask.findUnique({
+    where: { id: taskId },
+    include: { exclusions: { where: { membershipId: membership.membershipId } } },
+  });
   if (!task || task.orgId !== orgId || !task.active) return { error: "Task not found." };
   if (task.roleId && task.roleId !== membership.roleId) return { error: "Task not found." };
+  if (task.exclusions.length > 0) return { error: "Task not found." };
 
   const parsed = completeTaskSchema.safeParse({ signatureName: formData.get("signatureName") ?? "" });
   if (!parsed.success) {
@@ -269,6 +295,7 @@ export async function completeOnboardingTaskAction(
         active: true,
         required: true,
         OR: [{ roleId: null }, { roleId: membership.roleId }],
+        exclusions: { none: { membershipId: membership.membershipId } },
         completions: { none: { membershipId: membership.membershipId } },
       },
     });

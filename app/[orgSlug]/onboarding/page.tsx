@@ -15,7 +15,12 @@ export default async function OnboardingPage({ params }: { params: Promise<{ org
   const canManage = membership.permissions.includes(Permission.onboarding_manage);
 
   const tasks = await prisma.onboardingTask.findMany({
-    where: { orgId: org.id, active: true, OR: [{ roleId: null }, { roleId: membership.roleId }] },
+    where: {
+      orgId: org.id,
+      active: true,
+      OR: [{ roleId: null }, { roleId: membership.roleId }],
+      exclusions: { none: { membershipId: membership.membershipId } },
+    },
     include: { completions: { where: { membershipId: membership.membershipId } } },
     orderBy: { order: "asc" },
   });

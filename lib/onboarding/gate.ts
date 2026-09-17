@@ -19,6 +19,7 @@ export async function requireOnboardingCompletePage(
       active: true,
       required: true,
       OR: [{ roleId: null }, { roleId }],
+      exclusions: { none: { membershipId } },
       completions: { none: { membershipId } },
     },
   });

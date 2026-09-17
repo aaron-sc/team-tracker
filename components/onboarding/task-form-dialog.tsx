@@ -31,6 +31,7 @@ type Defaults = {
   required?: boolean;
   fileName?: string | null;
   roleId?: string | null;
+  excludedMembershipIds?: string[];
 };
 
 export function TaskFormDialog({
@@ -39,18 +40,21 @@ export function TaskFormDialog({
   taskId,
   defaultValues,
   roles,
+  members,
 }: {
   orgSlug: string;
   orgId: string;
   taskId?: string;
   defaultValues?: Defaults;
   roles: { id: string; name: string }[];
+  members: { id: string; name: string }[];
 }) {
   const isEdit = !!taskId;
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<TaskType>(defaultValues?.type ?? "ACKNOWLEDGE");
   const [required, setRequired] = useState(defaultValues?.required ?? true);
   const [roleId, setRoleId] = useState(defaultValues?.roleId ?? "__all__");
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set(defaultValues?.excludedMembershipIds ?? []));
   const [error, setError] = useState<string | undefined>();
   const [pending, startTransition] = useTransition();
 
@@ -182,6 +186,38 @@ export function TaskFormDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {members.length > 0 ? (
+            <div className="space-y-1.5">
+              <Label>Exclude specific members (optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Checked members won&apos;t see or need to complete this task, even if it applies to their role.
+              </p>
+              <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-md border p-2">
+                {members.map((m) => (
+                  <div key={m.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`exclude-${m.id}`}
+                      name="excludedMembershipIds"
+                      value={m.id}
+                      checked={excludedIds.has(m.id)}
+                      onCheckedChange={(value) => {
+                        setExcludedIds((prev) => {
+                          const next = new Set(prev);
+                          if (value) next.add(m.id);
+                          else next.delete(m.id);
+                          return next;
+                        });
+                      }}
+                    />
+                    <Label htmlFor={`exclude-${m.id}`} className="cursor-pointer text-sm font-normal">
+                      {m.name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="flex items-center gap-2">
             <Checkbox id="required" name="required" checked={required} onCheckedChange={(v) => setRequired(!!v)} />

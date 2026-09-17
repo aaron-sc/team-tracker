@@ -15,14 +15,21 @@ export default async function OnboardingSettingsPage({ params }: { params: Promi
   const { org, membership } = await getOrgContext(orgSlug);
   requirePagePermission(orgSlug, membership, Permission.onboarding_manage);
 
-  const [tasks, roles] = await Promise.all([
+  const [tasks, roles, members] = await Promise.all([
     prisma.onboardingTask.findMany({
       where: { orgId: org.id },
-      include: { _count: { select: { completions: true } }, role: { select: { id: true, name: true } } },
+      include: {
+        _count: { select: { completions: true } },
+        role: { select: { id: true, name: true } },
+        exclusions: { select: { membershipId: true } },
+      },
       orderBy: { order: "asc" },
     }),
     prisma.role.findMany({ where: { orgId: org.id }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.membership.findMany({ where: { orgId: org.id }, include: { user: true }, orderBy: { user: { name: "asc" } } }),
   ]);
+
+  const memberOptions = members.map((m) => ({ id: m.id, name: m.user.name }));
 
   return (
     <div className="max-w-2xl">
@@ -40,7 +47,7 @@ export default async function OnboardingSettingsPage({ params }: { params: Promi
               View records
             </Link>
           </Button>
-          <TaskFormDialog orgSlug={orgSlug} orgId={org.id} roles={roles} />
+          <TaskFormDialog orgSlug={orgSlug} orgId={org.id} roles={roles} members={memberOptions} />
         </div>
       </div>
 
@@ -58,6 +65,7 @@ export default async function OnboardingSettingsPage({ params }: { params: Promi
               orgSlug={orgSlug}
               orgId={org.id}
               roles={roles}
+              members={memberOptions}
               task={{
                 id: task.id,
                 title: task.title,
@@ -72,6 +80,7 @@ export default async function OnboardingSettingsPage({ params }: { params: Promi
                 completionCount: task._count.completions,
                 roleId: task.roleId,
                 roleName: task.role?.name ?? null,
+                excludedMembershipIds: task.exclusions.map((e) => e.membershipId),
               }}
             />
           ))}

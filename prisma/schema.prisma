@@ -447,6 +447,7 @@ model Membership {
   createdTeamInviteLinks TeamInviteLink[]
   createdOnboardingTasks OnboardingTask[]
   onboardingCompletions  OnboardingCompletion[]
+  onboardingExclusions   OnboardingTaskExclusion[]
   createdPlayerActions   PlayerAction[]
   matchAttendances       MatchAttendance[]
   matchComments          MatchComment[]
@@ -1076,6 +1077,21 @@ model OnboardingTask {
   updatedAt   DateTime           @updatedAt
 
   completions OnboardingCompletion[]
+  exclusions  OnboardingTaskExclusion[]
+}
+
+// One row per membership explicitly carved out of a task — checked in addition to (not instead
+// of) the roleId gate everywhere that gate runs, so a manager can assign a task to a whole role
+// and still exempt one specific person from it.
+model OnboardingTaskExclusion {
+  id           String         @id @default(cuid())
+  taskId       String
+  task         OnboardingTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  membershipId String
+  membership   Membership     @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  createdAt    DateTime       @default(now())
+
+  @@unique([taskId, membershipId])
 }
 
 // One row per member per task, created the moment they complete/sign it.
