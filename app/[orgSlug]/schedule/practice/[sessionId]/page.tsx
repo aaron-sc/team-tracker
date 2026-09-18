@@ -25,6 +25,7 @@ import { postPracticeCommentAction, deletePracticeCommentAction } from "@/lib/ac
 import { getConflictsForSession } from "@/lib/availability/conflicts";
 import { venueDirectionsUrl } from "@/lib/utils/venue-directions";
 import { formatDateTimeLong } from "@/lib/utils/format-time";
+import { sessionTypeLabel } from "@/lib/utils/session-label";
 import { RefreshOnMount } from "@/components/ui/refresh-on-mount";
 import { Calendar, MapPin, Clock, Pencil, AlertTriangle, Navigation, CalendarPlus } from "lucide-react";
 
@@ -49,11 +50,14 @@ export default async function PracticeSessionDetailPage({
     include: {
       team: true,
       opponent: true,
+      eventType: true,
       venue: true,
       attendances: { include: { membership: { include: { user: true } } } },
     },
   });
   if (!session || session.team.orgId !== org.id || !canSeeTeam(membership, session.teamId)) notFound();
+
+  const trackAttendance = session.type !== "EVENT" || (session.eventType?.trackAttendance ?? true);
 
   const canEdit = membership.permissions.includes(Permission.practice_edit);
   const canDelete = membership.permissions.includes(Permission.practice_delete);
@@ -107,7 +111,7 @@ export default async function PracticeSessionDetailPage({
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-semibold">
-            {session.team.name} {session.type === "SCRIM" ? `vs ${session.opponent?.name}` : "Practice"}
+            {session.team.name} {sessionTypeLabel(session)}
           </h1>
           <div className="flex items-center gap-2">
             <Badge variant="outline">{session.type}</Badge>
@@ -167,77 +171,79 @@ export default async function PracticeSessionDetailPage({
         </Card>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            Attendance
-            {conflicts.size > 0 ? (
-              <span className="flex items-center gap-1 text-xs font-normal text-amber-600">
-                <AlertTriangle className="size-3.5" />
-                {conflicts.size} conflict{conflicts.size === 1 ? "" : "s"} with stated availability
-              </span>
-            ) : null}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Player</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead />
-                {canManageAttendance ? <TableHead /> : null}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {session.attendances.map((a) => {
-                const isSelf = a.membershipId === membership.membershipId;
-                const mode = canManageAttendance ? "manage" : isSelf ? "self" : null;
-                return (
-                  <TableRow key={a.id}>
-                    <TableCell>{a.membership.user.name}</TableCell>
-                    <TableCell>
-                      {mode ? (
-                        <AttendanceStatusSelect
-                          orgSlug={orgSlug}
-                          orgId={org.id}
-                          attendanceId={a.id}
-                          status={a.status}
-                          mode={mode}
-                          kind="practice"
-                        />
-                      ) : (
-                        <Badge variant="secondary">{a.status}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {conflicts.has(a.membershipId) ? (
-                        <span className="flex items-center gap-1 text-xs text-amber-600">
-                          <AlertTriangle className="size-3.5" />
-                          Unavailable
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    {canManageAttendance ? (
-                      <TableCell>
-                        <RemoveAttendeeButton onRemove={removeSessionAttendeeAction.bind(null, orgSlug, org.id, a.id)} />
-                      </TableCell>
-                    ) : null}
-                  </TableRow>
-                );
-              })}
-              {session.attendances.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={canManageAttendance ? 4 : 3} className="text-center text-muted-foreground">
-                    No one on the roster for this team yet.
-                  </TableCell>
-                </TableRow>
+      {trackAttendance ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              Attendance
+              {conflicts.size > 0 ? (
+                <span className="flex items-center gap-1 text-xs font-normal text-amber-600">
+                  <AlertTriangle className="size-3.5" />
+                  {conflicts.size} conflict{conflicts.size === 1 ? "" : "s"} with stated availability
+                </span>
               ) : null}
-            </TableBody>
-          </Table>
-          {canManageAttendance ? <AddAttendeeControl candidates={addCandidates} onAdd={addAttendeeAction} /> : null}
-        </CardContent>
-      </Card>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Player</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead />
+                  {canManageAttendance ? <TableHead /> : null}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {session.attendances.map((a) => {
+                  const isSelf = a.membershipId === membership.membershipId;
+                  const mode = canManageAttendance ? "manage" : isSelf ? "self" : null;
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell>{a.membership.user.name}</TableCell>
+                      <TableCell>
+                        {mode ? (
+                          <AttendanceStatusSelect
+                            orgSlug={orgSlug}
+                            orgId={org.id}
+                            attendanceId={a.id}
+                            status={a.status}
+                            mode={mode}
+                            kind="practice"
+                          />
+                        ) : (
+                          <Badge variant="secondary">{a.status}</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {conflicts.has(a.membershipId) ? (
+                          <span className="flex items-center gap-1 text-xs text-amber-600">
+                            <AlertTriangle className="size-3.5" />
+                            Unavailable
+                          </span>
+                        ) : null}
+                      </TableCell>
+                      {canManageAttendance ? (
+                        <TableCell>
+                          <RemoveAttendeeButton onRemove={removeSessionAttendeeAction.bind(null, orgSlug, org.id, a.id)} />
+                        </TableCell>
+                      ) : null}
+                    </TableRow>
+                  );
+                })}
+                {session.attendances.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={canManageAttendance ? 4 : 3} className="text-center text-muted-foreground">
+                      No one on the roster for this team yet.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+            {canManageAttendance ? <AddAttendeeControl candidates={addCandidates} onAdd={addAttendeeAction} /> : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

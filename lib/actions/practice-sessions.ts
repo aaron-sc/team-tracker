@@ -13,6 +13,7 @@ import type { ActionState } from "@/lib/actions/types";
 import { createNotification } from "@/lib/notifications/create";
 import { notifyDiscord, FORMATION_EMBED_COLOR, roleMentionPrefix } from "@/lib/integrations/discord";
 import { formatDateTime } from "@/lib/utils/format-time";
+import { sessionTypeLabel } from "@/lib/utils/session-label";
 
 async function resolveOpponent(orgId: string, opponentId: string, newOpponentName: string): Promise<string | null> {
   if (opponentId) return opponentId;
@@ -27,6 +28,7 @@ function parseSessionForm(formData: FormData, fallbackTeamId?: string) {
     type: formData.get("type"),
     opponentId: formData.get("opponentId") ?? "",
     newOpponentName: formData.get("newOpponentName") ?? "",
+    eventTypeId: formData.get("eventTypeId") ?? "",
     scheduledAt: formData.get("scheduledAt"),
     durationMinutes: formData.get("durationMinutes") || 60,
     locationType: formData.get("locationType"),
@@ -63,6 +65,13 @@ export async function createPracticeSessionAction(
     if (!opponentId) return { error: "Choose an opponent for a scrim." };
   }
 
+  let eventType: { id: string; orgId: string; name: string; trackAttendance: boolean } | null = null;
+  if (parsed.data.type === "EVENT") {
+    eventType = await prisma.eventType.findUnique({ where: { id: parsed.data.eventTypeId } });
+    if (!eventType || eventType.orgId !== orgId) return { error: "Choose an event type." };
+  }
+  const trackAttendance = parsed.data.type !== "EVENT" || (eventType?.trackAttendance ?? true);
+
   const org = await prisma.organization.findUniqueOrThrow({ where: { id: orgId } });
   const roster = await prisma.teamMembership.findMany({ where: { teamId: team.id }, select: { membershipId: true } });
   const firstScheduledAt = fromZonedTime(parsed.data.scheduledAt, org.timezone);
@@ -74,6 +83,7 @@ export async function createPracticeSessionAction(
           teamId: team.id,
           type: parsed.data.type,
           opponentId,
+          eventTypeId: eventType?.id ?? null,
           scheduledAt: new Date(firstScheduledAt.getTime() + i * 7 * 24 * 60 * 60 * 1000),
           durationMinutes: parsed.data.durationMinutes,
           timezone: org.timezone,
@@ -81,7 +91,7 @@ export async function createPracticeSessionAction(
           venueId: parsed.data.locationType === "LAN" ? parsed.data.venueId || null : null,
           notes: parsed.data.notes || null,
           createdById: membership.membershipId,
-          attendances: { create: roster.map((r) => ({ membershipId: r.membershipId })) },
+          attendances: trackAttendance ? { create: roster.map((r) => ({ membershipId: r.membershipId })) } : undefined,
         },
       }),
     ),
@@ -96,6 +106,8 @@ export async function createPracticeSessionAction(
     metadata: { teamId: team.id, type: parsed.data.type, occurrences },
   });
 
+  const label = sessionTypeLabel({ type: parsed.data.type, eventType }, { lowercase: true });
+
   await Promise.all(
     roster
       .filter((r) => r.membershipId !== membership.membershipId)
@@ -103,25 +115,22 @@ export async function createPracticeSessionAction(
         createNotification({
           membershipId: r.membershipId,
           type: "practice_created",
-          title: `New ${parsed.data.type === "SCRIM" ? "scrim" : "practice"} scheduled for ${team.name}`,
+          title: `New ${label} scheduled for ${team.name}`,
           linkUrl: `/${orgSlug}/schedule/practice/${sessions[0].id}`,
         }),
       ),
   );
 
   if (team.discordNotifyOnCreate) {
-    const label = parsed.data.type === "SCRIM" ? "scrim" : "practice";
-    const opponent = opponentId ? await prisma.opponent.findUnique({ where: { id: opponentId }, select: { name: true } }) : null;
-    const titleSuffix = opponent ? ` vs ${opponent.name}` : "";
     const when =
       occurrences > 1
         ? `${formatDateTime(sessions[0].scheduledAt, org.timezone)}, repeating weekly for ${occurrences} weeks`
         : formatDateTime(sessions[0].scheduledAt, org.timezone);
     await notifyDiscord(team.discordWebhookUrl, {
-      content: `${roleMentionPrefix(team.discordMentionRoleId)}**${team.name}** — new ${label}${titleSuffix} scheduled.`,
+      content: `${roleMentionPrefix(team.discordMentionRoleId)}**${team.name}** — new ${label} scheduled.`,
       embeds: [
         {
-          title: `${team.name} — ${label}${titleSuffix}`,
+          title: `${team.name} — ${label}`,
           color: FORMATION_EMBED_COLOR,
           fields: [{ name: "When", value: when, inline: true }],
           timestamp: new Date().toISOString(),
@@ -161,6 +170,13 @@ export async function updatePracticeSessionAction(
     if (!opponentId) return { error: "Choose an opponent for a scrim." };
   }
 
+  let eventTypeId: string | null = null;
+  if (parsed.data.type === "EVENT") {
+    const eventType = await prisma.eventType.findUnique({ where: { id: parsed.data.eventTypeId } });
+    if (!eventType || eventType.orgId !== orgId) return { error: "Choose an event type." };
+    eventTypeId = eventType.id;
+  }
+
   const newScheduledAt = fromZonedTime(parsed.data.scheduledAt, session.timezone);
   const rescheduled = newScheduledAt.getTime() !== session.scheduledAt.getTime();
 
@@ -169,6 +185,7 @@ export async function updatePracticeSessionAction(
     data: {
       type: parsed.data.type,
       opponentId,
+      eventTypeId,
       scheduledAt: newScheduledAt,
       durationMinutes: parsed.data.durationMinutes,
       locationType: parsed.data.locationType,
@@ -235,11 +252,17 @@ export async function recordSessionResultAction(
 export async function duplicatePracticeSessionAction(orgSlug: string, orgId: string, sessionId: string): Promise<ActionState> {
   const { membership } = await requirePermission(orgId, Permission.practice_create);
 
-  const session = await prisma.practiceSession.findUnique({ where: { id: sessionId }, include: { team: true } });
+  const session = await prisma.practiceSession.findUnique({
+    where: { id: sessionId },
+    include: { team: true, eventType: true },
+  });
   if (!session || session.team.orgId !== orgId) return { error: "Session not found." };
   requireTeamScope(membership, session.teamId);
 
-  const roster = await prisma.teamMembership.findMany({ where: { teamId: session.teamId }, select: { membershipId: true } });
+  const trackAttendance = session.type !== "EVENT" || (session.eventType?.trackAttendance ?? true);
+  const roster = trackAttendance
+    ? await prisma.teamMembership.findMany({ where: { teamId: session.teamId }, select: { membershipId: true } })
+    : [];
   const nextWeek = new Date(session.scheduledAt.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const copy = await prisma.practiceSession.create({
@@ -247,6 +270,7 @@ export async function duplicatePracticeSessionAction(orgSlug: string, orgId: str
       teamId: session.teamId,
       type: session.type,
       opponentId: session.opponentId,
+      eventTypeId: session.eventTypeId,
       scheduledAt: nextWeek,
       durationMinutes: session.durationMinutes,
       timezone: session.timezone,
@@ -254,7 +278,7 @@ export async function duplicatePracticeSessionAction(orgSlug: string, orgId: str
       venueId: session.venueId,
       notes: session.notes,
       createdById: membership.membershipId,
-      attendances: { create: roster.map((r) => ({ membershipId: r.membershipId })) },
+      attendances: trackAttendance ? { create: roster.map((r) => ({ membershipId: r.membershipId })) } : undefined,
     },
   });
 
@@ -274,7 +298,10 @@ export async function duplicatePracticeSessionAction(orgSlug: string, orgId: str
 export async function deletePracticeSessionAction(orgSlug: string, orgId: string, sessionId: string): Promise<ActionState> {
   const { membership } = await requirePermission(orgId, Permission.practice_delete);
 
-  const session = await prisma.practiceSession.findUnique({ where: { id: sessionId }, include: { team: true } });
+  const session = await prisma.practiceSession.findUnique({
+    where: { id: sessionId },
+    include: { team: true, opponent: true, eventType: true },
+  });
   if (!session || session.team.orgId !== orgId) return { error: "Session not found." };
   requireTeamScope(membership, session.teamId);
 
@@ -282,7 +309,7 @@ export async function deletePracticeSessionAction(orgSlug: string, orgId: string
     await createNotification({
       membershipId: session.createdById,
       type: "practice_cancelled",
-      title: `${session.team.name}'s ${session.type === "SCRIM" ? "scrim" : "practice"} was cancelled`,
+      title: `${session.team.name}'s ${sessionTypeLabel(session, { lowercase: true })} was cancelled`,
     }).catch(() => {});
   }
 
@@ -315,7 +342,7 @@ export async function respondToAttendanceAction(
 
   const attendance = await prisma.sessionAttendance.findUnique({
     where: { id: attendanceId },
-    include: { session: { include: { team: true } } },
+    include: { session: { include: { team: true, opponent: true, eventType: true } } },
   });
   if (!attendance) return { error: "Not found." };
   if (attendance.membershipId !== membership.membershipId) {
@@ -331,7 +358,7 @@ export async function respondToAttendanceAction(
     await createNotification({
       membershipId: attendance.session.createdById,
       type: "practice_declined",
-      title: `A player can't make ${attendance.session.team.name}'s ${attendance.session.type === "SCRIM" ? "scrim" : "practice"}`,
+      title: `A player can't make ${attendance.session.team.name}'s ${sessionTypeLabel(attendance.session, { lowercase: true })}`,
       linkUrl: `/${orgSlug}/schedule/practice/${attendance.session.id}`,
     }).catch(() => {});
   }

@@ -20,9 +20,10 @@ export default async function EditPracticeSessionPage({
   const session = await prisma.practiceSession.findUnique({ where: { id: sessionId }, include: { team: true } });
   if (!session || session.team.orgId !== org.id || !canSeeTeam(membership, session.teamId)) notFound();
 
-  const [opponents, venues] = await Promise.all([
+  const [opponents, venues, eventTypes] = await Promise.all([
     prisma.opponent.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } }),
     prisma.venue.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } }),
+    prisma.eventType.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } }),
   ]);
 
   const action = updatePracticeSessionAction.bind(null, orgSlug, org.id, session.id);
@@ -35,6 +36,8 @@ export default async function EditPracticeSessionPage({
         teams={teams}
         opponents={opponents}
         venues={venues}
+        eventTypes={eventTypes}
+        orgSlug={orgSlug}
         orgTimezone={session.timezone}
         lockTeam
         excludePracticeId={session.id}
@@ -42,6 +45,7 @@ export default async function EditPracticeSessionPage({
           teamId: session.teamId,
           type: session.type,
           opponentId: session.opponentId ?? undefined,
+          eventTypeId: session.eventTypeId ?? undefined,
           scheduledAt: toDatetimeLocalValue(session.scheduledAt, session.timezone),
           durationMinutes: session.durationMinutes,
           locationType: session.locationType,

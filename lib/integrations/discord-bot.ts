@@ -24,6 +24,7 @@ import { availabilityRuleGroupSchema } from "@/lib/validations/availability";
 import { FORMATION_EMBED_COLOR } from "@/lib/integrations/discord";
 import { approveAccessRequest, denyAccessRequest } from "@/lib/access-requests/service";
 import { getBackgroundBaseUrl } from "@/lib/utils/base-url";
+import { sessionTypeLabel } from "@/lib/utils/session-label";
 
 // Optional integration: every handler below assumes DISCORD_BOT_TOKEN may simply be unset (self-
 // hosted orgs that don't want a bot), so startDiscordBot() below is the only thing that decides
@@ -412,7 +413,7 @@ async function handleSchedule(interaction: ChatInputCommandInteraction) {
     }),
     prisma.practiceSession.findMany({
       where: { teamId: { in: teamIds }, scheduledAt: { gte: start, lt: end } },
-      include: { opponent: true, team: true },
+      include: { opponent: true, team: true, eventType: true },
       orderBy: { scheduledAt: "asc" },
     }),
   ]);
@@ -421,7 +422,7 @@ async function handleSchedule(interaction: ChatInputCommandInteraction) {
     ...matches.map((m) => ({ at: m.scheduledAt, label: `Match vs ${m.opponent.name}${showTeamName ? ` (${m.team.name})` : ""}` })),
     ...sessions.map((s) => ({
       at: s.scheduledAt,
-      label: `${s.type === "SCRIM" ? `Scrim vs ${s.opponent?.name ?? "TBD"}` : "Practice"}${showTeamName ? ` (${s.team.name})` : ""}`,
+      label: `${sessionTypeLabel(s)}${showTeamName ? ` (${s.team.name})` : ""}`,
     })),
   ].sort((a, b) => a.at.getTime() - b.at.getTime());
 

@@ -42,7 +42,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ venu
     }),
     prisma.practiceSession.findMany({
       where: { venueId, id: excludePracticeId ? { not: excludePracticeId } : undefined },
-      include: { team: true },
+      include: { team: true, eventType: true },
     }),
   ]);
 
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ venu
     ...sessions
       .filter((s) => s.scheduledAt < newEnd && newStart < new Date(s.scheduledAt.getTime() + s.durationMinutes * 60 * 1000))
       .map((s) => ({
-        label: `${s.team.name}'s ${s.type === "SCRIM" ? "scrim" : "practice"}`,
+        label: `${s.team.name}'s ${s.type === "SCRIM" ? "scrim" : s.type === "EVENT" ? (s.eventType?.name ?? "event").toLowerCase() : "practice"}`,
         scheduledAt: s.scheduledAt.toISOString(),
       })),
   ];

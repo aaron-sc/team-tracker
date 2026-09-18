@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { buildIcsCalendar, type IcsEvent } from "@/lib/calendar/ics";
+import { sessionTypeLabel } from "@/lib/utils/session-label";
 
 const DEFAULT_MATCH_MINUTES = 90;
 
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orgS
     }),
     prisma.practiceSession.findMany({
       where: { teamId: { in: teamIds } },
-      include: { team: true, opponent: true, venue: true },
+      include: { team: true, opponent: true, eventType: true, venue: true },
     }),
   ]);
 
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ orgS
     })),
     ...sessions.map((s) => ({
       uid: `session-${s.id}@formation`,
-      title: `${s.team.name} ${s.type === "SCRIM" ? `scrim vs ${s.opponent?.name ?? "TBD"}` : "practice"}`,
+      title: `${s.team.name} ${sessionTypeLabel(s, { lowercase: true })}`,
       description: s.notes ?? undefined,
       location: s.venue ? (s.venue.isOnline ? s.venue.onlineUrl ?? s.venue.name : `${s.venue.name}, ${s.venue.city}`) : undefined,
       start: s.scheduledAt,

@@ -24,7 +24,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ orgSlug
     }),
     prisma.practiceSession.findMany({
       where: { team: teamWhere },
-      include: { team: true, opponent: true },
+      include: { team: true, opponent: true, eventType: true },
       orderBy: { scheduledAt: "asc" },
     }),
   ]);
@@ -40,7 +40,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ orgSlug
       m.scoreFor != null && m.scoreAgainst != null ? `${m.scoreFor}-${m.scoreAgainst}` : "",
     ]),
     ...sessions.map((s) => [
-      s.type === "SCRIM" ? "Scrim" : "Practice",
+      s.type === "SCRIM" ? "Scrim" : s.type === "EVENT" ? (s.eventType?.name ?? "Event") : "Practice",
       s.team.name,
       s.opponent?.name ?? "",
       `${s.durationMinutes}min`,

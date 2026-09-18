@@ -10,17 +10,26 @@ export default async function NewPracticeSessionPage({ params }: { params: Promi
   const { org, membership, teams } = await getOrgContext(orgSlug);
   requirePagePermission(orgSlug, membership, Permission.practice_create);
 
-  const [opponents, venues] = await Promise.all([
+  const [opponents, venues, eventTypes] = await Promise.all([
     prisma.opponent.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } }),
     prisma.venue.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } }),
+    prisma.eventType.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } }),
   ]);
 
   const action = createPracticeSessionAction.bind(null, orgSlug, org.id);
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-semibold">Schedule practice / scrim</h1>
-      <PracticeForm action={action} teams={teams} opponents={opponents} venues={venues} orgTimezone={org.timezone} />
+      <h1 className="mb-4 text-xl font-semibold">Schedule practice / scrim / event</h1>
+      <PracticeForm
+        action={action}
+        teams={teams}
+        opponents={opponents}
+        venues={venues}
+        eventTypes={eventTypes}
+        orgSlug={orgSlug}
+        orgTimezone={org.timezone}
+      />
     </div>
   );
 }

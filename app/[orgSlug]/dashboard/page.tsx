@@ -29,6 +29,7 @@ import {
   Receipt,
 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils/format-time";
+import { sessionTypeLabel } from "@/lib/utils/session-label";
 
 const AUDIT_ACTION_LABELS: Record<string, string> = {
   "match.created": "created a match",
@@ -110,7 +111,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
     }),
     prisma.practiceSession.findMany({
       where: { teamId: { in: visibleTeamIds }, scheduledAt: { gte: now } },
-      include: { team: true, opponent: true },
+      include: { team: true, opponent: true, eventType: true },
       orderBy: { scheduledAt: "asc" },
       take: 5,
     }),
@@ -140,7 +141,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
     }),
     prisma.sessionAttendance.findMany({
       where: { membershipId: membership.membershipId, status: "INVITED", session: { scheduledAt: { gte: now } } },
-      include: { session: { include: { team: true, opponent: true } } },
+      include: { session: { include: { team: true, opponent: true, eventType: true } } },
       orderBy: { session: { scheduledAt: "asc" } },
       take: 5,
     }),
@@ -277,8 +278,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
               >
                 <div>
                   <p className="font-medium">
-                    {a.session.team.name}{" "}
-                    {a.session.type === "SCRIM" ? `scrim vs ${a.session.opponent?.name ?? "TBD"}` : "practice"}
+                    {a.session.team.name} {sessionTypeLabel(a.session, { lowercase: true })}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatDateTime(a.session.scheduledAt, viewerTz, viewerHour12)}
@@ -328,7 +328,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Upcoming practice &amp; scrims</CardTitle>
+            <CardTitle className="text-base">Upcoming schedule</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {upcomingSessions.length === 0 ? (
@@ -342,7 +342,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ orgS
                 >
                   <div>
                     <p className="font-medium">
-                      {s.team.name} {s.type === "SCRIM" ? `vs ${s.opponent?.name ?? "TBD"}` : "practice"}
+                      {s.team.name} {sessionTypeLabel(s, { lowercase: true })}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {formatDateTime(s.scheduledAt, viewerTz, viewerHour12)}

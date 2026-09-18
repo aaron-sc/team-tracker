@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { canSeeTeam } from "@/lib/auth/authorize";
 import { prisma } from "@/lib/db/prisma";
 import { buildIcsCalendar, type IcsEvent } from "@/lib/calendar/ics";
+import { sessionTypeLabel } from "@/lib/utils/session-label";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ orgSlug: string; sessionId: string }> }) {
   const { orgSlug, sessionId } = await params;
@@ -14,15 +15,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ orgSlug
 
   const practiceSession = await prisma.practiceSession.findUnique({
     where: { id: sessionId },
-    include: { team: true, opponent: true, venue: true },
+    include: { team: true, opponent: true, eventType: true, venue: true },
   });
   if (!practiceSession || practiceSession.team.orgId !== membership.orgId || !canSeeTeam(membership, practiceSession.teamId)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const title = `${practiceSession.team.name} ${
-    practiceSession.type === "SCRIM" ? `scrim vs ${practiceSession.opponent?.name ?? "TBD"}` : "practice"
-  }`;
+  const title = `${practiceSession.team.name} ${sessionTypeLabel(practiceSession, { lowercase: true })}`;
 
   const event: IcsEvent = {
     uid: `session-${practiceSession.id}@formation`,

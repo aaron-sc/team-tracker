@@ -7,6 +7,7 @@ export const practiceSessionSchema = z
     type: z.enum(SessionType),
     opponentId: z.string().optional().or(z.literal("")),
     newOpponentName: z.string().trim().max(80).optional().or(z.literal("")),
+    eventTypeId: z.string().optional().or(z.literal("")),
     scheduledAt: z.string().min(1, "Date and time are required."),
     durationMinutes: z.coerce.number().int().min(15).max(600),
     locationType: z.enum(LocationType),
@@ -16,6 +17,10 @@ export const practiceSessionSchema = z
   .refine((data) => data.type !== "SCRIM" || data.opponentId || data.newOpponentName, {
     message: "Choose an opponent for a scrim.",
     path: ["opponentId"],
+  })
+  .refine((data) => data.type !== "EVENT" || data.eventTypeId, {
+    message: "Choose an event type.",
+    path: ["eventTypeId"],
   })
   .refine((data) => data.locationType !== "LAN" || data.venueId, {
     message: "Choose a venue for LAN sessions.",

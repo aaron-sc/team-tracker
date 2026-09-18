@@ -16,6 +16,8 @@ export function PracticeForm({
   teams,
   opponents,
   venues,
+  eventTypes,
+  orgSlug,
   orgTimezone,
   defaultValues,
   lockTeam = false,
@@ -25,6 +27,8 @@ export function PracticeForm({
   teams: { id: string; name: string }[];
   opponents: { id: string; name: string }[];
   venues: { id: string; name: string }[];
+  eventTypes: { id: string; name: string }[];
+  orgSlug: string;
   /** The date/time field below is interpreted in the org's own timezone, not the visitor's
    *  browser timezone — shown next to the field for anyone whose own timezone differs. */
   orgTimezone: string;
@@ -36,6 +40,7 @@ export function PracticeForm({
     teamId?: string;
     type?: string;
     opponentId?: string;
+    eventTypeId?: string;
     scheduledAt?: string;
     durationMinutes?: number;
     locationType?: string;
@@ -79,10 +84,39 @@ export function PracticeForm({
             <SelectContent>
               <SelectItem value="PRACTICE">Internal practice</SelectItem>
               <SelectItem value="SCRIM">Scrim (vs opponent)</SelectItem>
+              <SelectItem value="EVENT">Other event</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
+
+      {type === "EVENT" ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="eventTypeId">Event type</Label>
+          {eventTypes.length > 0 ? (
+            <Select name="eventTypeId" defaultValue={defaultValues?.eventTypeId ?? eventTypes[0]?.id}>
+              <SelectTrigger id="eventTypeId" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {eventTypes.map((et) => (
+                  <SelectItem key={et.id} value={et.id}>
+                    {et.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No event types set up yet —{" "}
+              <a href={`/${orgSlug}/settings/event-types`} className="text-primary underline underline-offset-4">
+                add one in Settings
+              </a>{" "}
+              first.
+            </p>
+          )}
+        </div>
+      ) : null}
 
       {type === "SCRIM" ? (
         <div className="space-y-1.5">

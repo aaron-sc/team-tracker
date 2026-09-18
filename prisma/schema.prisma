@@ -81,6 +81,9 @@ enum ResultStatus {
 enum SessionType {
   PRACTICE
   SCRIM
+  // A generic, org-defined kind of event (community event, season kickoff, etc.) — see EventType.
+  // No opponent/result tracking, unlike SCRIM; attendance tracking is optional per EventType.
+  EVENT
 }
 
 enum AttendanceStatus {
@@ -215,6 +218,7 @@ model Organization {
   expenses        Expense[]
   scrimListings         ScrimListing[]
   scrimRequestsSent     ScrimRequest[]
+  eventTypes            EventType[]
 }
 
 model Team {
@@ -634,6 +638,11 @@ model PracticeSession {
   type            SessionType  @default(PRACTICE)
   opponentId      String?
   opponent        Opponent?    @relation(fields: [opponentId], references: [id])
+  // Only meaningful when type is EVENT — which org-defined kind of event this is, and whether
+  // attendance gets tracked for it. SetNull rather than Cascade so deleting the type doesn't
+  // silently delete past events.
+  eventTypeId     String?
+  eventType       EventType?   @relation(fields: [eventTypeId], references: [id], onDelete: SetNull)
   scheduledAt     DateTime
   durationMinutes Int          @default(60)
   timezone        String
@@ -730,6 +739,23 @@ model ScrimMessage {
   createdAt          DateTime @default(now())
 
   @@index([requestId, createdAt])
+}
+
+// An org-defined kind of PracticeSession.type EVENT — "Community Event", "Season Kickoff",
+// whatever a manager wants. Unlike PRACTICE/SCRIM these carry no opponent/result tracking, and
+// attendance tracking is opt-out per type (trackAttendance) since not every kind of event needs
+// RSVPs (e.g. a season announcement).
+model EventType {
+  id              String   @id @default(cuid())
+  orgId           String
+  org             Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  name            String
+  trackAttendance Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  sessions PracticeSession[]
+
+  @@unique([orgId, name])
 }
 
 model SessionAttendance {

@@ -7,6 +7,7 @@ import { sweepScheduledAnnouncements } from "@/lib/scheduler/scheduled-announcem
 import { sendPushToUser } from "@/lib/notifications/push";
 import { postInteractiveReminder, dmReminderToRoster } from "@/lib/integrations/discord-bot";
 import { parseReminderMinutesList } from "@/lib/utils/reminder-options";
+import { sessionTypeLabel } from "@/lib/utils/session-label";
 
 /** Pushes a reminder to every roster member's opted-in devices — independent of whether the team
  *  also has a Discord webhook configured, so push works for teams that never set that up. */
@@ -114,7 +115,7 @@ async function sweepPracticeSessions() {
     where: {
       scheduledAt: { gte: new Date(now.getTime() - MAX_STALE_MINUTES * 60_000) },
     },
-    include: { team: { include: { org: true } }, opponent: true, venue: true },
+    include: { team: { include: { org: true } }, opponent: true, venue: true, eventType: true },
   });
 
   for (const session of sessions) {
@@ -132,7 +133,8 @@ async function sweepPracticeSessions() {
       data: { sentReminderMinutes: [...alreadySent, ...due].sort((a, b) => a - b) },
     });
 
-    const label = session.type === "SCRIM" ? `Scrim vs ${session.opponent?.name ?? "TBD"}` : "Practice";
+    const trackAttendance = session.type !== "EVENT" || (session.eventType?.trackAttendance ?? true);
+    const label = sessionTypeLabel(session);
     const location = session.locationType === "LAN" ? (session.venue?.name ?? "Venue TBD") : "Online";
     const eventUrl = baseUrl ? `${baseUrl}/${session.team.org.slug}/schedule/practice/${session.id}` : undefined;
 
@@ -158,7 +160,7 @@ async function sweepPracticeSessions() {
 
       await pushReminderToRoster(session.teamId, title, location, eventUrl);
       await dmReminderToRoster(session.teamId, title, location, eventUrl).catch(() => {});
-      if (session.team.discordReminderChannelId) {
+      if (session.team.discordReminderChannelId && trackAttendance) {
         await postInteractiveReminder(session.team.discordReminderChannelId, "PRACTICE", session.id, title, location).catch(() => {});
       }
     }

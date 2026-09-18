@@ -11,6 +11,7 @@ import type { CalendarEvent } from "@/lib/calendar/types";
 import { SubscribeCalendarDialog } from "@/components/schedule/subscribe-calendar-dialog";
 import { ChevronLeft, ChevronRight, Plus, ListChecks, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { sessionTypeLabel } from "@/lib/utils/session-label";
 
 function buildHref(base: string, params: Record<string, string | undefined>) {
   const search = new URLSearchParams();
@@ -58,7 +59,7 @@ export default async function SchedulePage({
     }),
     prisma.practiceSession.findMany({
       where: { scheduledAt: { gte: rangeStart, lte: rangeEnd }, ...teamWhere },
-      include: { team: true, opponent: true },
+      include: { team: true, opponent: true, eventType: true },
     }),
   ]);
 
@@ -75,7 +76,7 @@ export default async function SchedulePage({
     ...sessions.map((s) => ({
       id: `practice-${s.id}`,
       type: "practice" as const,
-      title: s.type === "SCRIM" ? `${s.team.name} scrim vs ${s.opponent?.name ?? "TBD"}` : `${s.team.name} practice`,
+      title: `${s.team.name} ${sessionTypeLabel(s, { lowercase: true })}`,
       start: s.scheduledAt,
       end: new Date(s.scheduledAt.getTime() + s.durationMinutes * 60 * 1000),
       href: `/${orgSlug}/schedule/practice/${s.id}`,

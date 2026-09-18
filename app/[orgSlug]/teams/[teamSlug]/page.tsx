@@ -21,6 +21,7 @@ import { TeamPollsPanel } from "@/components/teams/team-polls-panel";
 import { addToRosterAction } from "@/lib/actions/teams";
 import { Pencil, Star, Calendar, Swords, ExternalLink, Gauge, Download } from "lucide-react";
 import { formatDateTimeShort } from "@/lib/utils/format-time";
+import { sessionTypeLabel } from "@/lib/utils/session-label";
 import { averageRank } from "@/lib/constants/ranks";
 
 export default async function TeamDetailPage({
@@ -72,7 +73,7 @@ export default async function TeamDetailPage({
     }),
     prisma.practiceSession.findMany({
       where: { teamId: team.id, scheduledAt: { gte: new Date() } },
-      include: { opponent: true },
+      include: { opponent: true, eventType: true },
       orderBy: { scheduledAt: "asc" },
       take: 5,
     }),
@@ -140,7 +141,7 @@ export default async function TeamDetailPage({
     ...upcomingPractices.map((s) => ({
       id: `practice-${s.id}`,
       href: `/${orgSlug}/schedule/practice/${s.id}`,
-      title: s.type === "SCRIM" ? `Scrim vs ${s.opponent?.name ?? "TBD"}` : "Practice",
+      title: sessionTypeLabel(s),
       subtitle: `${s.durationMinutes} min`,
       scheduledAt: s.scheduledAt,
       icon: "practice" as const,

@@ -27,6 +27,7 @@ export default async function SettingsLayout({
             show: has(Permission.org_members_invite) || has(Permission.org_members_manage),
           },
           { href: "/audit-log", label: "Audit Log", show: has(Permission.audit_log_view) },
+          { href: "/event-types", label: "Event Types", show: has(Permission.org_settings_manage) },
           { href: "/integrations", label: "Integrations", show: has(Permission.org_settings_manage) },
         ]}
       />
