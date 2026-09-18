@@ -36,6 +36,7 @@ export function SidebarNav({
   orgSlug,
   permissions,
   hiddenNavItems = [],
+  chatEnabled = true,
   onNavigate,
 }: {
   orgSlug: string;
@@ -43,6 +44,9 @@ export function SidebarNav({
   /** Sidebar item keys (see lib/constants/nav-items.ts) this user has personally hidden — see
    *  NavbarCustomizeDialog. Dashboard is never in this list; it's the one link nobody can hide. */
   hiddenNavItems?: string[];
+  /** Org-wide chat toggle (Settings -> Organization) — false hides Messages for everyone,
+   *  regardless of personal nav preferences. */
+  chatEnabled?: boolean;
   /** Called after a link is clicked — used by the mobile menu to close its sheet on navigation. */
   onNavigate?: () => void;
 }) {
@@ -111,7 +115,7 @@ export function SidebarNav({
       href: `${base}/messages`,
       label: "Messages",
       icon: MessageCircle,
-      show: !isHidden("sidebar_messages"),
+      show: chatEnabled && !isHidden("sidebar_messages"),
       tour: "nav-messages",
     },
     {

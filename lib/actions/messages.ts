@@ -22,6 +22,9 @@ export async function startConversationAction(
     return { error: "You can't message yourself." };
   }
 
+  const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { chatEnabled: true } });
+  if (!org?.chatEnabled) return { error: "Chat is disabled for this organization." };
+
   const other = await prisma.membership.findUnique({ where: { id: otherMembershipId } });
   if (!other || other.orgId !== orgId) return { error: "Member not found." };
 
@@ -43,6 +46,9 @@ export async function sendMessageAction(
   formData: FormData,
 ): Promise<ActionState> {
   const { session, membership } = await requireMembership(orgId);
+
+  const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { chatEnabled: true } });
+  if (!org?.chatEnabled) return { error: "Chat is disabled for this organization." };
 
   const conversation = await prisma.conversation.findUnique({ where: { id: conversationId } });
   if (!conversation || conversation.orgId !== orgId) return { error: "Conversation not found." };

@@ -39,6 +39,7 @@ export default async function OrgSettingsPage({ params }: { params: Promise<{ or
           timezones={getTimezones()}
           themeColor={org.themeColor}
           websiteUrl={org.websiteUrl}
+          chatEnabled={org.chatEnabled}
         />
       </div>
 

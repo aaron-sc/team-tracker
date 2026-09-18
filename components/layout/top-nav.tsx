@@ -55,6 +55,7 @@ export function TopNav({
   initialNotifications,
   initialUnreadCount,
   hiddenNavItems,
+  chatEnabled = true,
 }: {
   orgName: string;
   orgSlug: string;
@@ -72,6 +73,8 @@ export function TopNav({
   /** Navbar icon keys (see lib/constants/nav-items.ts) this specific user has personally hidden
    *  from their own top nav — see NavbarCustomizeDialog. */
   hiddenNavItems: string[];
+  /** Org-wide chat toggle (Settings -> Organization) — passed through to MobileNav. */
+  chatEnabled?: boolean;
 }) {
   const initials = userName
     .split(" ")
@@ -89,7 +92,7 @@ export function TopNav({
       style={{ viewTransitionName: "site-header" } as React.CSSProperties}
     >
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-        <MobileNav orgSlug={orgSlug} permissions={permissions} hiddenNavItems={hiddenNavItems} />
+        <MobileNav orgSlug={orgSlug} permissions={permissions} hiddenNavItems={hiddenNavItems} chatEnabled={chatEnabled} />
         <Link href="/" className="hidden font-semibold sm:flex">
           <Logo size="size-5" />
         </Link>

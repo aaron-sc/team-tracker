@@ -16,10 +16,12 @@ export function MobileNav({
   orgSlug,
   permissions,
   hiddenNavItems,
+  chatEnabled = true,
 }: {
   orgSlug: string;
   permissions: Permission[];
   hiddenNavItems: string[];
+  chatEnabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -39,6 +41,7 @@ export function MobileNav({
             orgSlug={orgSlug}
             permissions={permissions}
             hiddenNavItems={hiddenNavItems}
+            chatEnabled={chatEnabled}
             onNavigate={() => setOpen(false)}
           />
         </div>

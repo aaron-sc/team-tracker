@@ -186,6 +186,10 @@ model Organization {
   // belong to this org.
   discordGuildId String? @unique
   websiteUrl  String?
+  // Org-wide kill switch for the direct-message feature (Conversation/Message) — off hides the
+  // Messages nav item for everyone and blocks starting/sending new messages; existing history
+  // stays intact and viewable if someone has a direct link.
+  chatEnabled Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

@@ -206,6 +206,7 @@ export async function updateOrgProfileAction(
   const timezone = formData.get("timezone");
   const themeColor = formData.get("themeColor");
   const websiteUrlRaw = formData.get("websiteUrl");
+  const chatEnabled = formData.get("chatEnabled") === "on";
   if (typeof name !== "string" || name.trim().length < 2) {
     return { error: "Organization name must be at least 2 characters." };
   }
@@ -222,7 +223,7 @@ export async function updateOrgProfileAction(
 
   await prisma.organization.update({
     where: { id: orgId },
-    data: { name: name.trim(), timezone, themeColor, websiteUrl: websiteUrl || null },
+    data: { name: name.trim(), timezone, themeColor, websiteUrl: websiteUrl || null, chatEnabled },
   });
 
   await logAudit({

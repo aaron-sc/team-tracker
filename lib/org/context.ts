@@ -21,6 +21,7 @@ export type OrgContext = {
     apiKey: string | null;
     websiteUrl: string | null;
     discordGuildId: string | null;
+    chatEnabled: boolean;
   };
   teams: { id: string; name: string; game: string; slug: string }[];
 };
@@ -51,6 +52,7 @@ export const getOrgContext = cache(async (orgSlug: string): Promise<OrgContext> 
         apiKey: true,
         websiteUrl: true,
         discordGuildId: true,
+        chatEnabled: true,
       },
     }),
     prisma.team.findMany({

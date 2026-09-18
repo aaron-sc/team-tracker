@@ -16,6 +16,7 @@ export function MessageThread({
   currentMembershipId,
   initialMessages,
   hour12 = true,
+  chatEnabled = true,
 }: {
   orgSlug: string;
   orgId: string;
@@ -23,6 +24,9 @@ export function MessageThread({
   currentMembershipId: string;
   initialMessages: Msg[];
   hour12?: boolean;
+  /** Org-wide chat toggle — false hides the composer so no new message can be sent, but the
+   *  thread itself (and the polling that keeps it live) stays visible. */
+  chatEnabled?: boolean;
 }) {
   const [messages, setMessages] = useState(initialMessages);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -91,21 +95,29 @@ export function MessageThread({
         })}
         <div ref={bottomRef} />
       </div>
-      <form
-        ref={formRef}
-        action={formAction}
-        className="flex items-end gap-2 border-t pt-3"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            formRef.current?.requestSubmit();
-          }
-        }}
-      >
-        <Textarea name="body" placeholder="Write a message…" rows={1} required className="min-h-9 resize-none" />
-        <SubmitButton>Send</SubmitButton>
-      </form>
-      {state?.error ? <p className="mt-1 text-sm text-destructive">{state.error}</p> : null}
+      {chatEnabled ? (
+        <>
+          <form
+            ref={formRef}
+            action={formAction}
+            className="flex items-end gap-2 border-t pt-3"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                formRef.current?.requestSubmit();
+              }
+            }}
+          >
+            <Textarea name="body" placeholder="Write a message…" rows={1} required className="min-h-9 resize-none" />
+            <SubmitButton>Send</SubmitButton>
+          </form>
+          {state?.error ? <p className="mt-1 text-sm text-destructive">{state.error}</p> : null}
+        </>
+      ) : (
+        <p className="border-t pt-3 text-center text-sm text-muted-foreground">
+          Chat is disabled for this organization.
+        </p>
+      )}
     </div>
   );
 }

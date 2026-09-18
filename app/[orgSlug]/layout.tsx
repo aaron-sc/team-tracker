@@ -71,6 +71,7 @@ export default async function OrgLayout({
           }))}
           initialUnreadCount={unreadCount}
           hiddenNavItems={hiddenNavItems}
+          chatEnabled={org.chatEnabled}
         />
       </div>
       <div className="flex flex-1">
@@ -78,7 +79,12 @@ export default async function OrgLayout({
           className="no-print hidden w-56 shrink-0 border-r sm:block"
           style={{ viewTransitionName: "site-sidebar" } as React.CSSProperties}
         >
-          <SidebarNav orgSlug={org.slug} permissions={membership.permissions} hiddenNavItems={hiddenNavItems} />
+          <SidebarNav
+            orgSlug={org.slug}
+            permissions={membership.permissions}
+            hiddenNavItems={hiddenNavItems}
+            chatEnabled={org.chatEnabled}
+          />
         </aside>
         <main className="flex-1 overflow-x-hidden bg-muted/20 p-6">
           <ViewTransition name="app-content" enter="auto" exit="auto">

@@ -53,15 +53,26 @@ export default async function MessagesPage({ params }: { params: Promise<{ orgSl
 
   return (
     <div className="max-w-2xl">
+      {!org.chatEnabled ? (
+        <Card className="mb-4 border-muted-foreground/20 bg-muted/40">
+          <CardContent className="py-3 text-sm text-muted-foreground">
+            Chat is disabled for this organization — existing conversations are still visible, but new ones can&apos;t be
+            started. An org admin can re-enable it in Settings.
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {conversations.length} conversation{conversations.length === 1 ? "" : "s"}
         </p>
-        <NewConversationDialog
-          orgSlug={orgSlug}
-          orgId={org.id}
-          members={members.map((m) => ({ id: m.id, name: m.user.name, email: canViewEmails ? m.user.email : null }))}
-        />
+        {org.chatEnabled ? (
+          <NewConversationDialog
+            orgSlug={orgSlug}
+            orgId={org.id}
+            members={members.map((m) => ({ id: m.id, name: m.user.name, email: canViewEmails ? m.user.email : null }))}
+          />
+        ) : null}
       </div>
 
       {conversations.length === 0 ? (

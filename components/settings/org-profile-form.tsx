@@ -6,6 +6,7 @@ import type { ActionState } from "@/lib/actions/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ export function OrgProfileForm({
   timezones,
   themeColor,
   websiteUrl,
+  chatEnabled,
 }: {
   orgSlug: string;
   orgId: string;
@@ -36,10 +38,12 @@ export function OrgProfileForm({
   timezones: string[];
   themeColor: string;
   websiteUrl: string | null;
+  chatEnabled: boolean;
 }) {
   const action = updateOrgProfileAction.bind(null, orgSlug, orgId);
   const [state, formAction] = useActionState<ActionState, FormData>(action, undefined);
   const [color, setColor] = useState(themeColor);
+  const [chat, setChat] = useState(chatEnabled);
 
   return (
     <form action={formAction} className="max-w-md space-y-4">
@@ -101,6 +105,12 @@ export function OrgProfileForm({
           </div>
         </div>
         <p className="text-xs text-muted-foreground">Used for buttons, links, and highlights across the org.</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Checkbox id="chatEnabled" name="chatEnabled" checked={chat} onCheckedChange={(v) => setChat(!!v)} />
+        <Label htmlFor="chatEnabled" className="cursor-pointer font-normal">
+          Enable direct messages between members
+        </Label>
       </div>
       {state?.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
       {state?.success ? <p className="text-sm text-emerald-600">{state.success}</p> : null}

@@ -61,6 +61,7 @@ export default async function ConversationPage({
         conversationId={conversationId}
         currentMembershipId={membership.membershipId}
         hour12={viewerHour12}
+        chatEnabled={org.chatEnabled}
         initialMessages={messages.map((m) => ({
           id: m.id,
           body: m.body,
