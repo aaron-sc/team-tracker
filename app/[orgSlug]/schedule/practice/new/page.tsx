@@ -5,8 +5,17 @@ import { prisma } from "@/lib/db/prisma";
 import { PracticeForm } from "@/components/schedule/practice-form";
 import { createPracticeSessionAction } from "@/lib/actions/practice-sessions";
 
-export default async function NewPracticeSessionPage({ params }: { params: Promise<{ orgSlug: string }> }) {
+const PRACTICE_FORM_TYPES = ["PRACTICE", "SCRIM", "EVENT"];
+
+export default async function NewPracticeSessionPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ orgSlug: string }>;
+  searchParams: Promise<{ type?: string }>;
+}) {
   const { orgSlug } = await params;
+  const { type } = await searchParams;
   const { org, membership, teams } = await getOrgContext(orgSlug);
   requirePagePermission(orgSlug, membership, Permission.practice_create);
 
@@ -15,6 +24,8 @@ export default async function NewPracticeSessionPage({ params }: { params: Promi
     prisma.venue.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } }),
     prisma.eventType.findMany({ where: { orgId: org.id }, orderBy: { name: "asc" } }),
   ]);
+
+  const initialType = type && PRACTICE_FORM_TYPES.includes(type) ? type : undefined;
 
   const action = createPracticeSessionAction.bind(null, orgSlug, org.id);
 
@@ -29,6 +40,7 @@ export default async function NewPracticeSessionPage({ params }: { params: Promi
         eventTypes={eventTypes}
         orgSlug={orgSlug}
         orgTimezone={org.timezone}
+        defaultValues={initialType ? { type: initialType } : undefined}
       />
     </div>
   );

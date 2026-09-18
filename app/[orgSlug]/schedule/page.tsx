@@ -9,7 +9,8 @@ import { MonthGrid } from "@/components/calendar/month-grid";
 import { WeekAgenda } from "@/components/calendar/week-agenda";
 import type { CalendarEvent } from "@/lib/calendar/types";
 import { SubscribeCalendarDialog } from "@/components/schedule/subscribe-calendar-dialog";
-import { ChevronLeft, ChevronRight, Plus, ListChecks, Download, Upload } from "lucide-react";
+import { ScheduleEventMenu } from "@/components/schedule/schedule-event-menu";
+import { ChevronLeft, ChevronRight, ListChecks, Download, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sessionTypeLabel } from "@/lib/utils/session-label";
 
@@ -148,22 +149,7 @@ export default async function SchedulePage({
             ))}
           </div>
 
-          {canCreateMatch ? (
-            <Button size="sm" variant="outline" asChild>
-              <Link href={`/${orgSlug}/schedule/matches/new`}>
-                <Plus className="size-4" />
-                Match
-              </Link>
-            </Button>
-          ) : null}
-          {canCreatePractice ? (
-            <Button size="sm" variant="outline" asChild>
-              <Link href={`/${orgSlug}/schedule/practice/new`}>
-                <Plus className="size-4" />
-                Practice
-              </Link>
-            </Button>
-          ) : null}
+          <ScheduleEventMenu orgSlug={orgSlug} canCreateMatch={canCreateMatch} canCreatePractice={canCreatePractice} />
           {canCreatePractice ? (
             <Button size="sm" variant="outline" asChild>
               <Link href={`/${orgSlug}/schedule/import`}>
