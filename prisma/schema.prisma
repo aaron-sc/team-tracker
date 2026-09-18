@@ -190,6 +190,9 @@ model Organization {
   // Messages nav item for everyone and blocks starting/sending new messages; existing history
   // stays intact and viewable if someone has a direct link.
   chatEnabled Boolean  @default(true)
+  // Days of audit log history to keep — null means keep forever. Purged by
+  // lib/audit/retention.ts's hourly sweep, not on write.
+  auditLogRetentionDays Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -1019,6 +1022,10 @@ model AuditLog {
   targetType        String
   targetId          String
   metadata          Json?
+  // Best-effort request context, captured automatically in lib/audit/log.ts — null for
+  // system-initiated entries (no actorMembershipId) or when it wasn't available.
+  ipAddress         String?
+  userAgent         String?
   createdAt         DateTime     @default(now())
 }
 

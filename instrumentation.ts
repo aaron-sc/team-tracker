@@ -5,5 +5,8 @@ export async function register() {
 
     const { startDiscordBot } = await import("@/lib/integrations/discord-bot");
     startDiscordBot();
+
+    const { startAuditRetentionScheduler } = await import("@/lib/audit/retention");
+    startAuditRetentionScheduler();
   }
 }

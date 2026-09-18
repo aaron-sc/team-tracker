@@ -19,7 +19,7 @@ import { TeamInviteLinkPanel } from "@/components/teams/team-invite-link-panel";
 import { TeamResourcesPanel } from "@/components/teams/team-resources-panel";
 import { TeamPollsPanel } from "@/components/teams/team-polls-panel";
 import { addToRosterAction } from "@/lib/actions/teams";
-import { Pencil, Star, Calendar, Swords, ExternalLink, Gauge } from "lucide-react";
+import { Pencil, Star, Calendar, Swords, ExternalLink, Gauge, Download } from "lucide-react";
 import { formatDateTimeShort } from "@/lib/utils/format-time";
 import { averageRank } from "@/lib/constants/ranks";
 
@@ -248,6 +248,12 @@ export default async function TeamDetailPage({
                 Average rank: {teamAverageRank}
               </Badge>
             ) : null}
+            <Button size="sm" variant="outline" asChild>
+              <a href={`/${orgSlug}/teams/${team.slug}/export`} download>
+                <Download className="size-4" />
+                Export CSV
+              </a>
+            </Button>
             {canManageRoster ? (
               <RosterFieldPermissionsDialog
                 orgSlug={orgSlug}

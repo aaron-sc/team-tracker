@@ -30,7 +30,7 @@ function sweep() {
  *  server-to-server calls (e.g. the hub's internal credential checks) never transit Cloudflare at
  *  all, so they fall through to "unknown" — a single shared bucket across all such calls, which
  *  is intentional (see the internal API routes' rate-limit comments for why). */
-async function getClientIp(): Promise<string> {
+export async function getClientIp(): Promise<string> {
   const h = await headers();
   const cfConnectingIp = h.get("cf-connecting-ip");
   if (cfConnectingIp) return cfConnectingIp.trim();
