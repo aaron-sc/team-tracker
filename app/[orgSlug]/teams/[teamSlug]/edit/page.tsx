@@ -11,6 +11,7 @@ import { PublicRosterEmbedPanel } from "@/components/teams/public-roster-embed-p
 import { updateTeamAction } from "@/lib/actions/teams";
 import { DeleteTeamButton } from "@/components/teams/delete-team-button";
 import { getBaseUrl } from "@/lib/utils/base-url";
+import { parseReminderMinutesList } from "@/lib/utils/reminder-options";
 
 export default async function EditTeamPage({
   params,
@@ -53,9 +54,10 @@ export default async function EditTeamPage({
           teamId={team.id}
           webhookUrl={team.discordWebhookUrl}
           mentionRoleId={team.discordMentionRoleId}
-          matchReminderMinutes={team.discordMatchReminderMinutes}
-          practiceReminderMinutes={team.discordPracticeReminderMinutes}
-          scrimReminderMinutes={team.discordScrimReminderMinutes}
+          matchReminderMinutes={parseReminderMinutesList(team.discordMatchReminderMinutes)}
+          practiceReminderMinutes={parseReminderMinutesList(team.discordPracticeReminderMinutes)}
+          scrimReminderMinutes={parseReminderMinutesList(team.discordScrimReminderMinutes)}
+          notifyOnCreate={team.discordNotifyOnCreate}
           reminderChannelId={team.discordReminderChannelId}
           roleId={team.discordRoleId}
           botConnected={org.discordGuildId !== null}

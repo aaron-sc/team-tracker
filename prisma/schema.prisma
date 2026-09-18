@@ -227,9 +227,15 @@ model Team {
 
   discordWebhookUrl               String?
   discordMentionRoleId            String?
-  discordMatchReminderMinutes     Int?
-  discordPracticeReminderMinutes  Int?
-  discordScrimReminderMinutes     Int?
+  // JSON array of lead times in minutes (e.g. [60, 1440] = 1 hour AND 1 day before) — SQLite has
+  // no native scalar-list type, so these ride as Json the same way User.hiddenNavItems does. Null
+  // or an empty array means no reminders of that kind.
+  discordMatchReminderMinutes     Json?
+  discordPracticeReminderMinutes  Json?
+  discordScrimReminderMinutes     Json?
+  // Post to Discord immediately when a match/practice/scrim is scheduled, separate from the
+  // pre-event reminder(s) above.
+  discordNotifyOnCreate           Boolean  @default(false)
   // Bot-posted reminders (interactive RSVP buttons) go to this channel instead of/alongside the
   // plain webhook above — set once the org has connected the bot (Organization.discordGuildId).
   discordReminderChannelId        String?
@@ -580,7 +586,9 @@ model Match {
   scoreFor       Int?
   scoreAgainst   Int?
   notes          String?
-  reminderSentAt DateTime?
+  // JSON array of lead-time minutes (from Team.discordMatchReminderMinutes) already sent for
+  // this match — supports firing more than one reminder per event. Reset to null on reschedule.
+  sentReminderMinutes Json?
   createdById    String
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -630,7 +638,8 @@ model PracticeSession {
   venueId         String?
   venue           Venue?       @relation(fields: [venueId], references: [id])
   notes           String?
-  reminderSentAt  DateTime?
+  // JSON array of lead-time minutes already sent for this session — see Match.sentReminderMinutes.
+  sentReminderMinutes Json?
   // Only ever set on SCRIM-type sessions — a plain PRACTICE has no opponent to record a result
   // against (see practice-sessions.ts's recordSessionResultAction).
   resultStatus    ResultStatus?

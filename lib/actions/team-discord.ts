@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requirePermission } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
@@ -16,8 +17,9 @@ import {
 } from "@/lib/integrations/discord";
 import { postInteractiveReminder } from "@/lib/integrations/discord-bot";
 
-function parseReminderMinutes(value: string): number | null {
-  return value === "off" ? null : Number(value);
+function toReminderMinutesJson(values: string[]) {
+  const nums = [...new Set(values.map(Number).filter((n) => Number.isFinite(n) && n > 0))].sort((a, b) => a - b);
+  return nums.length > 0 ? nums : Prisma.JsonNull;
 }
 
 export async function updateTeamDiscordSettingsAction(
@@ -35,9 +37,10 @@ export async function updateTeamDiscordSettingsAction(
   const parsed = teamDiscordSettingsSchema.safeParse({
     webhookUrl: formData.get("webhookUrl") ?? "",
     mentionRoleId: formData.get("mentionRoleId") ?? "",
-    matchReminderMinutes: formData.get("matchReminderMinutes"),
-    practiceReminderMinutes: formData.get("practiceReminderMinutes"),
-    scrimReminderMinutes: formData.get("scrimReminderMinutes"),
+    matchReminderMinutes: formData.getAll("matchReminderMinutes"),
+    practiceReminderMinutes: formData.getAll("practiceReminderMinutes"),
+    scrimReminderMinutes: formData.getAll("scrimReminderMinutes"),
+    notifyOnCreate: formData.get("notifyOnCreate") === "on",
     reminderChannelId: formData.get("reminderChannelId") ?? "",
     roleId: formData.get("roleId") ?? "",
   });
@@ -65,9 +68,10 @@ export async function updateTeamDiscordSettingsAction(
     data: {
       discordWebhookUrl: webhookUrl || null,
       discordMentionRoleId: mentionRoleId || null,
-      discordMatchReminderMinutes: parseReminderMinutes(parsed.data.matchReminderMinutes),
-      discordPracticeReminderMinutes: parseReminderMinutes(parsed.data.practiceReminderMinutes),
-      discordScrimReminderMinutes: parseReminderMinutes(parsed.data.scrimReminderMinutes),
+      discordMatchReminderMinutes: toReminderMinutesJson(parsed.data.matchReminderMinutes),
+      discordPracticeReminderMinutes: toReminderMinutesJson(parsed.data.practiceReminderMinutes),
+      discordScrimReminderMinutes: toReminderMinutesJson(parsed.data.scrimReminderMinutes),
+      discordNotifyOnCreate: parsed.data.notifyOnCreate,
       discordReminderChannelId: reminderChannelId || null,
       discordRoleId: roleId || null,
     },

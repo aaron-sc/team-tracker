@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { fromZonedTime } from "date-fns-tz";
 import { prisma } from "@/lib/db/prisma";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { requirePermission, requireMembership, requireTeamScope } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
 import { matchSchema, matchResultSchema } from "@/lib/validations/match";
@@ -11,6 +12,7 @@ import { attendanceStatusSchema } from "@/lib/validations/practice";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
 import { notifyDiscord, FORMATION_EMBED_COLOR, roleMentionPrefix } from "@/lib/integrations/discord";
+import { formatDateTime } from "@/lib/utils/format-time";
 import { getBaseUrl } from "@/lib/utils/base-url";
 import { createNotification } from "@/lib/notifications/create";
 
@@ -93,6 +95,21 @@ export async function createMatchAction(orgSlug: string, orgId: string, _prev: A
       ),
   );
 
+  if (team.discordNotifyOnCreate) {
+    const opponent = await prisma.opponent.findUnique({ where: { id: opponentId }, select: { name: true } });
+    await notifyDiscord(team.discordWebhookUrl, {
+      content: `${roleMentionPrefix(team.discordMentionRoleId)}**${team.name}** — new match scheduled vs ${opponent?.name ?? "TBD"}.`,
+      embeds: [
+        {
+          title: `${team.name} vs ${opponent?.name ?? "TBD"}`,
+          color: FORMATION_EMBED_COLOR,
+          fields: [{ name: "When", value: formatDateTime(match.scheduledAt, org.timezone), inline: true }],
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    });
+  }
+
   revalidatePath(`/${orgSlug}/schedule`);
   redirect(`/${orgSlug}/schedule/matches/${match.id}`);
 }
@@ -147,7 +164,7 @@ export async function updateMatchAction(
       streamUrl: parsed.data.isStreamed ? parsed.data.streamUrl || null : null,
       casterName: parsed.data.isStreamed ? parsed.data.casterName || null : null,
       notes: parsed.data.notes || null,
-      reminderSentAt: rescheduled ? null : undefined,
+      sentReminderMinutes: rescheduled ? Prisma.JsonNull : undefined,
     },
   });
 

@@ -4,12 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { fromZonedTime } from "date-fns-tz";
 import { prisma } from "@/lib/db/prisma";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { requirePermission, requireMembership, requireTeamScope } from "@/lib/auth/authorize";
 import { logAudit } from "@/lib/audit/log";
 import { practiceSessionSchema, attendanceStatusSchema, sessionResultSchema } from "@/lib/validations/practice";
 import { Permission } from "@/lib/generated/prisma/enums";
 import type { ActionState } from "@/lib/actions/types";
 import { createNotification } from "@/lib/notifications/create";
+import { notifyDiscord, FORMATION_EMBED_COLOR, roleMentionPrefix } from "@/lib/integrations/discord";
+import { formatDateTime } from "@/lib/utils/format-time";
 
 async function resolveOpponent(orgId: string, opponentId: string, newOpponentName: string): Promise<string | null> {
   if (opponentId) return opponentId;
@@ -106,6 +109,27 @@ export async function createPracticeSessionAction(
       ),
   );
 
+  if (team.discordNotifyOnCreate) {
+    const label = parsed.data.type === "SCRIM" ? "scrim" : "practice";
+    const opponent = opponentId ? await prisma.opponent.findUnique({ where: { id: opponentId }, select: { name: true } }) : null;
+    const titleSuffix = opponent ? ` vs ${opponent.name}` : "";
+    const when =
+      occurrences > 1
+        ? `${formatDateTime(sessions[0].scheduledAt, org.timezone)}, repeating weekly for ${occurrences} weeks`
+        : formatDateTime(sessions[0].scheduledAt, org.timezone);
+    await notifyDiscord(team.discordWebhookUrl, {
+      content: `${roleMentionPrefix(team.discordMentionRoleId)}**${team.name}** — new ${label}${titleSuffix} scheduled.`,
+      embeds: [
+        {
+          title: `${team.name} — ${label}${titleSuffix}`,
+          color: FORMATION_EMBED_COLOR,
+          fields: [{ name: "When", value: when, inline: true }],
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    });
+  }
+
   revalidatePath(`/${orgSlug}/schedule`);
   if (occurrences > 1) {
     redirect(`/${orgSlug}/schedule`);
@@ -150,7 +174,7 @@ export async function updatePracticeSessionAction(
       locationType: parsed.data.locationType,
       venueId: parsed.data.locationType === "LAN" ? parsed.data.venueId || null : null,
       notes: parsed.data.notes || null,
-      reminderSentAt: rescheduled ? null : undefined,
+      sentReminderMinutes: rescheduled ? Prisma.JsonNull : undefined,
     },
   });
 

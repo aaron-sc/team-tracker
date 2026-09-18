@@ -6,6 +6,7 @@ import { getBackgroundBaseUrl } from "@/lib/utils/base-url";
 import { sweepScheduledAnnouncements } from "@/lib/scheduler/scheduled-announcements";
 import { sendPushToUser } from "@/lib/notifications/push";
 import { postInteractiveReminder, dmReminderToRoster } from "@/lib/integrations/discord-bot";
+import { parseReminderMinutesList } from "@/lib/utils/reminder-options";
 
 /** Pushes a reminder to every roster member's opted-in devices — independent of whether the team
  *  also has a Discord webhook configured, so push works for teams that never set that up. */
@@ -39,55 +40,69 @@ async function runSweep() {
   }
 }
 
+function formatLeadTime(minutes: number): string {
+  return minutes >= 1440 && minutes % 1440 === 0
+    ? `${minutes / 1440} day${minutes === 1440 ? "" : "s"}`
+    : minutes >= 60 && minutes % 60 === 0
+      ? `${minutes / 60} hour${minutes === 60 ? "" : "s"}`
+      : `${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
+
 async function sweepMatches() {
   const now = new Date();
   const baseUrl = getBackgroundBaseUrl();
   const matches = await prisma.match.findMany({
     where: {
       status: "SCHEDULED",
-      reminderSentAt: null,
       scheduledAt: { gte: new Date(now.getTime() - MAX_STALE_MINUTES * 60_000) },
-      team: { discordMatchReminderMinutes: { not: null } },
     },
     include: { team: { include: { org: true } }, opponent: true, venue: true },
   });
 
   for (const match of matches) {
-    const leadMinutes = match.team.discordMatchReminderMinutes;
-    if (leadMinutes == null) continue;
+    const configured = parseReminderMinutesList(match.team.discordMatchReminderMinutes);
+    if (configured.length === 0) continue;
+    const alreadySent = parseReminderMinutesList(match.sentReminderMinutes);
     const minutesUntil = (match.scheduledAt.getTime() - now.getTime()) / 60_000;
-    if (minutesUntil > leadMinutes) continue;
+    const due = configured.filter((m) => minutesUntil <= m && !alreadySent.includes(m));
+    if (due.length === 0) continue;
 
-    await prisma.match.update({ where: { id: match.id }, data: { reminderSentAt: now } });
+    await prisma.match.update({
+      where: { id: match.id },
+      data: { sentReminderMinutes: [...alreadySent, ...due].sort((a, b) => a - b) },
+    });
 
     const location =
       match.locationType === "LAN" ? (match.venue?.name ?? "Venue TBD") : match.isStreamed ? "Online (streamed)" : "Online";
     const eventUrl = baseUrl ? `${baseUrl}/${match.team.org.slug}/schedule/matches/${match.id}` : undefined;
 
-    await notifyDiscord(match.team.discordWebhookUrl, {
-      content: `${roleMentionPrefix(match.team.discordMentionRoleId)}**${match.team.name}** — Match vs ${match.opponent.name} in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}!`,
-      embeds: [
-        {
-          title: `${match.team.name} vs ${match.opponent.name}`,
-          url: eventUrl,
-          color: FORMATION_EMBED_COLOR,
-          fields: [
-            { name: "When", value: formatDateTime(match.scheduledAt, match.timezone), inline: true },
-            { name: "Format", value: match.format, inline: true },
-            { name: "Location", value: location, inline: true },
-          ],
-          timestamp: new Date().toISOString(),
-        },
-      ],
-    });
+    for (const leadMinutes of due) {
+      const lead = formatLeadTime(leadMinutes);
+      await notifyDiscord(match.team.discordWebhookUrl, {
+        content: `${roleMentionPrefix(match.team.discordMentionRoleId)}**${match.team.name}** — Match vs ${match.opponent.name} in ${lead}!`,
+        embeds: [
+          {
+            title: `${match.team.name} vs ${match.opponent.name}`,
+            url: eventUrl,
+            color: FORMATION_EMBED_COLOR,
+            fields: [
+              { name: "When", value: formatDateTime(match.scheduledAt, match.timezone), inline: true },
+              { name: "Format", value: match.format, inline: true },
+              { name: "Location", value: location, inline: true },
+            ],
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      });
 
-    const title = `${match.team.name} — Match in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}!`;
-    const body = `vs ${match.opponent.name} · ${location}`;
+      const title = `${match.team.name} — Match in ${lead}!`;
+      const body = `vs ${match.opponent.name} · ${location}`;
 
-    await pushReminderToRoster(match.teamId, title, body, eventUrl);
-    await dmReminderToRoster(match.teamId, title, body, eventUrl).catch(() => {});
-    if (match.team.discordReminderChannelId) {
-      await postInteractiveReminder(match.team.discordReminderChannelId, "MATCH", match.id, title, body).catch(() => {});
+      await pushReminderToRoster(match.teamId, title, body, eventUrl);
+      await dmReminderToRoster(match.teamId, title, body, eventUrl).catch(() => {});
+      if (match.team.discordReminderChannelId) {
+        await postInteractiveReminder(match.team.discordReminderChannelId, "MATCH", match.id, title, body).catch(() => {});
+      }
     }
   }
 }
@@ -97,50 +112,55 @@ async function sweepPracticeSessions() {
   const baseUrl = getBackgroundBaseUrl();
   const sessions = await prisma.practiceSession.findMany({
     where: {
-      reminderSentAt: null,
       scheduledAt: { gte: new Date(now.getTime() - MAX_STALE_MINUTES * 60_000) },
-      team: {
-        OR: [{ discordPracticeReminderMinutes: { not: null } }, { discordScrimReminderMinutes: { not: null } }],
-      },
     },
     include: { team: { include: { org: true } }, opponent: true, venue: true },
   });
 
   for (const session of sessions) {
-    const leadMinutes =
-      session.type === "SCRIM" ? session.team.discordScrimReminderMinutes : session.team.discordPracticeReminderMinutes;
-    if (leadMinutes == null) continue;
+    const configured = parseReminderMinutesList(
+      session.type === "SCRIM" ? session.team.discordScrimReminderMinutes : session.team.discordPracticeReminderMinutes,
+    );
+    if (configured.length === 0) continue;
+    const alreadySent = parseReminderMinutesList(session.sentReminderMinutes);
     const minutesUntil = (session.scheduledAt.getTime() - now.getTime()) / 60_000;
-    if (minutesUntil > leadMinutes) continue;
+    const due = configured.filter((m) => minutesUntil <= m && !alreadySent.includes(m));
+    if (due.length === 0) continue;
 
-    await prisma.practiceSession.update({ where: { id: session.id }, data: { reminderSentAt: now } });
+    await prisma.practiceSession.update({
+      where: { id: session.id },
+      data: { sentReminderMinutes: [...alreadySent, ...due].sort((a, b) => a - b) },
+    });
 
     const label = session.type === "SCRIM" ? `Scrim vs ${session.opponent?.name ?? "TBD"}` : "Practice";
     const location = session.locationType === "LAN" ? (session.venue?.name ?? "Venue TBD") : "Online";
     const eventUrl = baseUrl ? `${baseUrl}/${session.team.org.slug}/schedule/practice/${session.id}` : undefined;
 
-    await notifyDiscord(session.team.discordWebhookUrl, {
-      content: `${roleMentionPrefix(session.team.discordMentionRoleId)}**${session.team.name}** — ${label} in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}!`,
-      embeds: [
-        {
-          title: `${session.team.name} — ${label}`,
-          url: eventUrl,
-          color: FORMATION_EMBED_COLOR,
-          fields: [
-            { name: "When", value: formatDateTime(session.scheduledAt, session.timezone), inline: true },
-            { name: "Location", value: location, inline: true },
-          ],
-          timestamp: new Date().toISOString(),
-        },
-      ],
-    });
+    for (const leadMinutes of due) {
+      const lead = formatLeadTime(leadMinutes);
+      await notifyDiscord(session.team.discordWebhookUrl, {
+        content: `${roleMentionPrefix(session.team.discordMentionRoleId)}**${session.team.name}** — ${label} in ${lead}!`,
+        embeds: [
+          {
+            title: `${session.team.name} — ${label}`,
+            url: eventUrl,
+            color: FORMATION_EMBED_COLOR,
+            fields: [
+              { name: "When", value: formatDateTime(session.scheduledAt, session.timezone), inline: true },
+              { name: "Location", value: location, inline: true },
+            ],
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      });
 
-    const title = `${session.team.name} — ${label} in ${leadMinutes} minute${leadMinutes === 1 ? "" : "s"}!`;
+      const title = `${session.team.name} — ${label} in ${lead}!`;
 
-    await pushReminderToRoster(session.teamId, title, location, eventUrl);
-    await dmReminderToRoster(session.teamId, title, location, eventUrl).catch(() => {});
-    if (session.team.discordReminderChannelId) {
-      await postInteractiveReminder(session.team.discordReminderChannelId, "PRACTICE", session.id, title, location).catch(() => {});
+      await pushReminderToRoster(session.teamId, title, location, eventUrl);
+      await dmReminderToRoster(session.teamId, title, location, eventUrl).catch(() => {});
+      if (session.team.discordReminderChannelId) {
+        await postInteractiveReminder(session.team.discordReminderChannelId, "PRACTICE", session.id, title, location).catch(() => {});
+      }
     }
   }
 }

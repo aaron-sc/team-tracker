@@ -11,31 +11,41 @@ import type { ActionState } from "@/lib/actions/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SubmitButton } from "@/components/auth/submit-button";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
 import { REMINDER_MINUTES_OPTIONS } from "@/lib/utils/reminder-options";
 
-function ReminderSelect({ id, name, defaultMinutes }: { id: string; name: string; defaultMinutes: number | null }) {
-  const value = defaultMinutes ? String(defaultMinutes) : "off";
+/** Any number of lead times can fire for the same event (e.g. 1 day before AND 1 hour before) —
+ *  a checkbox group rather than the single-select this used to be. */
+function ReminderCheckboxGroup({ idPrefix, name, defaultMinutes }: { idPrefix: string; name: string; defaultMinutes: number[] }) {
+  const [checked, setChecked] = useState<Set<string>>(new Set(defaultMinutes.map(String)));
   return (
-    // Keyed by the saved value so a successful save (which brings a fresh `defaultMinutes`
-    // prop via revalidatePath) remounts this uncontrolled Select instead of silently keeping
-    // whatever it showed at initial mount — otherwise the dropdown appears stuck until a
-    // full page reload.
-    <Select key={value} name={name} defaultValue={value}>
-      <SelectTrigger id={id} className="w-full">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {REMINDER_MINUTES_OPTIONS.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
+    <div className="space-y-1.5">
+      {REMINDER_MINUTES_OPTIONS.map((o) => (
+        <div key={o.value} className="flex items-center gap-2">
+          <Checkbox
+            id={`${idPrefix}-${o.value}`}
+            name={name}
+            value={o.value}
+            checked={checked.has(o.value)}
+            onCheckedChange={(v) => {
+              setChecked((prev) => {
+                const next = new Set(prev);
+                if (v) next.add(o.value);
+                else next.delete(o.value);
+                return next;
+              });
+            }}
+          />
+          <Label htmlFor={`${idPrefix}-${o.value}`} className="cursor-pointer text-sm font-normal">
             {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+          </Label>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -48,6 +58,7 @@ export function TeamDiscordPanel({
   matchReminderMinutes,
   practiceReminderMinutes,
   scrimReminderMinutes,
+  notifyOnCreate,
   reminderChannelId,
   roleId,
   botConnected,
@@ -57,9 +68,10 @@ export function TeamDiscordPanel({
   teamId: string;
   webhookUrl: string | null;
   mentionRoleId: string | null;
-  matchReminderMinutes: number | null;
-  practiceReminderMinutes: number | null;
-  scrimReminderMinutes: number | null;
+  matchReminderMinutes: number[];
+  practiceReminderMinutes: number[];
+  scrimReminderMinutes: number[];
+  notifyOnCreate: boolean;
   reminderChannelId: string | null;
   roleId: string | null;
   botConnected: boolean;
@@ -70,6 +82,7 @@ export function TeamDiscordPanel({
   const [testingReminder, startReminderTest] = useTransition();
   const [guildChannels, setGuildChannels] = useState<{ id: string; name: string }[]>([]);
   const [guildRoles, setGuildRoles] = useState<{ id: string; name: string }[]>([]);
+  const [notify, setNotify] = useState(notifyOnCreate);
 
   useEffect(() => {
     if (!botConnected) return;
@@ -165,25 +178,33 @@ export function TeamDiscordPanel({
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1.5">
-            <Label htmlFor="matchReminderMinutes">Match reminders</Label>
-            <ReminderSelect id="matchReminderMinutes" name="matchReminderMinutes" defaultMinutes={matchReminderMinutes} />
+            <Label>Match reminders</Label>
+            <ReminderCheckboxGroup idPrefix="match" name="matchReminderMinutes" defaultMinutes={matchReminderMinutes} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="practiceReminderMinutes">Practice reminders</Label>
-            <ReminderSelect
-              id="practiceReminderMinutes"
+            <Label>Practice reminders</Label>
+            <ReminderCheckboxGroup
+              idPrefix="practice"
               name="practiceReminderMinutes"
               defaultMinutes={practiceReminderMinutes}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="scrimReminderMinutes">Scrim reminders</Label>
-            <ReminderSelect id="scrimReminderMinutes" name="scrimReminderMinutes" defaultMinutes={scrimReminderMinutes} />
+            <Label>Scrim reminders</Label>
+            <ReminderCheckboxGroup idPrefix="scrim" name="scrimReminderMinutes" defaultMinutes={scrimReminderMinutes} />
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Reminders only send if a webhook URL is set above. Rescheduling an event resets its reminder.
+          Check as many lead times as you want — e.g. both &quot;1 day before&quot; and &quot;1 hour before&quot; will
+          each fire once. Reminders only send if a webhook URL is set above. Rescheduling an event resets them.
         </p>
+
+        <div className="flex items-center gap-2">
+          <Checkbox id="notifyOnCreate" name="notifyOnCreate" checked={notify} onCheckedChange={(v) => setNotify(!!v)} />
+          <Label htmlFor="notifyOnCreate" className="cursor-pointer font-normal">
+            Post to Discord immediately when a match/practice/scrim is scheduled
+          </Label>
+        </div>
 
         {state?.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
         {state?.success ? <p className="text-sm text-emerald-600">{state.success}</p> : null}
