@@ -102,8 +102,9 @@ export default async function TeamDetailPage({
     };
   });
 
-  // Leaderboard: attendance rate for this team's own sessions specifically (not the org-wide
-  // figure shown on the roster page), ranked, minimum 1 recorded session to qualify.
+  // Every rostered player's attendance rate for this team's own sessions specifically (not the
+  // org-wide figure shown on the roster page, which blends every team a member is on) — full
+  // roster, not just top performers, so this doubles as "who hasn't been showing up."
   const teamAttendanceRows = await prisma.sessionAttendance.findMany({
     where: { session: { teamId: team.id }, status: { in: ["ATTENDED", "ABSENT", "LATE"] } },
     select: { membershipId: true, status: true },
@@ -115,7 +116,7 @@ export default async function TeamDetailPage({
     if (row.status === "ATTENDED" || row.status === "LATE") entry.attended += 1;
     teamAttendanceByMember.set(row.membershipId, entry);
   }
-  const leaderboard = roster
+  const attendanceRoster = roster
     .map((r) => {
       const entry = teamAttendanceByMember.get(r.membershipId);
       return {
@@ -125,9 +126,7 @@ export default async function TeamDetailPage({
         total: entry?.total ?? 0,
       };
     })
-    .filter((r) => r.rate !== null)
-    .sort((a, b) => (b.rate ?? 0) - (a.rate ?? 0))
-    .slice(0, 5);
+    .sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1));
 
   const upcoming = [
     ...upcomingMatches.map((m) => ({
@@ -355,20 +354,23 @@ export default async function TeamDetailPage({
         </CardContent>
       </Card>
 
-      {leaderboard.length > 0 ? (
+      {attendanceRoster.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Attendance leaderboard</CardTitle>
+            <CardTitle className="text-base">Attendance</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5">
-            {leaderboard.map((row, i) => (
+            {attendanceRoster.map((row) => (
               <div key={row.membershipId} className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2">
-                  <span className="w-4 text-muted-foreground">{i + 1}</span>
-                  {row.name}
-                </span>
+                <span>{row.name}</span>
                 <span className="text-muted-foreground">
-                  {row.rate}% <span className="text-xs">({row.total} sessions)</span>
+                  {row.rate !== null ? (
+                    <>
+                      {row.rate}% <span className="text-xs">({row.total} session{row.total === 1 ? "" : "s"})</span>
+                    </>
+                  ) : (
+                    <span className="text-xs">No history yet</span>
+                  )}
                 </span>
               </div>
             ))}
