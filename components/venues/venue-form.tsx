@@ -52,22 +52,22 @@ export function VenueForm({
 
       {isOnline ? (
         <div className="space-y-1.5">
-          <Label htmlFor="onlineUrl">Online URL</Label>
+          <Label htmlFor="onlineUrl">Online URL (optional)</Label>
           <Input id="onlineUrl" name="onlineUrl" type="url" placeholder="https://…" defaultValue={defaultValues?.onlineUrl} />
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="addressLine1">Address</Label>
-            <Input id="addressLine1" name="addressLine1" defaultValue={defaultValues?.addressLine1} required={!isOnline} />
+            <Label htmlFor="addressLine1">Address (optional)</Label>
+            <Input id="addressLine1" name="addressLine1" defaultValue={defaultValues?.addressLine1} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="addressLine2">Address line 2</Label>
             <Input id="addressLine2" name="addressLine2" defaultValue={defaultValues?.addressLine2} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="city">City</Label>
-            <Input id="city" name="city" defaultValue={defaultValues?.city} required={!isOnline} />
+            <Label htmlFor="city">City (optional)</Label>
+            <Input id="city" name="city" defaultValue={defaultValues?.city} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="state">State/Region</Label>

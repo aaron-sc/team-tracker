@@ -17,13 +17,7 @@ export const venueSchema = z
     contactEmail: z.string().trim().email().optional().or(z.literal("")),
     notes: z.string().trim().max(500).optional().or(z.literal("")),
     timezone: z.string().trim().min(1),
-  })
-  .superRefine((data, ctx) => {
-    if (data.isOnline) return;
-    if (!data.addressLine1) {
-      ctx.addIssue({ code: "custom", message: "Address is required.", path: ["addressLine1"] });
-    }
-    if (!data.city) {
-      ctx.addIssue({ code: "custom", message: "City is required.", path: ["city"] });
-    }
   });
+  // Only name (and timezone, which is auto-filled from the org's default) are required — address,
+  // online URL, capacity, and contact details are all optional so a venue can be added with just a
+  // title and filled in later.
