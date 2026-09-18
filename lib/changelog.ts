@@ -13,6 +13,57 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "2026-09-18",
+    date: "September 18, 2026",
+    headline: "Custom event types, iCal import, and a lot of Discord/admin polish",
+    groups: [
+      {
+        title: "Scheduling",
+        items: [
+          "Define your own kinds of team events — season kickoffs, community events, whatever you need — alongside practices and scrims, each with attendance/RSVP tracking on or off. Manage them in Settings → Event Types.",
+          "Bulk-import a schedule from an external calendar: upload one or more .ics files, review every parsed event in one list, then create them all at once.",
+        ],
+      },
+      {
+        title: "Discord",
+        items: [
+          "A team can now have more than one reminder per match/practice/scrim — e.g. both a day-before and an hour-before ping.",
+          "Optional \"post to Discord immediately when scheduled\" per team, separate from the pre-event reminder(s).",
+          "Clicking a practice/match RSVP button now updates the bot's own message to show who's confirmed and who's declined, instead of only replying privately to whoever clicked.",
+          "/schedule now defaults to today across every team you're actually rostered on, and takes a day/3-day/week range instead of always needing a specific team.",
+        ],
+      },
+      {
+        title: "Onboarding tasks",
+        items: [
+          "Assign a task to a specific team (on top of the existing role targeting), and exclude specific members or whole teams from a task that otherwise applies to them.",
+        ],
+      },
+      {
+        title: "Account & invites",
+        items: [
+          "A show/hide toggle on every password field, hidden by default.",
+          "A scannable QR code on any pending member invite, for signing up straight from a phone.",
+        ],
+      },
+      {
+        title: "Admin & data",
+        items: [
+          "Org admins can turn direct messages off org-wide from Settings → Organization.",
+          "Per-team roster CSV export, alongside the existing org-wide one.",
+          "Audit log gets a CSV export, a configurable retention period (default: forever), and now records each entry's IP address and browser.",
+          "Venues can be added with just a name — address, online URL, capacity, and contact details are all optional now, not just in the database.",
+        ],
+      },
+      {
+        title: "Team page",
+        items: [
+          "The attendance panel now shows the whole roster, not just the top 5 — including players with no recorded sessions yet.",
+        ],
+      },
+    ],
+  },
+  {
     version: "2026-09-15",
     date: "September 15, 2026",
     headline: "Invite your own teammates, and a lot more Discord polish",

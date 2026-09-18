@@ -120,6 +120,13 @@ export default function GuidePage() {
                 house or server slot, though it won&apos;t stop you from doing it anyway if that&apos;s intentional.
               </p>
               <p>Every player can subscribe to their own teams&apos; schedule as a live calendar feed (Google Calendar, Apple Calendar, Outlook) from the &quot;Subscribe&quot; button on this page.</p>
+              <p>
+                Need something that isn&apos;t a match or practice — a season kickoff, a community event? Define your
+                own event types from <strong>Settings → Event Types</strong>, each with attendance/RSVP tracking on
+                or off, and schedule them the same way. Already have a schedule somewhere else? &quot;Import
+                .ics&quot; on this page uploads one or more calendar files, shows you every event it found so you
+                can review and adjust before committing, then creates them all at once.
+              </p>
             </Section>
 
             <Section id="availability" title="Availability">
@@ -136,6 +143,7 @@ export default function GuidePage() {
                 venue, a dedicated server/lobby. Attaching a venue to a match or practice is what powers the
                 double-booking warning on the Schedule page.
               </p>
+              <p>Only a name is required to add one — address, online URL, capacity, and contact details can all be filled in later.</p>
             </Section>
 
             <Section id="scrims" title="Scrim Finder">
@@ -194,6 +202,7 @@ export default function GuidePage() {
                 conversation that doesn&apos;t belong in an org-wide announcement or Discord. Start one from the
                 Messages page or a player&apos;s roster profile.
               </p>
+              <p>An org admin can turn this off entirely from <strong>Settings → Organization</strong> if your org prefers to keep all coordination on Discord.</p>
             </Section>
 
             <Section id="notifications" title="Notifications">
@@ -211,6 +220,11 @@ export default function GuidePage() {
                 filling out their profile or reviewing team rules. Org admins define what&apos;s on that checklist
                 from <strong>Settings → Onboarding tasks</strong>; everyone&apos;s progress against it is visible
                 from the Onboarding page.
+              </p>
+              <p>
+                A task can target a specific role, a specific team, or both at once (e.g. &quot;coaches on this
+                team only&quot;) — and you can exempt specific members or whole teams from a task that would
+                otherwise apply to them.
               </p>
             </Section>
 
@@ -279,13 +293,16 @@ export default function GuidePage() {
                 same page you can change anyone&apos;s role, remove a member, or revoke a pending invite before
                 it&apos;s accepted.
               </p>
+              <p>Each pending invite also has a &quot;QR code&quot; button next to its copy-link option, for signing up straight from a phone.</p>
             </Section>
 
             <Section id="audit-log" title="Audit log">
               <p>
                 A record of sensitive actions — role changes, member removals, permission edits, data resets —
-                with who did what and when. Useful for a quick &quot;wait, who changed that&quot; a few weeks
-                later. Visible from <strong>Settings → Audit Log</strong> to anyone with permission to view it.
+                with who did what and when, including the IP address and browser it came from. Useful for a quick
+                &quot;wait, who changed that&quot; a few weeks later. Visible from <strong>Settings → Audit
+                Log</strong> to anyone with permission to view it, with a CSV export and a configurable retention
+                period (forever, by default) alongside it.
               </p>
             </Section>
 
@@ -293,12 +310,17 @@ export default function GuidePage() {
               <p>
                 <strong>Discord webhook</strong>: set one org-wide from <strong>Settings → Integrations</strong> to
                 post announcements and match results into a channel; any team can override it with its own
-                webhook from that team&apos;s edit page for a dedicated channel and match/practice/scrim reminders.
+                webhook from that team&apos;s edit page for a dedicated channel and match/practice/scrim reminders —
+                each of those can have more than one reminder (e.g. a day-before and an hour-before), and a team
+                can optionally post to Discord the moment something&apos;s scheduled, not just as a reminder
+                beforehand.
               </p>
               <p>
                 <strong>Discord bot</strong>: beyond webhook pings, connecting the bot to your server lets players
                 run <code>/available</code> right from Discord to add a weekly availability rule without opening
-                Formation at all.
+                Formation at all. RSVP buttons on a bot-posted reminder update that same message live to show
+                who&apos;s confirmed and who&apos;s declined, and <code>/schedule</code> shows what&apos;s coming up
+                for every team you&apos;re on.
               </p>
               <p>
                 <strong>Calendar sync</strong>: every player can subscribe to their own teams&apos; schedule as a
@@ -310,7 +332,7 @@ export default function GuidePage() {
             <Section id="api-access" title="API access">
               <p>
                 Generate a read-only API key from <strong>Settings → Integrations</strong> to let another tool —
-                like Atlas — read this org&apos;s teams and rosters (in-game names included) instead of keeping a
+                like ValRAI — read this org&apos;s teams and rosters (in-game names included) instead of keeping a
                 separate, second copy of that data. Send it as a bearer token on every request:
               </p>
               <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground">

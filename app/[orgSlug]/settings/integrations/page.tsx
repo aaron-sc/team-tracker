@@ -69,7 +69,7 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ o
       <div>
         <h2 className="mb-1 text-lg font-medium">API access</h2>
         <p className="mb-4 text-sm text-muted-foreground">
-          Generate a key to let other tools (like Atlas) read this organization&apos;s teams and rosters —
+          Generate a key to let other tools (like ValRAI) read this organization&apos;s teams and rosters —
           including in-game names — instead of maintaining a separate copy of that data.
         </p>
         <ApiKeyPanel orgSlug={orgSlug} orgId={org.id} apiKey={org.apiKey ?? null} />
@@ -102,7 +102,7 @@ export default async function IntegrationsPage({ params }: { params: Promise<{ o
           <div className="space-y-1">
             <p className="font-medium">GET /api/v1/teams/:teamId/roster</p>
             <p className="text-muted-foreground">
-              Roster for a team, including each player&apos;s in-game name — this is what Atlas should use
+              Roster for a team, including each player&apos;s in-game name — this is what ValRAI should use
               to match players to their Riot account instead of custom-entering names.
             </p>
           </div>

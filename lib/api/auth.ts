@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 
 /**
- * Authenticates an external API request (e.g. from Atlas) via
+ * Authenticates an external API request (e.g. from ValRAI) via
  * `Authorization: Bearer <organization apiKey>`. There's one key per org —
  * simple by design, matching the scope of a single-integration MVP. Rotate
  * via Settings → Integrations if a key leaks.

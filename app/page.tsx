@@ -19,6 +19,8 @@ import {
   Lock,
   Check,
   X,
+  CalendarPlus,
+  Upload,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { FORMATION_DOCS_URL, FORMATION_BOT_TERMS_URL, FORMATION_BOT_PRIVACY_URL } from "@/lib/links";
@@ -272,6 +274,16 @@ export default async function HomePage() {
                 icon={<CalendarClock className="size-5" />}
                 title="Suggested times"
                 description="Scheduling a match or practice surfaces the times your roster is actually most available."
+              />
+              <FeatureCard
+                icon={<CalendarPlus className="size-5" />}
+                title="Custom event types"
+                description="Season kickoffs, community events, whatever you need — schedule alongside practices, with attendance tracking on or off per type."
+              />
+              <FeatureCard
+                icon={<Upload className="size-5" />}
+                title="Calendar import"
+                description="Already have a schedule somewhere else? Upload it as .ics, review every event, and bring it in at once."
               />
             </div>
           </div>
