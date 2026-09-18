@@ -21,6 +21,7 @@ import {
   Receipt,
   Swords,
   Handshake,
+  Images,
 } from "lucide-react";
 
 const SETTINGS_PERMISSIONS: Permission[] = [
@@ -130,6 +131,13 @@ export function SidebarNav({
       label: "Gear",
       icon: Package,
       show: has(Permission.gear_manage) && !isHidden("sidebar_gear"),
+      tour: undefined,
+    },
+    {
+      href: `${base}/assets`,
+      label: "Assets",
+      icon: Images,
+      show: has(Permission.asset_manage) && !isHidden("sidebar_assets"),
       tour: undefined,
     },
     {

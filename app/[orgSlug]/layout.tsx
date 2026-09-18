@@ -5,6 +5,7 @@ import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { TopNav } from "@/components/layout/top-nav";
 import { ProductTourAutoStart } from "@/components/onboarding/product-tour";
 import { WhatsNewDialog } from "@/components/layout/whats-new-dialog";
+import { PlatformAnnouncementBanner } from "@/components/layout/platform-announcement-banner";
 import { getContrastColor } from "@/lib/utils/color";
 
 export default async function OrgLayout({
@@ -17,7 +18,7 @@ export default async function OrgLayout({
   const { orgSlug } = await params;
   const { session, membership, org } = await getOrgContext(orgSlug);
 
-  const [notifications, unreadCount, userNavPrefs] = await Promise.all([
+  const [notifications, unreadCount, userNavPrefs, announcement] = await Promise.all([
     prisma.notification.findMany({
       where: { membershipId: membership.membershipId },
       orderBy: { createdAt: "desc" },
@@ -25,6 +26,7 @@ export default async function OrgLayout({
     }),
     prisma.notification.count({ where: { membershipId: membership.membershipId, isRead: false } }),
     prisma.user.findUnique({ where: { id: session.user.id }, select: { hiddenNavItems: true } }),
+    prisma.platformAnnouncement.findFirst({ where: { active: true }, orderBy: { createdAt: "desc" } }),
   ]);
   const hiddenNavItems = Array.isArray(userNavPrefs?.hiddenNavItems) ? (userNavPrefs.hiddenNavItems as string[]) : [];
 
@@ -41,6 +43,7 @@ export default async function OrgLayout({
     <div className="flex min-h-screen flex-1 flex-col" style={accentStyle}>
       <ProductTourAutoStart />
       <WhatsNewDialog />
+      {announcement ? <PlatformAnnouncementBanner id={announcement.id} message={announcement.message} /> : null}
       <div className="no-print contents">
         <TopNav
           orgName={org.name}

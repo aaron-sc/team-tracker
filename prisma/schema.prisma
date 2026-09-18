@@ -162,6 +162,7 @@ enum Permission {
   gear_manage
   expense_manage
   strategy_manage
+  asset_manage
 
   onboarding_manage
 
@@ -219,6 +220,7 @@ model Organization {
   scrimListings         ScrimListing[]
   scrimRequestsSent     ScrimRequest[]
   eventTypes            EventType[]
+  assets                Asset[]
 }
 
 model Team {
@@ -280,6 +282,7 @@ model Team {
   linkedAsOpponentBy    Opponent[]     @relation("OpponentLinkedTeam")
   onboardingTaskTargets    OnboardingTask[]
   onboardingTeamExclusions OnboardingTaskTeamExclusion[]
+  assets                   Asset[]
 
   @@unique([orgId, slug])
 }
@@ -478,6 +481,7 @@ model Membership {
   pollVotes              PollVote[]
   assignedGearItems      GearItem[]
   createdExpenses        Expense[]
+  uploadedAssets         Asset[]
 
   @@unique([userId, orgId])
 }
@@ -1022,6 +1026,37 @@ model GearItem {
   updatedAt               DateTime     @updatedAt
 }
 
+enum AssetCategory {
+  BANNER
+  MERCH
+  GRAPHIC
+  LOGO
+  TEMPLATE
+  OTHER
+}
+
+// Org-owned brand/design files — banners, merch mockups, graphics, logos — optionally tagged to
+// a specific team. Separate from Team.logoUrl (the one logo shown in the UI) and from
+// TeamResourceLink (external links, not uploaded files).
+model Asset {
+  id           String        @id @default(cuid())
+  orgId        String
+  org          Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  teamId       String?
+  team         Team?         @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  title        String
+  category     AssetCategory @default(OTHER)
+  fileUrl      String
+  fileName     String
+  fileSize     Int
+  mimeType     String
+  notes        String?
+  uploadedById String?
+  uploadedBy   Membership?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
 // A lightweight expense ledger — not full accounting, just "what did we spend, on what, when."
 model Expense {
   id          String       @id @default(cuid())
@@ -1325,5 +1360,15 @@ model LoginEvent {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   ip        String?
   userAgent String?
+  createdAt DateTime @default(now())
+}
+
+// Platform-wide banner pushed from the hub admin console (admin.esports-tools.com), not from
+// inside Formation itself — see app/api/internal/admin-broadcast. Shown to every org until
+// cleared; only one is ever active at a time (posting a new one deactivates the last).
+model PlatformAnnouncement {
+  id        String   @id @default(cuid())
+  message   String
+  active    Boolean  @default(true)
   createdAt DateTime @default(now())
 }

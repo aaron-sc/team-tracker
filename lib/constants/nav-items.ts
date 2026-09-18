@@ -23,6 +23,7 @@ export const NAV_ITEM_GROUPS: { label: string; items: string[] }[] = [
       "sidebar_messages",
       "sidebar_onboarding",
       "sidebar_gear",
+      "sidebar_assets",
       "sidebar_expenses",
       "sidebar_settings",
     ],
@@ -50,6 +51,7 @@ export const NAV_ITEM_LABELS: Record<string, string> = {
   sidebar_messages: "Messages",
   sidebar_onboarding: "Onboarding",
   sidebar_gear: "Gear",
+  sidebar_assets: "Assets",
   sidebar_expenses: "Expenses",
   sidebar_settings: "Settings",
 };

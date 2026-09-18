@@ -90,6 +90,49 @@ export async function saveUploadedDocument(
   return { url: `/uploads/${subdir}/${filename}`, fileName: file.name };
 }
 
+const ALLOWED_ASSET_TYPES: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+  "image/gif": "gif",
+  "application/pdf": "pdf",
+  "application/zip": "zip",
+  "application/x-zip-compressed": "zip",
+};
+
+const MAX_ASSET_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Saves an uploaded brand asset (banner/merch/graphic — image, PDF, or zip) under
+ * public/uploads/<subdir>/. Same local-disk model as saveUploadedImage/saveUploadedDocument, but
+ * with a wider type allowlist and a higher size cap suited to design files.
+ */
+export async function saveUploadedAssetFile(
+  file: File,
+  subdir: string,
+): Promise<{ url: string; fileName: string; fileSize: number; mimeType: string }> {
+  if (!(file instanceof File) || file.size === 0) {
+    throw new UploadError("Choose a file to upload.");
+  }
+  if (file.size > MAX_ASSET_BYTES) {
+    throw new UploadError("File must be 20MB or smaller.");
+  }
+  const ext = ALLOWED_ASSET_TYPES[file.type];
+  if (!ext) {
+    throw new UploadError("File must be an image (PNG, JPEG, WebP, SVG, GIF), PDF, or ZIP.");
+  }
+
+  const dir = path.join(UPLOADS_ROOT, subdir);
+  await mkdir(dir, { recursive: true });
+
+  const filename = `${crypto.randomUUID()}.${ext}`;
+  const bytes = Buffer.from(await file.arrayBuffer());
+  await writeFile(path.join(dir, filename), bytes);
+
+  return { url: `/uploads/${subdir}/${filename}`, fileName: file.name, fileSize: file.size, mimeType: file.type };
+}
+
 /**
  * Copies a previously uploaded file to a new path under public/uploads/<subdir>/, preserving
  * its extension. Used to snapshot an onboarding task's document at the moment someone signs it,

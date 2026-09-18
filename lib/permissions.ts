@@ -87,6 +87,10 @@ export const PERMISSION_GROUPS: { label: string; permissions: Permission[] }[] =
     label: "Admin tools",
     permissions: [Permission.gear_manage, Permission.expense_manage],
   },
+  {
+    label: "Brand assets",
+    permissions: [Permission.asset_manage],
+  },
 ];
 
 export const PERMISSION_LABELS: Record<Permission, string> = {
@@ -133,6 +137,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   gear_manage: "Manage equipment/gear inventory",
   expense_manage: "Manage the expense ledger",
   strategy_manage: "Create and edit team strategies, playbooks, and agent compositions",
+  asset_manage: "Manage brand assets (banners, merch, graphics)",
 };
 
 /** Default permission grants for system-seeded roles, applied at org creation time. */
@@ -191,6 +196,7 @@ export const ROLE_PRESETS: Record<string, { description: string; color: string; 
       Permission.team_resources_manage,
       Permission.gear_manage,
       Permission.expense_manage,
+      Permission.asset_manage,
     ],
   },
   Captain: {
