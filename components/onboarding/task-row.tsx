@@ -23,7 +23,10 @@ type Task = {
   completionCount: number;
   roleId: string | null;
   roleName: string | null;
+  teamId: string | null;
+  teamName: string | null;
   excludedMembershipIds: string[];
+  excludedTeamIds: string[];
 };
 
 const TYPE_ICON = { ACKNOWLEDGE: ClipboardCheck, DOCUMENT: FileText, LINK: Link2, VIDEO: Video, SIGNATURE: PenLine };
@@ -34,12 +37,14 @@ export function TaskRow({
   task,
   roles,
   members,
+  teams,
 }: {
   orgSlug: string;
   orgId: string;
   task: Task;
   roles: { id: string; name: string }[];
   members: { id: string; name: string }[];
+  teams: { id: string; name: string }[];
 }) {
   const [pending, startTransition] = useTransition();
   const Icon = TYPE_ICON[task.type];
@@ -50,14 +55,20 @@ export function TaskRow({
         <div className="flex min-w-0 items-center gap-3">
           <Icon className="size-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0">
-            <p className="flex items-center gap-2 truncate text-sm font-medium">
+            <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
               {task.title}
               {task.required ? <Badge variant="secondary">Required</Badge> : <Badge variant="outline">Optional</Badge>}
               {!task.active ? <Badge variant="outline">Inactive</Badge> : null}
               <Badge variant="outline">{task.roleName ?? "All roles"}</Badge>
+              {task.teamName ? <Badge variant="outline">{task.teamName} only</Badge> : null}
               {task.excludedMembershipIds.length > 0 ? (
                 <Badge variant="outline">
-                  {task.excludedMembershipIds.length} excluded
+                  {task.excludedMembershipIds.length} member{task.excludedMembershipIds.length === 1 ? "" : "s"} excluded
+                </Badge>
+              ) : null}
+              {task.excludedTeamIds.length > 0 ? (
+                <Badge variant="outline">
+                  {task.excludedTeamIds.length} team{task.excludedTeamIds.length === 1 ? "" : "s"} excluded
                 </Badge>
               ) : null}
             </p>
@@ -95,6 +106,7 @@ export function TaskRow({
             taskId={task.id}
             roles={roles}
             members={members}
+            teams={teams}
             defaultValues={{
               title: task.title,
               description: task.description ?? "",
@@ -104,7 +116,9 @@ export function TaskRow({
               required: task.required,
               fileName: task.fileName,
               roleId: task.roleId,
+              teamId: task.teamId,
               excludedMembershipIds: task.excludedMembershipIds,
+              excludedTeamIds: task.excludedTeamIds,
             }}
           />
           <Button

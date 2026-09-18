@@ -21,7 +21,7 @@ function teamInitials(name: string) {
 export default async function TeamsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { org, membership } = await getOrgContext(orgSlug);
-  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId, membership.teamIds);
 
   const canSeeAllTeams = membership.permissions.includes(Permission.teams_view_all);
   const teams = await prisma.team.findMany({

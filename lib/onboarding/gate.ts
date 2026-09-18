@@ -12,14 +12,19 @@ export async function requireOnboardingCompletePage(
   orgId: string,
   membershipId: string,
   roleId: string,
+  teamIds: string[],
 ) {
   const incompleteCount = await prisma.onboardingTask.count({
     where: {
       orgId,
       active: true,
       required: true,
-      OR: [{ roleId: null }, { roleId }],
+      AND: [
+        { OR: [{ roleId: null }, { roleId }] },
+        { OR: [{ teamId: null }, { teamId: { in: teamIds } }] },
+      ],
       exclusions: { none: { membershipId } },
+      teamExclusions: { none: { teamId: { in: teamIds } } },
       completions: { none: { membershipId } },
     },
   });

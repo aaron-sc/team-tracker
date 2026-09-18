@@ -12,7 +12,7 @@ import { getTimezones } from "@/lib/utils/timezones";
 export default async function OrgSettingsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { org, membership } = await getOrgContext(orgSlug);
-  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId, membership.teamIds);
   requirePagePermission(orgSlug, membership, Permission.org_settings_manage);
   const canResetData = membership.permissions.includes(Permission.org_data_reset);
 

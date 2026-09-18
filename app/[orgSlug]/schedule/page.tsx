@@ -31,7 +31,7 @@ export default async function SchedulePage({
   const { orgSlug } = await params;
   const { view = "month", date, team } = await searchParams;
   const { session, org, membership, teams } = await getOrgContext(orgSlug);
-  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId, membership.teamIds);
   const viewerTz = session.user.timezone ?? org.timezone;
   const viewerHour12 = session.user.timeFormat !== "24h";
 

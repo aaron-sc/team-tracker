@@ -18,7 +18,7 @@ import { formatDate, formatDateTime } from "@/lib/utils/format-time";
 export default async function AnnouncementsPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { session, org, membership, teams } = await getOrgContext(orgSlug);
-  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId, membership.teamIds);
   const viewerTz = session.user.timezone ?? org.timezone;
   const viewerHour12 = session.user.timeFormat !== "24h";
 

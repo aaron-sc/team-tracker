@@ -31,7 +31,9 @@ type Defaults = {
   required?: boolean;
   fileName?: string | null;
   roleId?: string | null;
+  teamId?: string | null;
   excludedMembershipIds?: string[];
+  excludedTeamIds?: string[];
 };
 
 export function TaskFormDialog({
@@ -41,6 +43,7 @@ export function TaskFormDialog({
   defaultValues,
   roles,
   members,
+  teams,
 }: {
   orgSlug: string;
   orgId: string;
@@ -48,13 +51,16 @@ export function TaskFormDialog({
   defaultValues?: Defaults;
   roles: { id: string; name: string }[];
   members: { id: string; name: string }[];
+  teams: { id: string; name: string }[];
 }) {
   const isEdit = !!taskId;
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<TaskType>(defaultValues?.type ?? "ACKNOWLEDGE");
   const [required, setRequired] = useState(defaultValues?.required ?? true);
   const [roleId, setRoleId] = useState(defaultValues?.roleId ?? "__all__");
+  const [teamId, setTeamId] = useState(defaultValues?.teamId ?? "__all__");
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set(defaultValues?.excludedMembershipIds ?? []));
+  const [excludedTeamIds, setExcludedTeamIds] = useState<Set<string>>(new Set(defaultValues?.excludedTeamIds ?? []));
   const [error, setError] = useState<string | undefined>();
   const [pending, startTransition] = useTransition();
 
@@ -187,6 +193,29 @@ export function TaskFormDialog({
             </Select>
           </div>
 
+          {teams.length > 0 ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="teamId">Team</Label>
+              <Select name="teamId" value={teamId} onValueChange={setTeamId}>
+                <SelectTrigger id="teamId" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Every team</SelectItem>
+                  {teams.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} only
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Combines with the role above — e.g. &quot;Player role&quot; + &quot;Valorant only&quot; applies to just
+                that team&apos;s players.
+              </p>
+            </div>
+          ) : null}
+
           {members.length > 0 ? (
             <div className="space-y-1.5">
               <Label>Exclude specific members (optional)</Label>
@@ -212,6 +241,39 @@ export function TaskFormDialog({
                     />
                     <Label htmlFor={`exclude-${m.id}`} className="cursor-pointer text-sm font-normal">
                       {m.name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {teams.length > 0 ? (
+            <div className="space-y-1.5">
+              <Label>Exclude specific teams (optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Every current and future player on a checked team is ignored for this task, even if it applies to
+                their role.
+              </p>
+              <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-md border p-2">
+                {teams.map((t) => (
+                  <div key={t.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`exclude-team-${t.id}`}
+                      name="excludedTeamIds"
+                      value={t.id}
+                      checked={excludedTeamIds.has(t.id)}
+                      onCheckedChange={(value) => {
+                        setExcludedTeamIds((prev) => {
+                          const next = new Set(prev);
+                          if (value) next.add(t.id);
+                          else next.delete(t.id);
+                          return next;
+                        });
+                      }}
+                    />
+                    <Label htmlFor={`exclude-team-${t.id}`} className="cursor-pointer text-sm font-normal">
+                      {t.name}
                     </Label>
                   </div>
                 ))}

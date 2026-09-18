@@ -261,6 +261,8 @@ model Team {
   // been linked to this real team via a matched scrim. Not used for display, just required by
   // Prisma for the relation; query Opponent directly when you need "who's linked to me."
   linkedAsOpponentBy    Opponent[]     @relation("OpponentLinkedTeam")
+  onboardingTaskTargets    OnboardingTask[]
+  onboardingTeamExclusions OnboardingTaskTeamExclusion[]
 
   @@unique([orgId, slug])
 }
@@ -1071,13 +1073,19 @@ model OnboardingTask {
   // instead of silently deleting them.
   roleId      String?
   role        Role?              @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  // Null = every team (or no team, if roleId/org-wide). Set = only members rostered on this team
+  // see/must complete it. Combines with roleId as AND when both are set (e.g. "Coach role, and
+  // only on this team"). SetNull so deleting a team reverts its tasks to unscoped.
+  teamId      String?
+  team        Team?              @relation(fields: [teamId], references: [id], onDelete: SetNull)
   createdById String?
   createdBy   Membership?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
-  completions OnboardingCompletion[]
-  exclusions  OnboardingTaskExclusion[]
+  completions    OnboardingCompletion[]
+  exclusions     OnboardingTaskExclusion[]
+  teamExclusions OnboardingTaskTeamExclusion[]
 }
 
 // One row per membership explicitly carved out of a task — checked in addition to (not instead
@@ -1092,6 +1100,20 @@ model OnboardingTaskExclusion {
   createdAt    DateTime       @default(now())
 
   @@unique([taskId, membershipId])
+}
+
+// Same idea as OnboardingTaskExclusion but keyed by team rather than by individual membership —
+// excludes every current (and future) member of that team's roster, evaluated live against
+// TeamMembership rather than snapshotting who was on the roster when the exclusion was added.
+model OnboardingTaskTeamExclusion {
+  id        String         @id @default(cuid())
+  taskId    String
+  task      OnboardingTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  teamId    String
+  team      Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+
+  @@unique([taskId, teamId])
 }
 
 // One row per member per task, created the moment they complete/sign it.

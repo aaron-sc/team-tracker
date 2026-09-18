@@ -18,8 +18,12 @@ export default async function OnboardingPage({ params }: { params: Promise<{ org
     where: {
       orgId: org.id,
       active: true,
-      OR: [{ roleId: null }, { roleId: membership.roleId }],
+      AND: [
+        { OR: [{ roleId: null }, { roleId: membership.roleId }] },
+        { OR: [{ teamId: null }, { teamId: { in: membership.teamIds } }] },
+      ],
       exclusions: { none: { membershipId: membership.membershipId } },
+      teamExclusions: { none: { teamId: { in: membership.teamIds } } },
     },
     include: { completions: { where: { membershipId: membership.membershipId } } },
     orderBy: { order: "asc" },

@@ -12,6 +12,7 @@ import { notifyDiscord, FORMATION_EMBED_COLOR } from "@/lib/integrations/discord
 
 function parseTaskForm(formData: FormData) {
   const roleId = formData.get("roleId");
+  const teamId = formData.get("teamId");
   return onboardingTaskSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description") ?? "",
@@ -19,10 +20,12 @@ function parseTaskForm(formData: FormData) {
     url: formData.get("url") ?? "",
     body: formData.get("body") ?? "",
     required: formData.get("required") === "on",
-    // "__all__" is the form's sentinel for "every role" — Radix's Select can't hold an empty
-    // string as an item value, so it's translated to null (org-wide) here instead.
+    // "__all__" is the form's sentinel for "every role"/"every team" — Radix's Select can't hold
+    // an empty string as an item value, so it's translated to null (unscoped) here instead.
     roleId: roleId === "__all__" ? "" : (roleId ?? ""),
+    teamId: teamId === "__all__" ? "" : (teamId ?? ""),
     excludedMembershipIds: formData.getAll("excludedMembershipIds"),
+    excludedTeamIds: formData.getAll("excludedTeamIds"),
   });
 }
 
@@ -33,12 +36,27 @@ async function resolveRoleId(orgId: string, roleId: string | undefined): Promise
   return { roleId };
 }
 
+async function resolveTeamId(orgId: string, teamId: string | undefined): Promise<{ teamId: string | null } | { error: string }> {
+  if (!teamId) return { teamId: null };
+  const team = await prisma.team.findUnique({ where: { id: teamId }, select: { orgId: true } });
+  if (!team || team.orgId !== orgId) return { error: "Invalid team." };
+  return { teamId };
+}
+
 async function resolveExclusions(orgId: string, membershipIds: string[]): Promise<{ membershipIds: string[] } | { error: string }> {
   if (membershipIds.length === 0) return { membershipIds: [] };
   const unique = [...new Set(membershipIds)];
   const count = await prisma.membership.count({ where: { id: { in: unique }, orgId } });
   if (count !== unique.length) return { error: "One of the excluded members is invalid." };
   return { membershipIds: unique };
+}
+
+async function resolveTeamExclusions(orgId: string, teamIds: string[]): Promise<{ teamIds: string[] } | { error: string }> {
+  if (teamIds.length === 0) return { teamIds: [] };
+  const unique = [...new Set(teamIds)];
+  const count = await prisma.team.count({ where: { id: { in: unique }, orgId } });
+  if (count !== unique.length) return { error: "One of the excluded teams is invalid." };
+  return { teamIds: unique };
 }
 
 export async function createOnboardingTaskAction(
@@ -74,8 +92,14 @@ export async function createOnboardingTaskAction(
   const resolvedRole = await resolveRoleId(orgId, parsed.data.roleId);
   if ("error" in resolvedRole) return { error: resolvedRole.error };
 
+  const resolvedTeam = await resolveTeamId(orgId, parsed.data.teamId);
+  if ("error" in resolvedTeam) return { error: resolvedTeam.error };
+
   const resolvedExclusions = await resolveExclusions(orgId, parsed.data.excludedMembershipIds);
   if ("error" in resolvedExclusions) return { error: resolvedExclusions.error };
+
+  const resolvedTeamExclusions = await resolveTeamExclusions(orgId, parsed.data.excludedTeamIds);
+  if ("error" in resolvedTeamExclusions) return { error: resolvedTeamExclusions.error };
 
   const maxOrder = await prisma.onboardingTask.aggregate({ where: { orgId }, _max: { order: true } });
 
@@ -91,9 +115,11 @@ export async function createOnboardingTaskAction(
       fileName,
       required: parsed.data.required,
       roleId: resolvedRole.roleId,
+      teamId: resolvedTeam.teamId,
       order: (maxOrder._max.order ?? 0) + 1,
       createdById: membership.membershipId,
       exclusions: { create: resolvedExclusions.membershipIds.map((membershipId) => ({ membershipId })) },
+      teamExclusions: { create: resolvedTeamExclusions.teamIds.map((teamId) => ({ teamId })) },
     },
   });
 
@@ -152,8 +178,14 @@ export async function updateOnboardingTaskAction(
   const resolvedRole = await resolveRoleId(orgId, parsed.data.roleId);
   if ("error" in resolvedRole) return { error: resolvedRole.error };
 
+  const resolvedTeam = await resolveTeamId(orgId, parsed.data.teamId);
+  if ("error" in resolvedTeam) return { error: resolvedTeam.error };
+
   const resolvedExclusions = await resolveExclusions(orgId, parsed.data.excludedMembershipIds);
   if ("error" in resolvedExclusions) return { error: resolvedExclusions.error };
+
+  const resolvedTeamExclusions = await resolveTeamExclusions(orgId, parsed.data.excludedTeamIds);
+  if ("error" in resolvedTeamExclusions) return { error: resolvedTeamExclusions.error };
 
   await prisma.onboardingTask.update({
     where: { id: taskId },
@@ -167,11 +199,16 @@ export async function updateOnboardingTaskAction(
       fileName,
       required: parsed.data.required,
       roleId: resolvedRole.roleId,
+      teamId: resolvedTeam.teamId,
       // Full replace rather than a diff — the form always submits the complete current set of
-      // checked members, so whatever isn't in this list anymore should no longer be excluded.
+      // checked members/teams, so whatever isn't in this list anymore should no longer be excluded.
       exclusions: {
         deleteMany: {},
         create: resolvedExclusions.membershipIds.map((membershipId) => ({ membershipId })),
+      },
+      teamExclusions: {
+        deleteMany: {},
+        create: resolvedTeamExclusions.teamIds.map((teamId) => ({ teamId })),
       },
     },
   });
@@ -255,13 +292,21 @@ export async function completeOnboardingTaskAction(
 ): Promise<ActionState> {
   const { session, membership } = await requireMembership(orgId);
 
+  const memberTeamIds = (
+    await prisma.teamMembership.findMany({ where: { membershipId: membership.membershipId }, select: { teamId: true } })
+  ).map((t) => t.teamId);
+
   const task = await prisma.onboardingTask.findUnique({
     where: { id: taskId },
-    include: { exclusions: { where: { membershipId: membership.membershipId } } },
+    include: {
+      exclusions: { where: { membershipId: membership.membershipId } },
+      teamExclusions: { where: { teamId: { in: memberTeamIds } } },
+    },
   });
   if (!task || task.orgId !== orgId || !task.active) return { error: "Task not found." };
   if (task.roleId && task.roleId !== membership.roleId) return { error: "Task not found." };
-  if (task.exclusions.length > 0) return { error: "Task not found." };
+  if (task.teamId && !memberTeamIds.includes(task.teamId)) return { error: "Task not found." };
+  if (task.exclusions.length > 0 || task.teamExclusions.length > 0) return { error: "Task not found." };
 
   const parsed = completeTaskSchema.safeParse({ signatureName: formData.get("signatureName") ?? "" });
   if (!parsed.success) {
@@ -294,8 +339,12 @@ export async function completeOnboardingTaskAction(
         orgId,
         active: true,
         required: true,
-        OR: [{ roleId: null }, { roleId: membership.roleId }],
+        AND: [
+          { OR: [{ roleId: null }, { roleId: membership.roleId }] },
+          { OR: [{ teamId: null }, { teamId: { in: memberTeamIds } }] },
+        ],
         exclusions: { none: { membershipId: membership.membershipId } },
+        teamExclusions: { none: { teamId: { in: memberTeamIds } } },
         completions: { none: { membershipId: membership.membershipId } },
       },
     });

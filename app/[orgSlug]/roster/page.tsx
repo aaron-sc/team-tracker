@@ -10,7 +10,7 @@ import { Download, Mail } from "lucide-react";
 export default async function RosterPage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
   const { org, membership } = await getOrgContext(orgSlug);
-  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId);
+  await requireOnboardingCompletePage(orgSlug, org.id, membership.membershipId, membership.roleId, membership.teamIds);
   const canViewEmails = membership.permissions.includes(Permission.org_members_contact_view);
 
   const members = await prisma.membership.findMany({
