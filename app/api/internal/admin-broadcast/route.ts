@@ -4,10 +4,24 @@ import { verifyInternalApiSecret } from "@/lib/auth/internal-api";
 import { checkRateLimit } from "@/lib/utils/rate-limit";
 
 /**
- * Server-to-server only — lets the admin console (admin.esports-tools.com) push or clear the
- * platform-wide banner shown across every org in Formation. Same bearer-secret guard as the other
- * internal routes.
+ * Server-to-server only — lets the admin console (admin.esports-tools.com) read, push, or clear
+ * the platform-wide banner shown across every org in Formation. Same bearer-secret guard as the
+ * other internal routes.
  */
+export async function GET(request: NextRequest) {
+  if (!verifyInternalApiSecret(request)) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const allowed = await checkRateLimit("internal_admin_broadcast", 60, 60 * 1000);
+  if (!allowed) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
+  const announcement = await prisma.platformAnnouncement.findFirst({ where: { active: true }, orderBy: { createdAt: "desc" } });
+  return NextResponse.json(announcement ? { id: announcement.id, message: announcement.message, createdAt: announcement.createdAt } : null);
+}
+
 export async function POST(request: NextRequest) {
   if (!verifyInternalApiSecret(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
